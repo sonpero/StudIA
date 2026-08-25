@@ -1,0 +1,27 @@
+{
+  "name": "studia",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" run dev",
+    "build": "pnpm --filter @studia/web run build",
+    "test": "vitest run",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "eslint . --max-warnings=0 && pnpm run lint:boundaries",
+    "lint:boundaries": "depcruise --config .dependency-cruiser.cjs apps/*/src packages/*/src",
+    "db:generate": "pnpm --filter @studia/api run db:generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/node": "^22.10.10",
+    "dependency-cruiser": "^16.9.0",
+    "eslint": "^9.19.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.22.0",
+    "vitest": "^3.0.4"
+  }
+}

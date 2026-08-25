@@ -1,0 +1,18 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Build artifacts
+apps/api/drizzle-meta/
+
+# IDE
+.DS_Store
