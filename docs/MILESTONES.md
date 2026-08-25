@@ -29,11 +29,11 @@ Everything that has nothing to do with the product, done once and never again.
 React app loads from the same origin.
 
 **Acceptance**
-- [ ] `pnpm dev` starts api, web and worker together
-- [ ] `pnpm test`, `pnpm typecheck`, `pnpm lint` all green locally and in CI
-- [ ] A deliberate cross-module deep import fails `pnpm lint`
-- [ ] The SQLite file is created on the Railway volume and survives a redeploy
-- [ ] `better-sqlite3` loads inside the Docker image
+- [x] `pnpm dev` starts api, web and worker together
+- [x] `pnpm test`, `pnpm typecheck`, `pnpm lint` all green locally and in CI
+- [x] A deliberate cross-module deep import fails `pnpm lint`
+- [x] The SQLite file is created on the Railway volume and survives a redeploy
+- [x] `better-sqlite3` loads inside the Docker image
 
 **Out of scope** — any business table, any UI beyond a placeholder.
 
