@@ -6,6 +6,7 @@ export const healthRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.withTypeProvider<ZodTypeProvider>().get(
     "/api/health",
     {
+      config: { public: true },
       schema: {
         response: {
           200: z.object({ status: z.literal("ok") }),

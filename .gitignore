@@ -14,5 +14,11 @@ dist/
 # Build artifacts
 apps/api/drizzle-meta/
 
+# Playwright
+/playwright-report/
+/test-results/
+e2e/.data/
+e2e/.auth/
+
 # IDE
 .DS_Store

@@ -16,7 +16,11 @@ describe("GET /api/health", () => {
   });
 
   it("returns 200 with status ok, backed by a real migrated SQLite file", async () => {
-    const app = buildApp({ databasePath: path.join(dir, "test.db") });
+    const app = buildApp({
+      databasePath: path.join(dir, "test.db"),
+      sessionSecret: "test-session-secret",
+      cookieSecure: false,
+    });
 
     const res = await app.inject({ method: "GET", url: "/api/health" });
 

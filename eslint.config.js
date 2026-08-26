@@ -37,4 +37,13 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  {
+    // Playwright's globalSetup/globalTeardown config options load these
+    // modules and call their default export; that's Playwright's contract,
+    // not ours to change.
+    files: ["e2e/support/global-setup.ts", "e2e/support/global-teardown.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
 );
