@@ -82,13 +82,13 @@ protected page, log out, get bounced back to login.
 pending to done, read the extracted text.
 
 **Acceptance**
-- [ ] Unit tests: MIME detection, deduplication, job state machine
-- [ ] Integration tests: upload writes file and row, worker picks the job up
-- [ ] Contract tests: fixture-based extraction, plus a corrupted-file case
-- [ ] A job that fails three times ends `failed` with `last_error` populated
-- [ ] Killing the worker mid-job and restarting it re-runs that job exactly once
-- [ ] Playwright: upload three photos as one document, watch the status reach done
-- [ ] Another user cannot download the document (403, tested)
+- [x] Unit tests: MIME detection, deduplication, job state machine
+- [x] Integration tests: upload writes file and row, worker picks the job up
+- [x] Contract tests: fixture-based extraction, plus a corrupted-file case
+- [x] A job that fails three times ends `failed` with `last_error` populated
+- [x] Killing the worker mid-job and restarting it re-runs that job exactly once
+- [x] Playwright: upload three photos as one document, watch the status reach done
+- [x] Another user cannot download the document (403, tested)
 
 **Out of scope** — notion splitting, any generation.
 

@@ -13,8 +13,8 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M2 — Ingestion.** See `docs/MILESTONES.md` for the full plan and acceptance
-criteria.
+**M3 — First learning loop.** See `docs/MILESTONES.md` for the full plan and
+acceptance criteria.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,
