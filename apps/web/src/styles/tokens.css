@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* docs/UI.md — only the tokens the M2 screens (upload, document list, live
+   status) actually use, not the full future palette. */
+@theme {
+  --color-canvas: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-text: #101828;
+  --color-text-muted: #667085;
+  --color-border: #eaecf0;
+  --color-primary: #2563eb;
+  --color-primary-soft: #dceaf7;
+  --color-accent: #f04438;
+  --color-success: #12b5a5;
+  --color-warning: #f5b940;
+
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --radius-button: 8px;
+  --radius-card: 12px;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}

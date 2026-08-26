@@ -215,6 +215,17 @@ UI copy is French, tutoiement, sentence case. Do not write English UI strings
   other than a database call.
 - `better-sqlite3` is a native module: the Dockerfile must build it against the
   same Node version that runs it.
+- `drizzle-kit`'s schema loader uses a plain Node `require()` with no bundler,
+  so it cannot resolve this repo's NodeNext `.js`-suffixed relative imports
+  once a `.references()` call reaches across a module or package boundary
+  (e.g. `ingestion`'s `documentsTable.userId` referencing `identity`'s
+  `usersTable`). This has recurred on every cross-module foreign key so far
+  (M1 `users`, M2 `jobs`, M2 `documents`). Workaround: omit `.references()` in
+  the Drizzle TS schema, generate the migration, then hand-edit the generated
+  SQL to add the `REFERENCES` clause (and any `CHECK` constraint or index
+  column ordering Drizzle's SQLite dialect can't express yet). Leave a comment
+  in both the schema file and the migration explaining why the reference is
+  missing from the TS side.
 
 ### Worker specifics
 

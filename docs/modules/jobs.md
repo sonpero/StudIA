@@ -58,11 +58,25 @@ interface JobQueue {
   enqueue(userId: string, type: string, payload: unknown, now: Date): Promise<string>;
   claimNext(now: Date): Promise<Job | null>;
   complete(jobId: string, now: Date): Promise<void>;
-  fail(jobId: string, error: string, now: Date): Promise<void>;
+  fail(jobId: string, error: string, now: Date, options?: { terminal?: boolean }): Promise<void>;
   recoverStale(now: Date): Promise<number>;
   listJobs(userId: string, type: string, createdAfter?: string): Promise<Pick<Job, 'id' | 'status' | 'payload' | 'lastError'>[]>;
 }
 ```
+
+**`fail()`'s `terminal` option.** Normally `fail()` increments `attempts` and compares
+it to `maxAttempts`: below the limit, the job goes `running -> pending` with a
+backed-off `runAfter`; at or above it, `running -> failed`. `terminal: true`
+skips that comparison entirely and goes straight to `running -> failed` with
+the given error, regardless of `attempts`. It exists for exactly one caller:
+the worker dispatching a job whose `type` has no registered handler. That is a
+worker configuration problem, not a transient failure — retrying it would
+just repeat the same outcome after real backoff delays, contradicting "fails
+immediately... rather than looping". Since `enqueue()` has no way to set a
+per-job `maxAttempts` (it is always the schema default, 3) and there is no
+`now`-independent way to force immediate exhaustion through the normal path,
+`terminal` is the minimal, spec-compliant fix: one optional parameter on an
+existing method rather than a new one.
 
 `listJobs` is the read side: owning modules use it to report progress (for
 example `generation`'s `{ done, total, failed }` counts, filtered by
@@ -122,7 +136,9 @@ when a milestone requires them.
 - **Kill the worker mid-handler, restart it, the job runs again and exactly one
   set of rows exists.** This is the M2 acceptance criterion and the reason
   handlers must be idempotent.
-- A job with an unregistered type fails once rather than retrying
+- A job with an unregistered type calls `fail()` with `{ terminal: true }`
+  exactly once, and the job goes straight to `failed` regardless of
+  `attempts` — not through the normal retry/backoff cycle
 
 ## Open questions
 

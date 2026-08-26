@@ -20,9 +20,12 @@ const webDistPath = fileURLToPath(new URL("../../web/dist", import.meta.url));
 
 const app = buildApp({
   databasePath: path.join(dataDir, "studia.db"),
+  dataDir,
   webDistPath: isProduction ? webDistPath : undefined,
   sessionSecret,
   cookieSecure: process.env.COOKIE_SECURE === "true",
+  llmAdapter: process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const port = Number(process.env.PORT ?? 3000);

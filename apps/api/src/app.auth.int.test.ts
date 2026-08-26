@@ -17,7 +17,7 @@ describe("buildApp — session secret", () => {
 
   it("throws loudly and clearly when sessionSecret is missing", () => {
     expect(() =>
-      buildApp({ databasePath: path.join(dir, "test.db"), sessionSecret: "", cookieSecure: false }),
+      buildApp({ databasePath: path.join(dir, "test.db"), dataDir: dir, sessionSecret: "", cookieSecure: false, llmAdapter: "fixture" }),
     ).toThrow(/SESSION_SECRET/);
   });
 });
@@ -28,7 +28,13 @@ describe("buildApp — default-deny", () => {
 
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), "studia-api-"));
-    app = buildApp({ databasePath: path.join(dir, "test.db"), sessionSecret: "test-session-secret", cookieSecure: false });
+    app = buildApp({
+      databasePath: path.join(dir, "test.db"),
+      dataDir: dir,
+      sessionSecret: "test-session-secret",
+      cookieSecure: false,
+      llmAdapter: "fixture",
+    });
   });
 
   afterEach(async () => {

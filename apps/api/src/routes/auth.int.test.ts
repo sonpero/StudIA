@@ -40,7 +40,7 @@ describe("auth routes", () => {
       new Date(),
     );
 
-    app = buildApp({ databasePath: dbPath, sessionSecret: "test-session-secret", cookieSecure: false });
+    app = buildApp({ databasePath: dbPath, dataDir: dir, sessionSecret: "test-session-secret", cookieSecure: false, llmAdapter: "fixture" });
   });
 
   afterEach(async () => {

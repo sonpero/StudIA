@@ -8,6 +8,20 @@
       "when": 1787738052345,
       "tag": "0000_sparkling_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787755969736,
+      "tag": "0001_lazy_banshee",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787759961211,
+      "tag": "0002_light_santa_claus",
+      "breakpoints": true
     }
   ]
 }

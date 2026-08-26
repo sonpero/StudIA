@@ -1,7 +1,59 @@
-import { heartbeatMessage } from "./heartbeat.js";
+import { existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+import {
+  FixtureDocumentExtractor,
+  LocalFileStore,
+  OfficeParserExtractor,
+  SqliteDocumentRepository,
+  SqliteJobQueue,
+  VisionExtractor,
+  createLanguageModel,
+  handleExtractionJob,
+  runWorkerLoop,
+  systemClock,
+  uuidV7Generator,
+  type DocumentExtractor,
+  type ExtractDocumentPayload,
+  type JobHandler,
+  type WorkerLoopSignal,
+} from "@studia/core";
+import { z } from "zod";
+import { openDatabase } from "./db/connection.js";
+import { runMigrations } from "./db/migrate.js";
 
-// No jobs table exists yet — the polling loop lands with the jobs module (M2, see docs/MILESTONES.md).
-console.log(heartbeatMessage(new Date()));
-setInterval(() => {
-  console.log(heartbeatMessage(new Date()));
-}, 60_000);
+const dataDir = process.env.DATA_DIR ?? path.resolve(process.cwd(), ".data");
+if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+
+const db = openDatabase(path.join(dataDir, "studia.db"));
+runMigrations(db);
+
+const jobQueue = new SqliteJobQueue(db, uuidV7Generator);
+const repo = new SqliteDocumentRepository(db);
+const fileStore = new LocalFileStore(dataDir);
+
+const llmAdapter = process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real";
+const extractors: DocumentExtractor[] =
+  llmAdapter === "fixture"
+    ? [new FixtureDocumentExtractor("valid"), new OfficeParserExtractor()]
+    : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }))];
+
+const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
+  type: "extract-document",
+  payloadSchema: z.object({ documentId: z.string() }),
+  handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors }, payload, ctx),
+};
+
+const handlers = new Map<string, JobHandler>([[extractDocumentHandler.type, extractDocumentHandler]]);
+
+const signal: WorkerLoopSignal = { stopped: false };
+process.on("SIGTERM", () => {
+  signal.stopped = true;
+});
+process.on("SIGINT", () => {
+  signal.stopped = true;
+});
+
+runWorkerLoop({ jobQueue, handlers, clock: systemClock }, signal).catch((err: unknown) => {
+  console.error("[worker] fatal error", err);
+  process.exit(1);
+});

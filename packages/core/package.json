@@ -9,11 +9,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "ai": "^4.0.0",
     "argon2": "^0.41.1",
-    "drizzle-orm": "^0.38.4"
+    "drizzle-orm": "^0.38.4",
+    "officeparser": "^4.2.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "better-sqlite3": "^11.8.1",
-    "@types/better-sqlite3": "^7.6.12"
+    "@types/better-sqlite3": "^7.6.12",
+    "msw": "^2.7.0"
   }
 }
