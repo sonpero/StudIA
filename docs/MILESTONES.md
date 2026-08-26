@@ -55,11 +55,11 @@ React app loads from the same origin.
 protected page, log out, get bounced back to login.
 
 **Acceptance**
-- [ ] Unit tests: hashing, session token signing and expiry
-- [ ] Integration tests: login success, wrong password, unknown user, rate limit
-- [ ] Playwright: full login/logout cycle, and protected route redirects when logged out
-- [ ] The session secret is read from env and startup fails loudly without it
-- [ ] No route can be added without auth by accident (default-deny, tested)
+- [x] Unit tests: hashing, session token signing and expiry
+- [x] Integration tests: login success, wrong password, unknown user, rate limit
+- [x] Playwright: full login/logout cycle, and protected route redirects when logged out
+- [x] The session secret is read from env and startup fails loudly without it
+- [x] No route can be added without auth by accident (default-deny, tested)
 
 **Out of scope** — signup, password reset by the user, roles, any parent profile.
 

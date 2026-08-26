@@ -13,7 +13,7 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M1 — Auth.** See `docs/MILESTONES.md` for the full plan and acceptance
+**M2 — Ingestion.** See `docs/MILESTONES.md` for the full plan and acceptance
 criteria.
 
 Read the current milestone before starting any work. **Build only what the
