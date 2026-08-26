@@ -11,9 +11,11 @@
   "dependencies": {
     "@studia/contracts": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
