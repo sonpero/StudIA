@@ -25,8 +25,8 @@ FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=build /app ./
 EXPOSE 3000
-# Single Railway service: the API serves apps/web/dist and answers /api/*.
-# The worker has no jobs to process before M2 (see docs/MILESTONES.md), so it
-# is not started by default; run `pnpm --filter @studia/worker run start` in
-# this same image once it does.
-CMD ["pnpm", "--filter", "@studia/api", "run", "start"]
+# Single Railway service: the API serves apps/web/dist and answers /api/*,
+# and apps/worker drains the jobs table (M2). One container, one PID 1, two
+# processes: scripts/docker-start.mjs starts both and forwards SIGTERM to
+# each so a redeploy stops them cleanly instead of orphaning the worker.
+CMD ["node", "scripts/docker-start.mjs"]

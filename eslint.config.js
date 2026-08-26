@@ -8,6 +8,9 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/*.config.{js,cjs,mjs,ts}",
       ".dependency-cruiser.cjs",
+      // Deployment glue, not part of any app's tsconfig project (same reason
+      // *.config.* files above are ignored): plain JS, no type-aware linting.
+      "scripts/**/*.mjs",
     ],
   },
   js.configs.recommended,

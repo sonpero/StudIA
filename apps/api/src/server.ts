@@ -34,3 +34,11 @@ app.listen({ port, host: "0.0.0.0" }).catch((err: unknown) => {
   app.log.error(err);
   process.exit(1);
 });
+
+async function shutdown(): Promise<void> {
+  await app.close();
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());
