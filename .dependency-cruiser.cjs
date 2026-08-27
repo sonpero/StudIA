@@ -34,7 +34,12 @@ module.exports = {
         path: "^packages/core/src/planning/",
       },
       to: {
-        path: "^node_modules/(ai|@ai-sdk)/",
+        // Not anchored to `^node_modules/`: pnpm resolves a package through
+        // `node_modules/.pnpm/ai@x.y.z/node_modules/ai/...`, never through a
+        // top-level `node_modules/ai/...`, so an anchored pattern never
+        // matches under pnpm and this rule silently never fires (same bug,
+        // same fix, as no-fsrs-outside-review below).
+        path: "(^|/)node_modules/(ai|@ai-sdk)/",
       },
     },
     {
@@ -45,7 +50,10 @@ module.exports = {
         pathNot: "^packages/core/src/review/domain/scheduler\\.ts$",
       },
       to: {
-        path: "^node_modules/ts-fsrs",
+        // See no-ai-in-planning's comment: must match pnpm's nested
+        // `.pnpm/ts-fsrs@x/node_modules/ts-fsrs/...` resolution too, not
+        // just a hypothetical top-level `node_modules/ts-fsrs`.
+        path: "(^|/)node_modules/ts-fsrs(/|$)",
       },
     },
     {

@@ -1,0 +1,7 @@
+{
+  "subject": "SVT",
+  "level": "lycée",
+  "description": "Clean, well-structured Markdown with six top-level headings, typical of a good extraction.",
+  "expectedNotionRange": [6, 15],
+  "expectedTopics": ["définition", "réactifs et produits", "phase claire", "phase sombre", "facteurs limitants", "importance écologique"]
+}

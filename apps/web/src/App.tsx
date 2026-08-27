@@ -4,9 +4,17 @@ import { APP_NAME } from "./app-info.js";
 import { LoginScreen } from "./components/LoginScreen.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
+import { NotionsScreen } from "./screens/NotionsScreen.js";
+import { ReviewScreen } from "./screens/ReviewScreen.js";
+
+// No router dependency for M3's small navigation surface (three screens,
+// linear flow): a state machine is enough, and adding a router would need
+// its own one-line justification (CLAUDE.md) for a need this small.
+type View = { name: "documents" } | { name: "notions"; documentId: string } | { name: "review"; documentId: string };
 
 function AppShell() {
   const auth = useAuth();
+  const [view, setView] = useState<View>({ name: "documents" });
 
   if (auth.status === "loading") {
     return (
@@ -39,7 +47,19 @@ function AppShell() {
           </button>
         </div>
       </header>
-      <DocumentsScreen />
+      {view.name === "documents" && (
+        <DocumentsScreen onOpenNotions={(documentId) => setView({ name: "notions", documentId })} />
+      )}
+      {view.name === "notions" && (
+        <NotionsScreen
+          documentId={view.documentId}
+          onBack={() => setView({ name: "documents" })}
+          onReview={() => setView({ name: "review", documentId: view.documentId })}
+        />
+      )}
+      {view.name === "review" && (
+        <ReviewScreen documentId={view.documentId} onLeave={() => setView({ name: "notions", documentId: view.documentId })} />
+      )}
     </div>
   );
 }

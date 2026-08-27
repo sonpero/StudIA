@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { err, ok } from "../../shared/index.js";
 import type { Document, Page } from "../domain/types.js";
-import { fakeDocumentExtractor, fakeDocumentRepository, fakeFileStore } from "./fakes.js";
+import { fakeDocumentExtractor, fakeDocumentRepository, fakeFileStore, fakeJobQueueForIngestion } from "./fakes.js";
 import { handleExtractionJob } from "./handle-extraction-job.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
@@ -42,7 +42,7 @@ describe("handleExtractionJob", () => {
     });
 
     const result = await handleExtractionJob(
-      { repo, fileStore, extractors: [extractor] },
+      { repo, fileStore, extractors: [extractor], jobQueue: fakeJobQueueForIngestion() },
       { documentId: "doc-1" },
       { jobId: "j1", userId: "u1", attempt: 1, now },
     );
@@ -56,7 +56,7 @@ describe("handleExtractionJob", () => {
     const fileStore = fakeFileStore();
     await seedTwoPages(repo, fileStore);
     const extractor = fakeDocumentExtractor(() => Promise.resolve(ok({ markdown: "# X", legible: true })));
-    const deps = { repo, fileStore, extractors: [extractor] };
+    const deps = { repo, fileStore, extractors: [extractor], jobQueue: fakeJobQueueForIngestion() };
     const payload = { documentId: "doc-1" };
     const ctx = { jobId: "j1", userId: "u1", attempt: 1, now };
 
@@ -76,7 +76,7 @@ describe("handleExtractionJob", () => {
     );
 
     const result = await handleExtractionJob(
-      { repo, fileStore, extractors: [extractor] },
+      { repo, fileStore, extractors: [extractor], jobQueue: fakeJobQueueForIngestion() },
       { documentId: "doc-1" },
       { jobId: "j1", userId: "u1", attempt: 1, now },
     );
@@ -93,11 +93,45 @@ describe("handleExtractionJob", () => {
     const extractor = fakeDocumentExtractor(() => Promise.resolve(err({ kind: "corrupted-file", message: "bad zip" })));
 
     const result = await handleExtractionJob(
-      { repo, fileStore, extractors: [extractor] },
+      { repo, fileStore, extractors: [extractor], jobQueue: fakeJobQueueForIngestion() },
       { documentId: "doc-1" },
       { jobId: "j1", userId: "u1", attempt: 1, now },
     );
 
     expect(result).toEqual({ ok: false, error: "bad zip" });
+  });
+
+  it("enqueues a split-notions job for the document after a successful extraction", async () => {
+    const repo = fakeDocumentRepository([aDocument()]);
+    const fileStore = fakeFileStore();
+    await seedTwoPages(repo, fileStore);
+    const extractor = fakeDocumentExtractor(() => Promise.resolve(ok({ markdown: "# X", legible: true })));
+    const jobQueue = fakeJobQueueForIngestion();
+
+    await handleExtractionJob(
+      { repo, fileStore, extractors: [extractor], jobQueue },
+      { documentId: "doc-1" },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    const enqueued = jobQueue.rows.filter((row) => row.type === "split-notions");
+    expect(enqueued).toEqual([expect.objectContaining({ userId: "u1", payload: { documentId: "doc-1" } })]);
+  });
+
+  it("does not enqueue a split-notions job when extraction fails", async () => {
+    const repo = fakeDocumentRepository([aDocument({ pageCount: 1 })]);
+    const fileStore = fakeFileStore();
+    const path0 = await fileStore.put("u1", "doc-1", 0, Buffer.from("x"), "pdf");
+    await repo.addPage("u1", { documentId: "doc-1", index: 0, sha256: "a", storedPath: path0, sizeBytes: 1 });
+    const extractor = fakeDocumentExtractor(() => Promise.resolve(err({ kind: "corrupted-file", message: "bad zip" })));
+    const jobQueue = fakeJobQueueForIngestion();
+
+    await handleExtractionJob(
+      { repo, fileStore, extractors: [extractor], jobQueue },
+      { documentId: "doc-1" },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    expect(jobQueue.rows.filter((row) => row.type === "split-notions")).toEqual([]);
   });
 });

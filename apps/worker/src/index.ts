@@ -1,23 +1,35 @@
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import {
+  ClaudeCardGenerator,
+  ClaudeNotionSplitter,
+  FixtureCardGenerator,
   FixtureDocumentExtractor,
+  FixtureNotionSplitter,
   LocalFileStore,
   OfficeParserExtractor,
+  SqliteCardRepository,
   SqliteDocumentRepository,
   SqliteJobQueue,
+  SqliteNotionRepository,
   VisionExtractor,
   cleanupAbandonedDocuments,
   createLanguageModel,
   handleExtractionJob,
+  handleGenerationJob,
+  handleSplitJob,
   runWorkerLoop,
   scheduleAbandonedDocumentCleanup,
   systemClock,
   uuidV7Generator,
+  type CardGenerator,
   type CleanupAbandonedDocumentsPayload,
   type DocumentExtractor,
   type ExtractDocumentPayload,
+  type GenerateCardsPayload,
   type JobHandler,
+  type NotionSplitter,
+  type SplitDocumentPayload,
   type WorkerLoopSignal,
 } from "@studia/core";
 import { z } from "zod";
@@ -33,6 +45,8 @@ runMigrations(db);
 const jobQueue = new SqliteJobQueue(db, uuidV7Generator);
 const repo = new SqliteDocumentRepository(db);
 const fileStore = new LocalFileStore(dataDir);
+const notionRepo = new SqliteNotionRepository(db);
+const cardRepo = new SqliteCardRepository(db);
 
 const llmAdapter = process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real";
 const extractors: DocumentExtractor[] =
@@ -40,10 +54,32 @@ const extractors: DocumentExtractor[] =
     ? [new FixtureDocumentExtractor("valid"), new OfficeParserExtractor()]
     : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }))];
 
+const splitter: NotionSplitter =
+  llmAdapter === "fixture"
+    ? new FixtureNotionSplitter("valid")
+    : new ClaudeNotionSplitter(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+
+const cardGenerator: CardGenerator =
+  llmAdapter === "fixture"
+    ? new FixtureCardGenerator("valid")
+    : new ClaudeCardGenerator(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+
 const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
   type: "extract-document",
   payloadSchema: z.object({ documentId: z.string() }),
-  handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors }, payload, ctx),
+  handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors, jobQueue }, payload, ctx),
+};
+
+const splitNotionsHandler: JobHandler<SplitDocumentPayload> = {
+  type: "split-notions",
+  payloadSchema: z.object({ documentId: z.string() }),
+  handle: (payload, ctx) => handleSplitJob({ notionRepo, documentRepo: repo, splitter, idGenerator: uuidV7Generator }, payload, ctx),
+};
+
+const generateCardsHandler: JobHandler<GenerateCardsPayload> = {
+  type: "generate-cards",
+  payloadSchema: z.object({ notionId: z.string(), types: z.array(z.enum(["flashcard", "mcq", "open"])) }),
+  handle: (payload, ctx) => handleGenerationJob({ cardRepo, notionRepo, generator: cardGenerator, idGenerator: uuidV7Generator }, payload, ctx),
 };
 
 const cleanupAbandonedDocumentsHandler: JobHandler<CleanupAbandonedDocumentsPayload> = {
@@ -54,6 +90,8 @@ const cleanupAbandonedDocumentsHandler: JobHandler<CleanupAbandonedDocumentsPayl
 
 const handlers = new Map<string, JobHandler>([
   [extractDocumentHandler.type, extractDocumentHandler],
+  [splitNotionsHandler.type, splitNotionsHandler],
+  [generateCardsHandler.type, generateCardsHandler],
   [cleanupAbandonedDocumentsHandler.type, cleanupAbandonedDocumentsHandler],
 ]);
 

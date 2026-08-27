@@ -6,11 +6,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentsScreen } from "./DocumentsScreen.js";
 
-function renderScreen() {
+function renderScreen(onOpenNotions: (documentId: string) => void = () => undefined) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <DocumentsScreen />
+      <DocumentsScreen onOpenNotions={onOpenNotions} />
     </QueryClientProvider>,
   );
 }
@@ -129,6 +129,29 @@ describe("DocumentsScreen", () => {
     await screen.findByText("Cours raté");
     expect(screen.getByText("Échec")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
+  });
+
+  it("a done document offers to open its notions, calling back with its id", async () => {
+    const user = userEvent.setup();
+    const onOpenNotions = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+          ]),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    renderScreen(onOpenNotions);
+    await screen.findByText("Chapitre 3");
+
+    await user.click(screen.getByRole("button", { name: /voir les notions/i }));
+
+    expect(onOpenNotions).toHaveBeenCalledWith("d1");
   });
 
   it("polls while a document is still pending or running", async () => {

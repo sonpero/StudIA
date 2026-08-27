@@ -85,7 +85,7 @@ describe("worker processes a real API-enqueued extraction job", () => {
     const handler: JobHandler<ExtractDocumentPayload> = {
       type: "extract-document",
       payloadSchema: z.object({ documentId: z.string() }),
-      handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors }, payload, ctx),
+      handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors, jobQueue }, payload, ctx),
     };
     const outcome = await runWorkerTick({ jobQueue, handlers: new Map([[handler.type, handler]]) }, systemClock.now());
     expect(outcome).toBe("claimed");
@@ -120,7 +120,7 @@ describe("worker processes a real API-enqueued extraction job", () => {
     const handler: JobHandler<ExtractDocumentPayload> = {
       type: "extract-document",
       payloadSchema: z.object({ documentId: z.string() }),
-      handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors }, payload, ctx),
+      handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors, jobQueue }, payload, ctx),
     };
     await runWorkerTick({ jobQueue, handlers: new Map([[handler.type, handler]]) }, systemClock.now());
 

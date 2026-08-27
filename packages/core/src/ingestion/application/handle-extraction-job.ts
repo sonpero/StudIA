@@ -1,11 +1,12 @@
 import { err, ok, type Result } from "../../shared/index.js";
 import type { DocumentExtractor, DocumentRepository, FileStore } from "../domain/ports.js";
-import type { JobContext, JobError } from "../../jobs/index.js";
+import { enqueueJob, type JobContext, type JobError, type JobQueue } from "../../jobs/index.js";
 
 export interface HandleExtractionJobDeps {
   repo: DocumentRepository;
   fileStore: FileStore;
   extractors: DocumentExtractor[];
+  jobQueue: JobQueue;
 }
 
 export interface ExtractDocumentPayload {
@@ -46,5 +47,12 @@ export async function handleExtractionJob(
   }
 
   await deps.repo.upsertExtraction(ctx.userId, payload.documentId, markdownParts.join("\n\n"), ctx.now);
+
+  // content owns the "split-notions" handler (docs/modules/content.md:
+  // "enqueued by ingestion on extraction success"). Enqueued by generic job
+  // type string rather than importing content/index.ts: ingestion does not
+  // need to know anything about content's types to hand it a job.
+  await enqueueJob({ jobQueue: deps.jobQueue }, ctx.userId, "split-notions", { documentId: payload.documentId }, ctx.now);
+
   return ok(undefined);
 }

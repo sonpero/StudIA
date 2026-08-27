@@ -19,7 +19,15 @@ function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
 }
 
-function DocumentCard({ document, onChanged }: { document: DocumentSummary; onChanged: () => void }) {
+function DocumentCard({
+  document,
+  onChanged,
+  onOpenNotions,
+}: {
+  document: DocumentSummary;
+  onChanged: () => void;
+  onOpenNotions: (documentId: string) => void;
+}) {
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [showingText, setShowingText] = useState(false);
 
@@ -51,9 +59,14 @@ function DocumentCard({ document, onChanged }: { document: DocumentSummary; onCh
         </Button>
       )}
       {document.status === "done" && (
-        <button type="button" className="self-start text-sm text-primary underline" onClick={() => void toggleText()}>
-          {showingText ? "Masquer le texte" : "Voir le texte"}
-        </button>
+        <>
+          <button type="button" className="self-start text-sm text-primary underline" onClick={() => void toggleText()}>
+            {showingText ? "Masquer le texte" : "Voir le texte"}
+          </button>
+          <Button variant="secondary" onClick={() => onOpenNotions(document.id)}>
+            Voir les notions
+          </Button>
+        </>
       )}
       {showingText && <p className="whitespace-pre-wrap rounded-[var(--radius-button)] bg-canvas p-3 text-sm">{markdown}</p>}
       <button
@@ -67,7 +80,7 @@ function DocumentCard({ document, onChanged }: { document: DocumentSummary; onCh
   );
 }
 
-export function DocumentsScreen() {
+export function DocumentsScreen({ onOpenNotions }: { onOpenNotions: (documentId: string) => void }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
 
@@ -132,7 +145,7 @@ export function DocumentsScreen() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <UploadCard onCreated={refresh} />
           {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onChanged={refresh} />
+            <DocumentCard key={document.id} document={document} onChanged={refresh} onOpenNotions={onOpenNotions} />
           ))}
         </div>
       )}

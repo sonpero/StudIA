@@ -1,0 +1,7 @@
+{
+  "subject": "Anglais",
+  "level": "collège",
+  "description": "Slide-deck style: short, terse sections (one or two sentences each) rather than flowing prose — tests granularity on sparse input.",
+  "expectedNotionRange": [5, 12],
+  "expectedTopics": ["present perfect form", "present perfect use", "past simple form", "past simple use", "time markers", "common mistakes"]
+}

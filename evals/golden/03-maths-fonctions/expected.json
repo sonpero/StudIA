@@ -1,0 +1,7 @@
+{
+  "subject": "Mathématiques",
+  "level": "lycée",
+  "description": "Heavy notation (formulas, exponents, special characters) — this is where extraction and splitting break first per docs/TESTING.md's eval guidance.",
+  "expectedNotionRange": [5, 15],
+  "expectedTopics": ["nombre dérivé", "tangente", "fonction dérivée", "dérivées usuelles", "opérations", "sens de variation"]
+}

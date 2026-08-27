@@ -11,6 +11,7 @@
     "build": "pnpm --filter @studia/web run build",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "eval": "vitest run --config vitest.eval.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm -r run typecheck",
     "lint": "eslint . --max-warnings=0 && pnpm run lint:boundaries",
     "lint:boundaries": "depcruise --config .dependency-cruiser.cjs apps/*/src packages/*/src",

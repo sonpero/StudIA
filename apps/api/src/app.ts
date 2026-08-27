@@ -1,19 +1,25 @@
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import staticPlugin from "@fastify/static";
-import { systemClock, SqliteJobQueue, uuidV7Generator } from "@studia/core";
+import { markStale, systemClock, SqliteJobQueue, uuidV7Generator } from "@studia/core";
 import Fastify from "fastify";
 import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
+import { buildContentDeps } from "./content-deps.js";
 import { openDatabase } from "./db/connection.js";
 import { runMigrations } from "./db/migrate.js";
+import { buildGenerationDeps } from "./generation-deps.js";
 import { buildIdentityDeps } from "./identity-deps.js";
 import { buildIngestionDeps } from "./ingestion-deps.js";
 import { authPlugin } from "./plugins/auth.js";
 import { dbPlugin } from "./plugins/db.js";
+import { buildReviewDeps } from "./review-deps.js";
 import { authRoutes } from "./routes/auth.js";
+import { cardsRoutes } from "./routes/cards.js";
 import { documentsRoutes } from "./routes/documents.js";
 import { healthRoutes } from "./routes/health.js";
 import { meRoutes } from "./routes/me.js";
+import { notionsRoutes } from "./routes/notions.js";
+import { reviewRoutes } from "./routes/review.js";
 
 export interface BuildAppOptions {
   databasePath: string;
@@ -44,6 +50,9 @@ export function buildApp(opts: BuildAppOptions) {
     llmAdapter: opts.llmAdapter,
     anthropicApiKey: opts.anthropicApiKey,
   });
+  const contentDeps = buildContentDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
+  const generationDeps = buildGenerationDeps(db);
+  const reviewDeps = buildReviewDeps(db);
 
   const app = Fastify({ logger: true });
 
@@ -74,6 +83,21 @@ export function buildApp(opts: BuildAppOptions) {
     fileStore: ingestionDeps.fileStore,
     jobQueue,
     idGenerator: ingestionDeps.idGenerator,
+    clock: systemClock,
+  });
+  void app.register(notionsRoutes, {
+    repo: contentDeps.repo,
+    markNotionStale: (userId: string, notionId: string) => markStale({ repo: generationDeps.repo }, userId, notionId),
+  });
+  void app.register(cardsRoutes, {
+    cardRepo: generationDeps.repo,
+    notionRepo: contentDeps.repo,
+    jobQueue,
+    clock: systemClock,
+  });
+  void app.register(reviewRoutes, {
+    repo: reviewDeps.repo,
+    idGenerator: uuidV7Generator,
     clock: systemClock,
   });
 

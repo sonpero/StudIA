@@ -1,0 +1,7 @@
+{
+  "subject": "Mathématiques",
+  "level": "collège",
+  "description": "A very short, single-theorem lesson with no sub-headings at all — deliberately probes content.md's open question: does a real short lesson get flagged as a failed split (below the 5-notion floor) when it shouldn't be?",
+  "expectedNotionRange": [1, 5],
+  "expectedTopics": ["énoncé du théorème", "réciproque"]
+}

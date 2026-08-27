@@ -1,0 +1,7 @@
+{
+  "subject": "Histoire",
+  "level": "lycée",
+  "description": "A very long lesson (seven sections, dense with dates and named events) — tests the upper end of granularity and chunking behaviour.",
+  "expectedNotionRange": [7, 25],
+  "expectedTopics": ["causes de la crise", "états généraux", "prise de la Bastille", "déclaration des droits", "chute de la monarchie", "la Terreur", "le Directoire"]
+}
