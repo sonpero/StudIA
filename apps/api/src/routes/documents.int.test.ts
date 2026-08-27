@@ -214,4 +214,40 @@ describe("documents routes", () => {
 
     expect(res.statusCode).toBe(403);
   });
+
+  it(
+    "a course refused on screen for a duplicate page, followed by a second valid course, " +
+      "does not leave the refused course stuck 'pending' with no job",
+    async () => {
+      // Course A: the confirmation refuses the upload because one page is a
+      // duplicate within the same batch — exactly what the UploadCard does
+      // on a rejected page: it rolls the document back via DELETE, the same
+      // way the browser does after this bug's fix.
+      const courseA = await createDocument(aliceCookie, "Cours refusé");
+      const firstPage = await uploadPage(aliceCookie, courseA.id, "same-bytes");
+      expect(firstPage.statusCode).toBe(201);
+      const duplicatePage = await uploadPage(aliceCookie, courseA.id, "same-bytes");
+      expect(duplicatePage.statusCode).toBe(409);
+
+      const rollback = await app.inject({ method: "DELETE", url: `/api/documents/${courseA.id}`, headers: { cookie: aliceCookie } });
+      expect(rollback.statusCode).toBe(204);
+
+      // Course B: a second, valid course uploaded right after.
+      const courseB = await createDocument(aliceCookie, "Cours valide");
+      const pageB = await uploadPage(aliceCookie, courseB.id, "distinct-bytes");
+      expect(pageB.statusCode).toBe(201);
+      const extractB = await app.inject({ method: "POST", url: `/api/documents/${courseB.id}/extract`, headers: { cookie: aliceCookie } });
+      expect(extractB.statusCode).toBe(202);
+
+      const list = await app.inject({ method: "GET", url: "/api/documents", headers: { cookie: aliceCookie } });
+      const docs = list.json<{ id: string; title: string; status: string }[]>();
+
+      // Course A never shows up "pending" forever with no job behind it:
+      // it was rolled back and no longer exists.
+      expect(docs.find((d) => d.id === courseA.id)).toBeUndefined();
+      const courseBSummary = docs.find((d) => d.id === courseB.id);
+      expect(courseBSummary).toMatchObject({ title: "Cours valide" });
+      expect(["pending", "running"]).toContain(courseBSummary?.status);
+    },
+  );
 });

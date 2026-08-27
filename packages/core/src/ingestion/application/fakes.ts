@@ -110,6 +110,7 @@ export function fakeDocumentRepository(
       extractions.delete(documentId);
       return Promise.resolve(deletedPages);
     },
+    listDistinctUserIds: () => Promise.resolve([...new Set(docs.map((d) => d.userId))]),
   };
 }
 

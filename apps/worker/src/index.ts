@@ -7,11 +7,14 @@ import {
   SqliteDocumentRepository,
   SqliteJobQueue,
   VisionExtractor,
+  cleanupAbandonedDocuments,
   createLanguageModel,
   handleExtractionJob,
   runWorkerLoop,
+  scheduleAbandonedDocumentCleanup,
   systemClock,
   uuidV7Generator,
+  type CleanupAbandonedDocumentsPayload,
   type DocumentExtractor,
   type ExtractDocumentPayload,
   type JobHandler,
@@ -43,7 +46,16 @@ const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
   handle: (payload, ctx) => handleExtractionJob({ repo, fileStore, extractors }, payload, ctx),
 };
 
-const handlers = new Map<string, JobHandler>([[extractDocumentHandler.type, extractDocumentHandler]]);
+const cleanupAbandonedDocumentsHandler: JobHandler<CleanupAbandonedDocumentsPayload> = {
+  type: "cleanup-abandoned-documents",
+  payloadSchema: z.object({}),
+  handle: (payload, ctx) => cleanupAbandonedDocuments({ repo, fileStore, jobQueue }, payload, ctx),
+};
+
+const handlers = new Map<string, JobHandler>([
+  [extractDocumentHandler.type, extractDocumentHandler],
+  [cleanupAbandonedDocumentsHandler.type, cleanupAbandonedDocumentsHandler],
+]);
 
 const signal: WorkerLoopSignal = { stopped: false };
 process.on("SIGTERM", () => {
@@ -52,6 +64,20 @@ process.on("SIGTERM", () => {
 process.on("SIGINT", () => {
   signal.stopped = true;
 });
+
+// Server-side safety net for a document a refused upload never rolled back
+// (docs/modules/ingestion.md): run once at startup, same as recoverStaleJobs,
+// then every 30 minutes, matching the abandonment threshold itself.
+const CLEANUP_FAN_OUT_INTERVAL_MS = 30 * 60 * 1000;
+
+function scheduleCleanupFanOut(): void {
+  scheduleAbandonedDocumentCleanup({ repo, jobQueue }, systemClock.now()).catch((err: unknown) => {
+    console.error("[worker] failed to schedule abandoned-document cleanup", err);
+  });
+}
+
+scheduleCleanupFanOut();
+setInterval(scheduleCleanupFanOut, CLEANUP_FAN_OUT_INTERVAL_MS);
 
 runWorkerLoop({ jobQueue, handlers, clock: systemClock }, signal).catch((err: unknown) => {
   console.error("[worker] fatal error", err);

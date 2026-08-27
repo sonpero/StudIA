@@ -184,4 +184,24 @@ describe("SqliteDocumentRepository", () => {
 
     expect(() => repo.createDocument(aDocument({ userId: "ghost" }))).toThrow(/FOREIGN KEY/);
   });
+
+  it(
+    "listDistinctUserIds returns every user who owns at least one document, each once — " +
+      "the one deliberate system-wide method, used only by the abandoned-document cleanup fan-out",
+    async () => {
+      const { db, cleanup: c } = freshDb();
+      cleanup = c;
+      seedUser(db, "u1");
+      seedUser(db, "u2");
+      seedUser(db, "u3");
+      const repo = new SqliteDocumentRepository(db);
+      await repo.createDocument(aDocument({ id: "d1", userId: "u1" }));
+      await repo.createDocument(aDocument({ id: "d2", userId: "u1" }));
+      await repo.createDocument(aDocument({ id: "d3", userId: "u2" }));
+
+      const userIds = await repo.listDistinctUserIds();
+
+      expect(userIds.sort()).toEqual(["u1", "u2"]);
+    },
+  );
 });

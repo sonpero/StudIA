@@ -119,4 +119,9 @@ export class SqliteDocumentRepository implements DocumentRepository {
     this.db.delete(documentsTable).where(and(eq(documentsTable.id, documentId), eq(documentsTable.userId, userId))).run();
     return pages;
   }
+
+  listDistinctUserIds(): Promise<string[]> {
+    const rows = this.db.selectDistinct({ userId: documentsTable.userId }).from(documentsTable).all();
+    return Promise.resolve(rows.map((row) => row.userId));
+  }
 }

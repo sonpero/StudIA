@@ -47,4 +47,12 @@ export interface DocumentRepository {
   upsertExtraction(userId: string, documentId: string, markdown: string, now: Date): Promise<void>;
   getExtraction(userId: string, documentId: string): Promise<Extraction | null>;
   deleteDocument(userId: string, documentId: string): Promise<Page[] | null>;
+  // The one deliberate exception to "every method takes userId and filters
+  // on it": a system-wide read used only to fan out one
+  // cleanup-abandoned-documents job per owner (application/
+  // schedule-abandoned-document-cleanup.ts). Once that job runs, it is
+  // scoped by ctx.userId like every other handler — this method only picks
+  // out who to schedule it for, it is never used to read or act on another
+  // user's data on anyone's behalf.
+  listDistinctUserIds(): Promise<string[]>;
 }

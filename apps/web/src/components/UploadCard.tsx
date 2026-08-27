@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { Button } from "./ui/button.js";
 import { Card } from "./ui/card.js";
-import { createDocument, startExtraction, uploadPage } from "../lib/documents-api.js";
+import { createDocument, deleteDocument, startExtraction, uploadPage } from "../lib/documents-api.js";
 import { guessSourceType } from "../lib/detect-source-type.js";
 
 interface StagedFile {
@@ -57,9 +57,11 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
     if (files.length === 0) return;
     setSubmitting(true);
     setError(null);
+    let documentId: string | null = null;
     try {
       const sourceType = guessSourceType(files[0]!.file) ?? "pdf";
       const doc = await createDocument({ title: title || files[0]!.file.name, sourceType });
+      documentId = doc.id;
       for (const staged of files) {
         const result = await uploadPage(doc.id, staged.file);
         if (!result.ok) throw new Error(UPLOAD_ERROR_MESSAGES[result.error]);
@@ -69,6 +71,10 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
       onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "L'envoi a échoué.");
+      // The confirmation is refused on screen: the document created for it
+      // must not survive, or it is left "en attente" forever with no job
+      // ever enqueued for it (see docs/modules/ingestion.md).
+      if (documentId) await deleteDocument(documentId).catch(() => undefined);
     } finally {
       setSubmitting(false);
     }

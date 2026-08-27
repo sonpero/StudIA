@@ -79,13 +79,55 @@ presence on a structured fixture.
   extractor per page, concatenate, write `extractions`, set status
 - `retryExtraction(userId, documentId, now)` — only from `failed`
 - `getDocument`, `listDocuments`, `readPageFile`
+- `cleanupAbandonedDocuments(payload, ctx)` — a `cleanup-abandoned-documents`
+  job handler, scoped to `ctx.userId`: deletes, via the exact same path as
+  `deleteDocument`, every one of that user's documents that has **no**
+  `extract-document` job at all and is at least `ABANDONED_DOCUMENT_THRESHOLD_MS`
+  (30 minutes) old
+- `scheduleAbandonedDocumentCleanup(now)` — fan-out: reads every distinct
+  document owner via `DocumentRepository.listDistinctUserIds()` and enqueues one
+  `cleanup-abandoned-documents` job per owner
 
-**The handler must be idempotent**: it deletes any existing extraction row for
-the document before inserting. A job that runs twice after a worker restart must
-not produce two extractions.
+**The extraction handler must be idempotent**: it deletes any existing
+extraction row for the document before inserting. A job that runs twice after a
+worker restart must not produce two extractions.
 
 **No LLM call inside a transaction.** Read the page list, close the transaction,
 call the extractor, then open a short write transaction.
+
+### Abandoned-document cleanup (server-side safety net)
+
+The upload flow is two-phase by design (`createDocument`, then `addPage` per
+file, then `startExtraction`): the document row exists before any file is
+attached. When the confirmation is refused on screen — a page rejected as a
+duplicate — `UploadCard.tsx` rolls that document back with a `DELETE
+/api/documents/:id` call. That call is **best-effort**: a closed tab or a
+dropped connection at exactly the wrong moment leaves the document behind with
+no `extract-document` job ever enqueued for it. Because `listDocuments` and
+`getDocument` fall back to the raw `documents.status` column (`pending`, set at
+creation and never updated) whenever no job exists, such a document is
+indistinguishable in the UI from one about to be processed, and stays stuck
+"en attente" forever.
+
+`cleanupAbandonedDocuments` is the server-side backstop for that gap: a job,
+typed in the existing `jobs` table exactly like `extract-document`, rather than
+an unfiltered `DocumentRepository` method — every row it touches is still read
+and deleted through `ctx.userId`-scoped calls. `scheduleAbandonedDocumentCleanup`
+is the one deliberate exception to "every method takes `userId`"
+(`DocumentRepository.listDistinctUserIds()`): it only decides *who* to run the
+job for, never reads or acts on another user's data itself.
+
+Cadence lives in `apps/worker`, not in the job itself: `jobs/**` has no
+cron/scheduling primitive (`docs/modules/jobs.md`, "Out of scope"), and
+`enqueue()` always sets `run_after = now`, so a job cannot delay its own first
+run either. The worker calls `scheduleAbandonedDocumentCleanup` once at
+startup (same pattern as `recoverStaleJobs`) and then every 30 minutes via a
+plain `setInterval`.
+
+**30 minutes, not the 5 minutes used for a one-off manual diagnostic query**: a
+slow multi-photo upload, or a tab left open mid-upload, can legitimately take
+longer than a few minutes. An unsupervised job deleting a document still being
+built would be a worse bug than the one it fixes.
 
 ## Persistence
 
@@ -156,6 +198,19 @@ does. Editing extracted text (M3 decides whether that is needed).
 - Security: another user gets 403 on the file route, on detail, and on delete
 - Playwright: upload three photos as one document, watch status reach `terminé`,
   read the text; and the failure path with a retry
+- Integration: a course refused on screen for a duplicate page, followed by a
+  second valid course, does not leave the refused one stuck "pending" with no
+  job (`apps/api/src/routes/documents.int.test.ts`)
+- Unit: `UploadCard` rolls its document back with a `DELETE` call when the
+  confirmation is refused, and a later valid upload is unaffected
+  (`apps/web/src/components/UploadCard.unit.test.tsx`)
+- Unit: `isAbandonedDocument` — not abandoned below the threshold or with a
+  job at any age, abandoned once both conditions hold
+- Integration: `cleanupAbandonedDocuments` removes a document created
+  directly in the DB (simulating a post-crash orphan) past the threshold,
+  and its files, the same way `deleteDocument` does; a document created
+  within the threshold, or one with an `extract-document` job at any age,
+  is never touched (`cleanup-abandoned-documents.int.test.ts`)
 
 ## Open questions
 

@@ -20,6 +20,16 @@ export { getDocument, type GetDocumentDeps, type DocumentDetail } from "./applic
 export { listDocuments, type ListDocumentsDeps } from "./application/list-documents.js";
 export { readPageFile, type ReadPageFileDeps } from "./application/read-page-file.js";
 export { deleteDocument, type DeleteDocumentDeps } from "./application/delete-document.js";
+export {
+  cleanupAbandonedDocuments,
+  type CleanupAbandonedDocumentsDeps,
+  type CleanupAbandonedDocumentsPayload,
+} from "./application/cleanup-abandoned-documents.js";
+export {
+  scheduleAbandonedDocumentCleanup,
+  type ScheduleAbandonedDocumentCleanupDeps,
+} from "./application/schedule-abandoned-document-cleanup.js";
+export { ABANDONED_DOCUMENT_THRESHOLD_MS } from "./domain/is-abandoned.js";
 
 export { SqliteDocumentRepository, type IngestionDb } from "./infra/sqlite-document-repository.js";
 export { LocalFileStore } from "./infra/local-file-store.js";
