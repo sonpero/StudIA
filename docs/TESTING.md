@@ -221,6 +221,13 @@ rules from `docs/UI.md` honestly.
 Each rule ships with a deliberate violation in a scratch branch to prove it fires.
 A lint rule nobody has seen fail is a rule nobody knows works.
 
+Any rule whose `to.path` targets a `node_modules` package must match
+`node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves
+a package through `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`,
+not a top-level `node_modules/<pkg>/...`, so an anchored pattern silently never
+matches (`no-fsrs-outside-review` and `no-ai-in-planning` both had this bug,
+unnoticed since M0, until M3's scratch-violation check caught it).
+
 ---
 
 ## Evals

@@ -139,5 +139,9 @@ Cards, questions, quizzes. Scheduling. Embeddings, which belong to `tutor`.
 
 - The 5-to-60 bounds are a guess. Revisit against the M3 eval set: if real
   lessons regularly produce 4 notions, the lower bound is wrong, not the lesson.
+  First real data point (M3 eval run, 2026-08-27, `evals/results/2026-08-27.md`):
+  a deliberately very short, single-theorem lesson (`evals/golden/05-cours-court`)
+  landed at exactly 5 notions — right at the floor, not under it. One document is
+  not a trend; still worth tracking as more real lessons go through the eval.
 - Should editing a notion's body automatically regenerate its cards, or mark them
   stale for the user to confirm? Currently: mark stale, `generation` decides.
