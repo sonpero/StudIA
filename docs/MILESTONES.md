@@ -112,12 +112,12 @@ reference implementation.
 and see the next due date change according to the rating.
 
 **Acceptance**
-- [ ] Unit tests: FSRS state transitions for all four ratings, deterministic with an injected `now`
-- [ ] Contract tests: splitter and generator against fixtures, plus a schema-violating response that triggers exactly one retry then fails
-- [ ] Integration tests: due-card query respects `user_id` and the clock
-- [ ] Playwright: generate, review, verify scheduling
-- [ ] `pnpm eval` exists and runs on a golden set of at least 5 documents
-- [ ] No LLM call happens inside a transaction (asserted by a test)
+- [x] Unit tests: FSRS state transitions for all four ratings, deterministic with an injected `now`
+- [x] Contract tests: splitter and generator against fixtures, plus a schema-violating response that triggers exactly one retry then fails
+- [x] Integration tests: due-card query respects `user_id` and the clock
+- [x] Playwright: generate, review, verify scheduling
+- [x] `pnpm eval` exists and runs on a golden set of at least 5 documents
+- [x] No LLM call happens inside a transaction (asserted by a test)
 
 **Out of scope** — quizzes, MCQs, planning, workspace.
 
