@@ -1,4 +1,5 @@
 import { apiFetch } from "./api-client.js";
+import { startOfTomorrowISO } from "./day-boundary.js";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -33,7 +34,7 @@ export async function getGenerationStatus(documentId: string): Promise<Generatio
 }
 
 export async function getProgress(documentId: string): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
-  const res = await apiFetch(`/api/documents/${documentId}/progress`);
+  const res = await apiFetch(`/api/documents/${documentId}/progress?dayBoundary=${encodeURIComponent(startOfTomorrowISO())}`);
   if (!res.ok) throw new Error("Impossible de charger la progression.");
   return res.json() as Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
 }

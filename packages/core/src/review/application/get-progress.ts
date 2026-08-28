@@ -8,7 +8,7 @@ export function getProgress(
   deps: GetProgressDeps,
   userId: string,
   documentId: string,
-  now: Date,
+  dayBoundary: Date,
 ): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
-  return deps.repo.getProgress(userId, documentId, now);
+  return deps.repo.getProgress(userId, documentId, dayBoundary);
 }

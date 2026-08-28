@@ -5,6 +5,14 @@ import type { CardSchedule, Review } from "../domain/types.js";
 import { SqliteReviewRepository } from "./sqlite-review-repository.js";
 
 const now = new Date("2026-01-10T00:00:00.000Z");
+// Dueness is a calendar-day threshold (product decision), never an instant:
+// a card due anywhere before dayBoundary — including later "today" — counts
+// as due now. dayBoundary is what the client computes as "start of
+// tomorrow" and is unrelated to submitReview's own real clock. Deliberately
+// a day after `now` (not the same instant): aSchedule()'s default `due`
+// uses `now`, and a same-value dayBoundary would put that default exactly
+// on the boundary, hiding real bugs behind an edge case.
+const dayBoundary = new Date("2026-01-11T00:00:00.000Z");
 
 function seedUser(db: Db, id: string): void {
   db.run(sql`INSERT INTO users (id, username, password_hash, session_version, created_at)
@@ -89,9 +97,27 @@ describe("SqliteReviewRepository", () => {
       aSchedule({ cardId: "future-card", due: "2026-02-01T00:00:00.000Z" }),
     );
 
-    const due = await repo.getDueCards("u1", now, {});
+    const due = await repo.getDueCards("u1", dayBoundary, {});
 
     expect(due.map((c) => c.cardId).sort()).toEqual(["due-card", "new-card"]);
+  });
+
+  it("getDueCards includes a card due later the same day (before dayBoundary), and excludes one due exactly at it", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "due-later-today", "n1", "u1");
+    seedCard(db, "due-tomorrow", "n1", "u1");
+    // dayBoundary is the exclusive start of tomorrow: a card due one
+    // millisecond before it is still "today" and must be revisable now.
+    await repo.submitReview(
+      "u1",
+      aReview({ id: "r-today", cardId: "due-later-today" }),
+      aSchedule({ cardId: "due-later-today", due: new Date(dayBoundary.getTime() - 1).toISOString() }),
+    );
+    await repo.submitReview("u1", aReview({ id: "r-tomorrow", cardId: "due-tomorrow" }), aSchedule({ cardId: "due-tomorrow", due: dayBoundary.toISOString() }));
+
+    const due = await repo.getDueCards("u1", dayBoundary, {});
+
+    expect(due.map((c) => c.cardId)).toEqual(["due-later-today"]);
   });
 
   it("getDueCards orders due cards before new cards, and by notion position within each group", async () => {
@@ -101,7 +127,7 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "due-in-n2", "n2", "u1");
     await repo.submitReview("u1", aReview({ id: "r1", cardId: "due-in-n2" }), aSchedule({ cardId: "due-in-n2", due: "2026-01-01T00:00:00.000Z" }));
 
-    const due = await repo.getDueCards("u1", now, {});
+    const due = await repo.getDueCards("u1", dayBoundary, {});
 
     expect(due.map((c) => c.cardId)).toEqual(["due-in-n2", "new-in-n1", "new-in-n2"]);
   });
@@ -113,10 +139,10 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "c-doc1", "n1", "u1");
     seedCard(db, "c-doc2", "n3", "u1");
 
-    const filtered = await repo.getDueCards("u1", now, { documentId: "doc-1" });
+    const filtered = await repo.getDueCards("u1", dayBoundary, { documentId: "doc-1" });
     expect(filtered.map((c) => c.cardId)).toEqual(["c-doc1"]);
 
-    const limited = await repo.getDueCards("u1", now, { limit: 1 });
+    const limited = await repo.getDueCards("u1", dayBoundary, { limit: 1 });
     expect(limited).toHaveLength(1);
   });
 
@@ -125,7 +151,7 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "c-in-n1", "n1", "u1");
     seedCard(db, "c-in-n2", "n2", "u1");
 
-    const filtered = await repo.getDueCards("u1", now, { notionId: "n1" });
+    const filtered = await repo.getDueCards("u1", dayBoundary, { notionId: "n1" });
 
     expect(filtered.map((c) => c.cardId)).toEqual(["c-in-n1"]);
   });
@@ -136,7 +162,7 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "orphan-card", "n2", "u1");
     db.run(sql`DELETE FROM notions WHERE id = 'n2'`);
 
-    const due = await repo.getDueCards("u1", now, {});
+    const due = await repo.getDueCards("u1", dayBoundary, {});
 
     expect(due.map((c) => c.cardId)).toEqual(["stale-card"]);
     expect(due[0]?.state).toBe("stale");
@@ -148,7 +174,7 @@ describe("SqliteReviewRepository", () => {
     seedNotion(db, "n-u2", "doc-u2", "u2", 0);
     seedCard(db, "c-u2", "n-u2", "u2");
 
-    expect(await repo.getDueCards("u1", now, {})).toEqual([]);
+    expect(await repo.getDueCards("u1", dayBoundary, {})).toEqual([]);
   });
 
   it("getProgress counts a notion as mastered only once all its active cards clear the threshold", async () => {
@@ -166,19 +192,19 @@ describe("SqliteReviewRepository", () => {
       aSchedule({ cardId: "not-mastered-card", stability: 1, reps: 1 }),
     );
 
-    expect(await repo.getProgress("u1", "doc-1", now)).toEqual({ mastered: 1, total: 2, nextDueDate: null });
+    expect(await repo.getProgress("u1", "doc-1", dayBoundary)).toEqual({ mastered: 1, total: 2, nextDueDate: null });
   });
 
   it("getProgress counts a notion with no cards yet toward the total, but never as mastered", async () => {
     const { repo } = setup();
 
-    expect(await repo.getProgress("u1", "doc-1", now)).toEqual({ mastered: 0, total: 2, nextDueDate: null });
+    expect(await repo.getProgress("u1", "doc-1", dayBoundary)).toEqual({ mastered: 0, total: 2, nextDueDate: null });
   });
 
   it("getProgress's nextDueDate is null when the document has no cards at all", async () => {
     const { repo } = setup();
 
-    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBeNull();
+    expect((await repo.getProgress("u1", "doc-1", dayBoundary)).nextDueDate).toBeNull();
   });
 
   it("getProgress's nextDueDate is null when every card is already due, not scheduled in the future", async () => {
@@ -186,7 +212,27 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "due-card", "n1", "u1");
     await repo.submitReview("u1", aReview({ id: "r1", cardId: "due-card" }), aSchedule({ cardId: "due-card", due: "2026-01-09T00:00:00.000Z" }));
 
-    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBeNull();
+    expect((await repo.getProgress("u1", "doc-1", dayBoundary)).nextDueDate).toBeNull();
+  });
+
+  it("getProgress's nextDueDate ignores a card due later today: it's already due now, not upcoming", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "due-later-today", "n1", "u1");
+    await repo.submitReview(
+      "u1",
+      aReview({ id: "r1", cardId: "due-later-today" }),
+      aSchedule({ cardId: "due-later-today", due: new Date(dayBoundary.getTime() - 1).toISOString() }),
+    );
+
+    expect((await repo.getProgress("u1", "doc-1", dayBoundary)).nextDueDate).toBeNull();
+  });
+
+  it("getProgress's nextDueDate counts a card due exactly at dayBoundary as tomorrow, not today", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "due-tomorrow", "n1", "u1");
+    await repo.submitReview("u1", aReview({ id: "r1", cardId: "due-tomorrow" }), aSchedule({ cardId: "due-tomorrow", due: dayBoundary.toISOString() }));
+
+    expect((await repo.getProgress("u1", "doc-1", dayBoundary)).nextDueDate).toBe(dayBoundary.toISOString());
   });
 
   it("getProgress's nextDueDate picks the closest future due date among a mix of due and future cards", async () => {
@@ -198,7 +244,7 @@ describe("SqliteReviewRepository", () => {
     seedCard(db, "later", "n2", "u1");
     await repo.submitReview("u1", aReview({ id: "r3", cardId: "later" }), aSchedule({ cardId: "later", due: "2026-01-20T00:00:00.000Z" }));
 
-    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBe("2026-01-12T00:00:00.000Z");
+    expect((await repo.getProgress("u1", "doc-1", dayBoundary)).nextDueDate).toBe("2026-01-12T00:00:00.000Z");
   });
 
   it("getNotionsProgress reports mastered/total cards per notion, sharing getProgress's threshold and join", async () => {

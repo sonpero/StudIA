@@ -121,7 +121,12 @@ export class SqliteReviewRepository implements ReviewRepository {
     return Promise.resolve();
   }
 
-  getDueCards(userId: string, now: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]> {
+  // Dueness is a calendar-day threshold, not an instant (product decision):
+  // a card due anywhere before dayBoundary — including later "today" — is
+  // due now. dayBoundary is the client's local "start of tomorrow", passed
+  // in as an ISO instant; this method never computes "today" itself. Unlike
+  // submitReview's `now`, this has nothing to do with FSRS scheduling.
+  getDueCards(userId: string, dayBoundary: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]> {
     const documentFilter = filter.documentId ? sql`AND n.document_id = ${filter.documentId}` : sql``;
     const notionFilter = filter.notionId ? sql`AND c.notion_id = ${filter.notionId}` : sql``;
     const limitClause = filter.limit !== undefined ? sql`LIMIT ${filter.limit}` : sql``;
@@ -137,7 +142,7 @@ export class SqliteReviewRepository implements ReviewRepository {
       WHERE c.user_id = ${userId}
         ${documentFilter}
         ${notionFilter}
-        AND (s.due IS NULL OR s.due <= ${now.toISOString()})
+        AND (s.due IS NULL OR s.due < ${dayBoundary.toISOString()})
       ORDER BY (CASE WHEN s.due IS NULL THEN 1 ELSE 0 END), n.position, c.created_at
       ${limitClause}
     `);
@@ -160,11 +165,13 @@ export class SqliteReviewRepository implements ReviewRepository {
     `);
   }
 
-  getProgress(userId: string, documentId: string, now: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
+  getProgress(userId: string, documentId: string, dayBoundary: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
     const rows = this.getNotionCardCounts(userId, documentId);
     const total = rows.length;
     const mastered = rows.filter((row) => row.activeCount > 0 && row.activeCount === row.masteredActiveCount).length;
 
+    // nextDueDate only looks at "tomorrow or later" (>= dayBoundary): a card
+    // due later today is already due now (getDueCards), not upcoming.
     const nextDueRow = this.db.get<{ nextDueDate: string | null }>(sql`
       SELECT MIN(s.due) AS nextDueDate
       FROM ${notionsTable} AS n
@@ -172,7 +179,7 @@ export class SqliteReviewRepository implements ReviewRepository {
       JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
       WHERE n.document_id = ${documentId} AND n.user_id = ${userId}
         AND c.state = 'active'
-        AND s.due > ${now.toISOString()}
+        AND s.due >= ${dayBoundary.toISOString()}
     `);
 
     return Promise.resolve({ mastered, total, nextDueDate: nextDueRow?.nextDueDate ?? null });

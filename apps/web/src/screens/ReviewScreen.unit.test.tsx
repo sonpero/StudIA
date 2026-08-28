@@ -68,11 +68,10 @@ describe("ReviewScreen", () => {
     expect(screen.queryByText(/rien à réviser/i)).not.toBeInTheDocument();
   });
 
-  it("empty state: shows the next due date when it falls on a different day", async () => {
-    // Clock mocked, not real Date.now(): "now" and nextDueDate must land on
-    // different calendar days regardless of when the test suite runs.
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
+  it("empty state: shows the next due date when one is known", async () => {
+    // Dueness is a calendar-day threshold (product decision): the backend
+    // guarantees nextDueDate is never today, so the empty state only ever
+    // needs to show a date, never a "later today" message.
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -84,33 +83,6 @@ describe("ReviewScreen", () => {
     renderScreen();
 
     expect(await screen.findByText(/5 mars 2026/i)).toBeInTheDocument();
-    expect(screen.queryByText(/plus tard dans la journée/i)).not.toBeInTheDocument();
-  });
-
-  it("empty state: says 'reviens plus tard' instead of a date when the next due card is due later today", async () => {
-    // A bug report: nextDueDate is always strictly future (getProgress
-    // filters `due > now`), but a timestamp later today still falls on
-    // today's date — announcing it as a future date reads as contradictory
-    // next to "Tout est à jour.". Built with the local-time constructor and
-    // local arithmetic (not fixed UTC strings) so "same calendar day" holds
-    // regardless of the machine's timezone running the test.
-    vi.useFakeTimers({ toFake: ["Date"] });
-    const now = new Date(2026, 7, 28, 10, 0, 0);
-    vi.setSystemTime(now);
-    const laterToday = new Date(now);
-    laterToday.setHours(laterToday.getHours() + 4);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 1, total: 3, nextDueDate: laterToday.toISOString() }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText("Reviens un peu plus tard dans la journée.")).toBeInTheDocument();
-    expect(screen.queryByText(/28 août 2026/i)).not.toBeInTheDocument();
   });
 
   it("empty state: says nothing about a next due date when none is known", async () => {
@@ -126,7 +98,6 @@ describe("ReviewScreen", () => {
 
     await screen.findByText(/tout est à jour/i);
     expect(screen.queryByText(/prochaine fiche/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/plus tard dans la journée/i)).not.toBeInTheDocument();
   });
 
   it("ready state: shows the question, reveals the answer on demand, then rates and advances", async () => {
@@ -174,8 +145,6 @@ describe("ReviewScreen", () => {
   });
 
   it("completion recap: shows the next due date when it is available", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
@@ -247,7 +216,27 @@ describe("ReviewScreen", () => {
     renderScreen({ notionId: "n1" });
     await screen.findByText(/tout est à jour/i);
 
-    expect(calls).toContainEqual({ documentId: "doc-1", notionId: "n1" });
+    // dayBoundary is always sent too (the client's own local "start of
+    // tomorrow"), but its exact value isn't this test's concern.
+    expect(calls).toContainEqual(expect.objectContaining({ documentId: "doc-1", notionId: "n1", dayBoundary: expect.any(String) as string }));
+  });
+
+  it("sends the browser's local start-of-tomorrow as dayBoundary, never a server-computed one", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 28, 15, 0, 0));
+    const calls: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/review/sessions") calls.push(init?.body ? JSON.parse(init.body as string) : undefined);
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText(/tout est à jour/i);
+
+    expect(calls).toEqual([expect.objectContaining({ dayBoundary: new Date(2026, 7, 29, 0, 0, 0, 0).toISOString() })]);
   });
 
   it("never shows a countdown or urgency copy while reviewing", async () => {

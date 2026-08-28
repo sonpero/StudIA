@@ -25,12 +25,15 @@ export interface ReviewRepository {
   // One short transaction: the review row and the recomputed schedule are
   // both written together, or neither is (docs/modules/review.md).
   submitReview(userId: string, review: Review, newSchedule: CardSchedule): Promise<void>;
-  getDueCards(userId: string, now: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]>;
-  // nextDueDate is the earliest strictly-future due date among the
-  // document's active cards, or null if none — `now` is injected so it
-  // stays deterministic in tests (CLAUDE.md: no scheduling-adjacent code
-  // calls `new Date()` internally).
-  getProgress(userId: string, documentId: string, now: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
+  // Dueness is a calendar-day threshold, not an instant (product decision):
+  // a card due later "today" is due now. dayBoundary is the client's local
+  // "start of tomorrow" as an ISO instant — never computed server-side in a
+  // fixed timezone. This is a different clock from submitReview's `now`
+  // (FSRS scheduling, untouched by this rule): don't conflate the two.
+  getDueCards(userId: string, dayBoundary: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]>;
+  // nextDueDate is the earliest due date at or after dayBoundary (i.e.
+  // tomorrow or later) among the document's active cards, or null if none.
+  getProgress(userId: string, documentId: string, dayBoundary: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
   // Same threshold and join as getProgress, factored so both share one
   // source of truth (docs/modules/review.md's mastery rule).
   getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]>;

@@ -17,6 +17,11 @@ function extractCookie(setCookieHeader: string | string[] | undefined): string {
 }
 
 const now = new Date("2026-01-01T00:00:00.000Z");
+// The client's local "start of tomorrow" — a distinct clock from `now`,
+// deliberately a day later so it never accidentally coincides with a
+// seeded timestamp (packages/core's sqlite-review-repository.int.test.ts
+// hit exactly that collision).
+const dayBoundary = "2026-01-02T00:00:00.000Z";
 
 describe("review routes", () => {
   let dir: string;
@@ -54,32 +59,51 @@ describe("review routes", () => {
   });
 
   it("lists due cards (a fresh card has never been reviewed, so it's due)", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/review/due", headers: { cookie: aliceCookie } });
+    const res = await app.inject({ method: "GET", url: `/api/review/due?dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(200);
     expect(res.json<{ cardId: string }[]>().map((c) => c.cardId)).toEqual(["c1"]);
   });
 
   it("GET /api/review/due requires authentication (401)", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/review/due" });
+    const res = await app.inject({ method: "GET", url: `/api/review/due?dayBoundary=${dayBoundary}` });
     expect(res.statusCode).toBe(401);
   });
 
+  it("GET /api/review/due rejects a missing or invalid dayBoundary (400): the server never guesses 'today' itself", async () => {
+    const missing = await app.inject({ method: "GET", url: "/api/review/due", headers: { cookie: aliceCookie } });
+    expect(missing.statusCode).toBe(400);
+
+    const invalid = await app.inject({ method: "GET", url: "/api/review/due?dayBoundary=not-a-date", headers: { cookie: aliceCookie } });
+    expect(invalid.statusCode).toBe(400);
+  });
+
   it("another user's due list is empty", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/review/due", headers: { cookie: bobCookie } });
+    const res = await app.inject({ method: "GET", url: `/api/review/due?dayBoundary=${dayBoundary}`, headers: { cookie: bobCookie } });
     expect(res.json()).toEqual([]);
   });
 
   it("due cards are enriched with mastered, computed from the schedule", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/review/due", headers: { cookie: aliceCookie } });
+    const res = await app.inject({ method: "GET", url: `/api/review/due?dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(res.json<{ cardId: string; mastered: boolean }[]>()).toEqual([{ cardId: "c1", mastered: false, notionId: "n1", type: "flashcard", state: "active", question: "Question ?", answer: "Réponse", options: null, schedule: null }]);
   });
 
   it("GET /api/review/due filters by notionId, to review a single notion", async () => {
-    const matching = await app.inject({ method: "GET", url: "/api/review/due?notionId=n1", headers: { cookie: aliceCookie } });
+    const matching = await app.inject({ method: "GET", url: `/api/review/due?notionId=n1&dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(matching.json<{ cardId: string }[]>().map((c) => c.cardId)).toEqual(["c1"]);
 
-    const nonMatching = await app.inject({ method: "GET", url: "/api/review/due?notionId=does-not-exist", headers: { cookie: aliceCookie } });
+    const nonMatching = await app.inject({ method: "GET", url: `/api/review/due?notionId=does-not-exist&dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(nonMatching.json()).toEqual([]);
+  });
+
+  it("a card due later today (before dayBoundary) is revisable now, end to end", async () => {
+    const laterToday = new Date(new Date(dayBoundary).getTime() - 1).toISOString();
+    const seedDb = openDatabase(dbPath);
+    seedDb.run(sql`INSERT INTO card_schedules (card_id, user_id, due, stability, difficulty, reps, lapses, last_reviewed_at)
+        VALUES ('c1', (SELECT id FROM users WHERE username='alice'), ${laterToday}, 2.3, 2.1, 1, 0, ${now.toISOString()})`);
+
+    const res = await app.inject({ method: "GET", url: `/api/review/due?dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
+
+    expect(res.json<{ cardId: string }[]>().map((c) => c.cardId)).toEqual(["c1"]);
   });
 
   it("starts a session and draws its due cards", async () => {
@@ -87,7 +111,7 @@ describe("review routes", () => {
       method: "POST",
       url: "/api/review/sessions",
       headers: { cookie: aliceCookie },
-      payload: { documentId: "doc-1" },
+      payload: { documentId: "doc-1", dayBoundary },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json<{ sessionId: string; cards: { cardId: string }[] }>();
@@ -100,10 +124,15 @@ describe("review routes", () => {
       method: "POST",
       url: "/api/review/sessions",
       headers: { cookie: aliceCookie },
-      payload: { documentId: "doc-1", notionId: "n1" },
+      payload: { documentId: "doc-1", notionId: "n1", dayBoundary },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json<{ cards: { cardId: string }[] }>().cards.map((c) => c.cardId)).toEqual(["c1"]);
+  });
+
+  it("POST /api/review/sessions rejects a missing dayBoundary (400)", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: { documentId: "doc-1" } });
+    expect(res.statusCode).toBe(400);
   });
 
   it("submits a review and returns the new schedule, pushing the due date out", async () => {
@@ -130,7 +159,7 @@ describe("review routes", () => {
   });
 
   it("abandoning a session ends it, and preserves already-answered reviews", async () => {
-    const start = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: {} });
+    const start = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: { dayBoundary } });
     const { sessionId } = start.json<{ sessionId: string }>();
     await app.inject({ method: "POST", url: "/api/review/cards/c1", headers: { cookie: aliceCookie }, payload: { rating: 3, elapsedMs: 1000 } });
 
@@ -139,7 +168,7 @@ describe("review routes", () => {
   });
 
   it("another user gets 403 abandoning someone else's session", async () => {
-    const start = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: {} });
+    const start = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: { dayBoundary } });
     const { sessionId } = start.json<{ sessionId: string }>();
 
     const res = await app.inject({ method: "POST", url: `/api/review/sessions/${sessionId}/abandon`, headers: { cookie: bobCookie } });
@@ -147,9 +176,14 @@ describe("review routes", () => {
   });
 
   it("reports progress for the document", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/progress", headers: { cookie: aliceCookie } });
+    const res = await app.inject({ method: "GET", url: `/api/documents/doc-1/progress?dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ mastered: 0, total: 1, nextDueDate: null });
+  });
+
+  it("GET /api/documents/:id/progress rejects a missing dayBoundary (400)", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/progress", headers: { cookie: aliceCookie } });
+    expect(res.statusCode).toBe(400);
   });
 
   it("reports progress per notion for the document", async () => {

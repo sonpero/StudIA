@@ -1,4 +1,5 @@
 import { apiFetch } from "./api-client.js";
+import { startOfTomorrowISO } from "./day-boundary.js";
 
 export type Rating = 1 | 2 | 3 | 4;
 
@@ -26,7 +27,7 @@ export type DueCard = {
 };
 
 export async function startSession(documentId?: string, notionId?: string): Promise<{ sessionId: string; cards: DueCard[] }> {
-  const body: { documentId?: string; notionId?: string } = {};
+  const body: { documentId?: string; notionId?: string; dayBoundary: string } = { dayBoundary: startOfTomorrowISO() };
   if (documentId) body.documentId = documentId;
   if (notionId) body.notionId = notionId;
   const res = await apiFetch("/api/review/sessions", {

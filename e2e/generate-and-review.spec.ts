@@ -1,4 +1,16 @@
+import path from "node:path";
 import { expect, test } from "@playwright/test";
+import Database from "better-sqlite3";
+import { E2E_DATA_DIR } from "./support/env.js";
+
+// page.request calls bypass the browser's own JS (and its clock), so calls
+// made directly against /api/review/due and /api/documents/:id/progress
+// need their own dayBoundary — the real "start of tomorrow" here, since
+// this test doesn't mock the clock (only the dedicated day-boundary test
+// below does).
+function startOfTomorrowISO(now: Date = new Date()): string {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+}
 
 // docs/MILESTONES.md's M3 demo: "From the document uploaded in M2, generate
 // flashcards, review them, and see the next due date change according to
@@ -48,7 +60,8 @@ test.describe("generate cards and review", () => {
       )
       .toBe(notionCount);
 
-    const dueBefore = (await (await page.request.get(`/api/review/due?documentId=${documentId}`)).json()) as { cardId: string; notionId: string }[];
+    const dayBoundary = startOfTomorrowISO();
+    const dueBefore = (await (await page.request.get(`/api/review/due?documentId=${documentId}&dayBoundary=${dayBoundary}`)).json()) as { cardId: string; notionId: string }[];
     expect(dueBefore.length).toBeGreaterThan(0);
     const firstDueCardId = dueBefore[0]!.cardId;
     const firstDueNotionId = dueBefore[0]!.notionId;
@@ -69,7 +82,7 @@ test.describe("generate cards and review", () => {
     await expect
       .poll(
         async () => {
-          const due = (await (await page.request.get(`/api/review/due?documentId=${documentId}`)).json()) as { cardId: string }[];
+          const due = (await (await page.request.get(`/api/review/due?documentId=${documentId}&dayBoundary=${dayBoundary}`)).json()) as { cardId: string }[];
           return due.some((card) => card.cardId === firstDueCardId);
         },
         { timeout: 10_000, message: "waiting for the rated card to drop out of the due list" },
@@ -106,5 +119,81 @@ test.describe("generate cards and review", () => {
     }
 
     await expect(nothingDueYet.or(sessionDone)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // Product decision: dueness is a calendar-day threshold decided by the
+  // user's own clock, not an instant (apps/web/src/screens/ReviewScreen.tsx,
+  // apps/web/src/lib/day-boundary.ts). The browser's clock is explicitly
+  // mocked via Playwright — never real wall time — so both the dayBoundary
+  // the browser sends and the "later today" schedule seeded below are
+  // exact and can never be flaky near a real midnight.
+  test("a card due later today (before dayBoundary) is revisable now, not just after its exact due instant", async ({ page }) => {
+    const mockedNow = new Date(2026, 7, 28, 9, 0, 0);
+    const dayBoundary = new Date(2026, 7, 29, 0, 0, 0, 0);
+    await page.clock.install({ time: mockedNow });
+
+    await page.goto("/");
+
+    await page.getByText("+ Ajouter un cours").click();
+    await page.getByLabel("Titre du cours").fill("Cours horaire");
+    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Confirmer" }).click();
+
+    const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours horaire" });
+    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
+    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+
+    const notionCards = page.getByTestId("notion-card");
+    await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
+    const notionCount = await notionCards.count();
+
+    const docsRes = await page.request.get("/api/documents");
+    const documentId = (await docsRes.json() as { id: string; title: string }[]).find((d) => d.title === "Cours horaire")?.id;
+    if (!documentId) throw new Error("expected the just-created document to be listed");
+
+    await page.getByRole("button", { name: "Créer les fiches" }).click();
+    await expect
+      .poll(
+        async () => {
+          const status = (await (await page.request.get(`/api/documents/${documentId}/generation-status`)).json()) as { done: number; failed: number };
+          return status.done + status.failed;
+        },
+        { timeout: 20_000, message: "waiting for every notion's generate-cards job to finish" },
+      )
+      .toBe(notionCount);
+
+    const dueBefore = (await (await page.request.get(`/api/review/due?documentId=${documentId}&dayBoundary=${dayBoundary.toISOString()}`)).json()) as {
+      cardId: string;
+      notionId: string;
+      question: string;
+    }[];
+    const targetCard = dueBefore[0];
+    if (!targetCard) throw new Error("expected at least one freshly-generated card");
+
+    // Directly seed a schedule due one millisecond before dayBoundary
+    // ("later today"): no real user rating reaches this — this app's FSRS
+    // configuration (docs/review/scheduler.ts, enable_short_term disabled)
+    // never schedules less than a full day out, so a same-day-later due
+    // date only ever arises from time elapsing since a past review, not
+    // from a single fast test run.
+    const db = new Database(path.join(E2E_DATA_DIR, "studia.db"));
+    const userId = (db.prepare("SELECT id FROM users WHERE username = ?").get("e2e-user") as { id: string }).id;
+    db.prepare(
+      "INSERT INTO card_schedules (card_id, user_id, due, stability, difficulty, reps, lapses, last_reviewed_at) VALUES (?, ?, ?, 2.3, 2.1, 1, 0, ?)",
+    ).run(targetCard.cardId, userId, new Date(dayBoundary.getTime() - 1).toISOString(), mockedNow.toISOString());
+    db.close();
+
+    const notions = (await (await page.request.get(`/api/documents/${documentId}/notions`)).json()) as { id: string; title: string }[];
+    const notionTitle = notions.find((n) => n.id === targetCard.notionId)?.title;
+    if (!notionTitle) throw new Error("expected to find the seeded card's notion");
+
+    const notionCard = notionCards.filter({ hasText: notionTitle });
+    await notionCard.getByRole("button", { name: "Réviser cette notion" }).click();
+
+    // Due cards sort before new (unscheduled) ones (docs/modules/review.md);
+    // the seeded card is the only one with a schedule in this notion, so it
+    // is shown first.
+    await expect(page.getByText(targetCard.question)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Échéance : Nouvelle fiche")).not.toBeVisible();
   });
 });

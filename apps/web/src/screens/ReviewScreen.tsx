@@ -19,19 +19,11 @@ function formatDueDate(schedule: CardSchedule | null): string {
   return schedule ? formatDate(schedule.due) : "Nouvelle fiche";
 }
 
-function isSameLocalDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-// nextDueDate is always strictly in the future (getProgress filters
-// `due > now`), but a timestamp later today still falls on today's
-// calendar date in the browser's timezone — announcing that as a future
-// date reads as a contradiction, so it gets its own message instead.
+// nextDueDate is never today: dueness is a calendar-day threshold
+// (getProgress only counts due >= tomorrow's start), so a card due later
+// today is already revisable now, not "next".
 function nextDueDateMessage(nextDueDate: string | null | undefined): string | null {
-  if (!nextDueDate) return null;
-  return isSameLocalDay(new Date(nextDueDate), new Date())
-    ? "Reviens un peu plus tard dans la journée."
-    : `Prochaine fiche à réviser le ${formatDate(nextDueDate)}.`;
+  return nextDueDate ? `Prochaine fiche à réviser le ${formatDate(nextDueDate)}.` : null;
 }
 
 export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: string; notionId?: string; onLeave: () => void }) {
