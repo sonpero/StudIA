@@ -32,6 +32,7 @@ describe("ReviewScreen", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("loading state: shows a skeleton while the session is starting", () => {
@@ -67,7 +68,11 @@ describe("ReviewScreen", () => {
     expect(screen.queryByText(/rien à réviser/i)).not.toBeInTheDocument();
   });
 
-  it("empty state: shows the next due date when it is available", async () => {
+  it("empty state: shows the next due date when it falls on a different day", async () => {
+    // Clock mocked, not real Date.now(): "now" and nextDueDate must land on
+    // different calendar days regardless of when the test suite runs.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -79,6 +84,33 @@ describe("ReviewScreen", () => {
     renderScreen();
 
     expect(await screen.findByText(/5 mars 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/plus tard dans la journée/i)).not.toBeInTheDocument();
+  });
+
+  it("empty state: says 'reviens plus tard' instead of a date when the next due card is due later today", async () => {
+    // A bug report: nextDueDate is always strictly future (getProgress
+    // filters `due > now`), but a timestamp later today still falls on
+    // today's date — announcing it as a future date reads as contradictory
+    // next to "Tout est à jour.". Built with the local-time constructor and
+    // local arithmetic (not fixed UTC strings) so "same calendar day" holds
+    // regardless of the machine's timezone running the test.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const now = new Date(2026, 7, 28, 10, 0, 0);
+    vi.setSystemTime(now);
+    const laterToday = new Date(now);
+    laterToday.setHours(laterToday.getHours() + 4);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 1, total: 3, nextDueDate: laterToday.toISOString() }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText("Reviens un peu plus tard dans la journée.")).toBeInTheDocument();
+    expect(screen.queryByText(/28 août 2026/i)).not.toBeInTheDocument();
   });
 
   it("empty state: says nothing about a next due date when none is known", async () => {
@@ -94,6 +126,7 @@ describe("ReviewScreen", () => {
 
     await screen.findByText(/tout est à jour/i);
     expect(screen.queryByText(/prochaine fiche/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/plus tard dans la journée/i)).not.toBeInTheDocument();
   });
 
   it("ready state: shows the question, reveals the answer on demand, then rates and advances", async () => {
@@ -141,6 +174,8 @@ describe("ReviewScreen", () => {
   });
 
   it("completion recap: shows the next due date when it is available", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",

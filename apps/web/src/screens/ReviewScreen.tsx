@@ -19,6 +19,21 @@ function formatDueDate(schedule: CardSchedule | null): string {
   return schedule ? formatDate(schedule.due) : "Nouvelle fiche";
 }
 
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// nextDueDate is always strictly in the future (getProgress filters
+// `due > now`), but a timestamp later today still falls on today's
+// calendar date in the browser's timezone — announcing that as a future
+// date reads as a contradiction, so it gets its own message instead.
+function nextDueDateMessage(nextDueDate: string | null | undefined): string | null {
+  if (!nextDueDate) return null;
+  return isSameLocalDay(new Date(nextDueDate), new Date())
+    ? "Reviens un peu plus tard dans la journée."
+    : `Prochaine fiche à réviser le ${formatDate(nextDueDate)}.`;
+}
+
 export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: string; notionId?: string; onLeave: () => void }) {
   const queryClient = useQueryClient();
   const [revealed, setRevealed] = useState(false);
@@ -91,7 +106,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
 
   // Pure spaced repetition, no training-mode filler: nothing due is the
   // normal, expected state, not a gap to explain away.
-  const nextDueDate = progressQuery.data?.nextDueDate;
+  const nextDueNote = nextDueDateMessage(progressQuery.data?.nextDueDate);
 
   if (cards.length === 0) {
     return (
@@ -99,7 +114,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
         <Sleeping />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <p>Tout est à jour.</p>
-        {nextDueDate && <p className="text-sm text-text-muted">Prochaine fiche à réviser le {formatDate(nextDueDate)}.</p>}
+        {nextDueNote && <p className="text-sm text-text-muted">{nextDueNote}</p>}
         <Button variant="secondary" onClick={onLeave}>
           Retour
         </Button>
@@ -117,7 +132,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
         <p className="text-sm text-text-muted">
           Tu as revu {cards.length} fiche{cards.length > 1 ? "s" : ""}.
         </p>
-        {nextDueDate && <p className="text-sm text-text-muted">Prochaine fiche à réviser le {formatDate(nextDueDate)}.</p>}
+        {nextDueNote && <p className="text-sm text-text-muted">{nextDueNote}</p>}
         <Button variant="accent" onClick={onLeave}>
           Retour
         </Button>
