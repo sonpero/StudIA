@@ -34,9 +34,7 @@ function formatDay(dateKey: string): string {
   return dayFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
 }
 
-// No GET /api/documents/:id/deadline or GET /api/availability route exists
-// (docs/modules/planning.md's API table lists only POST/PUT/DELETE): these
-// forms are write-only, not pre-filled from a previously saved value.
+// Known debt: docs/MILESTONES.md's M5 entry.
 const INPUT_ERROR_MESSAGE: Record<PlanningInputErrorKind, string> = {
   "deadline-in-past": "Cette échéance est déjà passée. Choisis une date à venir.",
   "no-capacity": "Indique combien de temps tu peux consacrer à ce cours chaque jour.",

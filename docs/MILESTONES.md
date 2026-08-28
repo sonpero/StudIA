@@ -151,12 +151,32 @@ planner producing dated tasks, today's task list, replanning when a day is misse
 the plan redistribute.
 
 **Acceptance**
-- [x] The planner is a pure function, property-tested: never schedules past the deadline, never exceeds daily capacity, covers every notion when `feasible: true`
-- [x] Same inputs always yield the same plan (asserted), including on the infeasible/best-effort path
-- [x] Infeasible workloads return `feasible: false` with a correct `shortfallMinutes`, never a silently broken invariant or a dropped notion; malformed input (deadline in the past, zero capacity, no usable day) returns a typed `PlanningInputError` instead
-- [x] `feasible` and `shortfallMinutes` reach `GET /api/documents/:id/plan` and the UI, which states the fact plainly and proposes options (more days, less scope) rather than scolding, per `docs/UI.md`
-- [x] No LLM in the planning path (asserted by dependency-cruiser)
-- [x] Playwright: create a deadline, verify the plan, miss a day, verify replanning
+- [ ] The planner is a pure function, property-tested: never schedules past the deadline, never exceeds daily capacity, covers every notion when `feasible: true`
+- [ ] Same inputs always yield the same plan (asserted), including on the infeasible/best-effort path
+- [ ] Infeasible workloads return `feasible: false` with a correct `shortfallMinutes`, never a silently broken invariant or a dropped notion; malformed input (deadline in the past, zero capacity, no usable day) returns a typed `PlanningInputError` instead
+- [ ] `feasible` and `shortfallMinutes` reach `GET /api/documents/:id/plan` and the UI, which states the fact plainly and proposes options (more days, less scope) rather than scolding, per `docs/UI.md`
+- [ ] No LLM in the planning path (asserted by dependency-cruiser)
+- [ ] Playwright: create a deadline, verify the plan, miss a day, verify replanning
+
+**Process note.** `domain/build-plan.ts` and `infra/sqlite-planning-repository.ts`
+were written before their tests: TDD (`CLAUDE.md`'s test-first workflow) was
+not followed for these two files on this milestone. Coverage was validated
+after the fact by property testing (`fast-check`, six hard invariants plus
+the conditional one) and by a manual mutation-testing pass — one deliberate
+fault at a time, reverted via `git checkout` between each — rather than by
+a genuine red-then-green cycle. Boxes above stay unchecked until the human
+has reviewed the mutation → test table.
+
+**Known debts, logged rather than left in code comments:**
+- No `GET /api/documents/:id/deadline` or `GET /api/availability` route
+  exists (the API table above lists only 5 routes). `PlanningScreen`'s
+  deadline and availability forms are therefore write-only: they do not
+  pre-fill from a previously saved value, and a page reload loses whatever
+  was last set until the user re-enters it.
+- `buildPlan`'s `history` input (`{date, completed}[]`) is accepted per the
+  domain signature but not read by any logic: replanning after a missed day
+  needs none of it (calling `buildPlan` again from today is sufficient).
+  Reserved for M6, which is expected to be the first real consumer.
 
 ---
 

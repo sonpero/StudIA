@@ -250,6 +250,25 @@ describe("buildPlan — infeasibility is data, never an error", () => {
     expect(notionIds).toContain("small");
     expect(notionIds).not.toContain("big");
   });
+
+  it("best-effort fill order is strictly notion position: with capacity for only one of several equally-costly notions, the first by position is the one scheduled", () => {
+    // All three notions cost exactly the same (same difficulty), isolating
+    // pure ordering from any capacity-fit tiebreak: only the FIFO position
+    // order can explain which one gets scheduled.
+    const notions: PlanNotion[] = [
+      { id: "n0", difficulty: "hard", masteredAt: null },
+      { id: "n1", difficulty: "hard", masteredAt: null },
+      { id: "n2", difficulty: "hard", masteredAt: null },
+    ];
+    // deadline today: a 1-day window, room for exactly one hard learn (18min).
+    const input: BuildPlanInput = { notions, deadline: deadlineDaysOut(0), availability: fullAvailability(LEARN_MINUTES.hard), now: NOW, history: [] };
+
+    const result = buildPlan(input);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const notionIds = result.value.days.flatMap((d) => d.entries.map((e) => e.notionId));
+    expect(notionIds).toEqual(["n0"]);
+  });
 });
 
 describe("buildPlan — invalid input is a typed error, never a Plan", () => {

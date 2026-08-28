@@ -42,11 +42,6 @@ export type BuildPlanInput = {
   deadline: string | null; // ISO date, no time; null means a steady, unbounded plan
   availability: Availability;
   now: Date;
-  // Accepted per docs/modules/planning.md's domain signature. Not read by
-  // buildPlan: replanning after a missed day needs no history-driven logic
-  // (the spec's own Replanning section — calling buildPlan again from today
-  // with whatever notions are still unmastered is sufficient). Flagged to
-  // the human rather than silently dropped from the signature or built out
-  // speculatively.
+  // Reserved, unused. Known debt: docs/MILESTONES.md's M5 entry.
   history: { date: string; completed: boolean }[];
 };
