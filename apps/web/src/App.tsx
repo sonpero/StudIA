@@ -5,6 +5,7 @@ import { LoginScreen } from "./components/LoginScreen.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
+import { PlanningScreen } from "./screens/PlanningScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
 
 // No router dependency for M3's small navigation surface (three screens,
@@ -13,7 +14,8 @@ import { ReviewScreen } from "./screens/ReviewScreen.js";
 type View =
   | { name: "documents" }
   | { name: "notions"; documentId: string }
-  | { name: "review"; documentId: string; notionId?: string };
+  | { name: "review"; documentId: string; notionId?: string }
+  | { name: "planning"; documentId: string };
 
 function AppShell() {
   const auth = useAuth();
@@ -58,6 +60,7 @@ function AppShell() {
           documentId={view.documentId}
           onBack={() => setView({ name: "documents" })}
           onReview={(notionId) => setView({ name: "review", documentId: view.documentId, notionId })}
+          onOpenPlanning={() => setView({ name: "planning", documentId: view.documentId })}
         />
       )}
       {view.name === "review" && (
@@ -66,6 +69,9 @@ function AppShell() {
           notionId={view.notionId}
           onLeave={() => setView({ name: "notions", documentId: view.documentId })}
         />
+      )}
+      {view.name === "planning" && (
+        <PlanningScreen documentId={view.documentId} onBack={() => setView({ name: "notions", documentId: view.documentId })} />
       )}
     </div>
   );

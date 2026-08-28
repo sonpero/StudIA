@@ -183,9 +183,16 @@ CREATE TABLE plan_history (
 | `POST /api/documents/:id/deadline` | Set or update |
 | `DELETE /api/documents/:id/deadline` | Remove |
 | `PUT /api/availability` | Minutes per weekday |
-| `GET /api/documents/:id/plan` | Full plan, with `feasible` and `shortfallMinutes` |
-| `GET /api/plan/today` | Today's plan entries across all courses |
+| `GET /api/documents/:id/plan?today=` | Full plan, with `feasible` and `shortfallMinutes` |
+| `GET /api/plan/today?today=` | Today's plan entries across all courses |
 | `POST /api/plan/days/:date/complete` | Mark done |
+
+**`today` is client-computed, required, `YYYY-MM-DD`.** Same product decision
+as review's `dayBoundary`: what day counts as "today" for the planner's
+window is the user's own local calendar day, never guessed from the server's
+timezone. Missing or malformed is 400 — the server never assumes "today"
+itself. `apps/web/src/lib/day-boundary.ts`'s `todayDateKey()` computes it
+from `Date`'s local getters, not a UTC slice.
 
 `GET /api/today`, the composed home view (plan entries plus due cards plus
 todos), belongs to `workspace` in M6. During M5, `/api/plan/today` is what the
@@ -212,9 +219,12 @@ availabilities. Each of the six hard invariants, the conditional one, and the
 
 - Determinism: call twice, deep-equal the result, including under the
   best-effort (infeasible) path
-- Infeasible: 40 hard notions, three days, ten minutes a day, returns
+- Infeasible: 40 hard notions, three days, 20 minutes a day, returns
   `Ok(plan)` with `feasible: false`, a correct `shortfallMinutes`, and still
-  schedules as much as fits, in notion-position order
+  schedules as much as fits, in notion-position order. (Not 10 minutes: a
+  hard notion's 18-minute `learn` never fits a 10-minute day at all — under
+  the atomic-notion rule below that's the *dedicated* zero-schedule case, not
+  this one, which needs at least one notion to actually fit.)
 - Infeasible, single atomic notion: one `hard` notion whose `learn` minutes
   exceed every day's availability still returns `Ok(plan)` with
   `feasible: false` — not a `PlanningInputError`
@@ -229,6 +239,8 @@ availabilities. Each of the six hard invariants, the conditional one, and the
 - Architecture: `dependency-cruiser` fails if `planning/**` imports an AI package
 - Integration: `GET /api/documents/:id/plan` returns 200 with `feasible: false`
   for an infeasible-but-valid request, and 422 for a `PlanningInputError`
+- Integration: both plan GET routes reject a missing or invalid `today` (400):
+  the server never guesses "today" itself
 - Playwright: set a deadline two weeks out, see the daily plan, skip a day,
   see it redistribute
 

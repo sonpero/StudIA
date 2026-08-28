@@ -20,6 +20,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "better-sqlite3": "^11.8.1",
+    "fast-check": "^4.9.0",
     "msw": "^2.7.0"
   }
 }

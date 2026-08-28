@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { startOfTomorrowISO } from "./day-boundary.js";
+import { startOfTomorrowISO, todayDateKey } from "./day-boundary.js";
 
 describe("startOfTomorrowISO", () => {
   afterEach(() => {
@@ -30,5 +30,28 @@ describe("startOfTomorrowISO", () => {
     vi.setSystemTime(new Date(2026, 7, 28, 10, 0, 0));
 
     expect(startOfTomorrowISO()).toBe(new Date(2026, 7, 29, 0, 0, 0, 0).toISOString());
+  });
+});
+
+describe("todayDateKey", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the local calendar date as YYYY-MM-DD, not an instant", () => {
+    const now = new Date(2026, 7, 28, 23, 59, 0);
+    expect(todayDateKey(now)).toBe("2026-08-28");
+  });
+
+  it("zero-pads single-digit months and days", () => {
+    const now = new Date(2026, 0, 5, 0, 0, 0);
+    expect(todayDateKey(now)).toBe("2026-01-05");
+  });
+
+  it("defaults to the real current time when no instant is given", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 28, 10, 0, 0));
+
+    expect(todayDateKey()).toBe("2026-08-28");
   });
 });

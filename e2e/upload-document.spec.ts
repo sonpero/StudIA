@@ -10,6 +10,7 @@ import { E2E_DATA_DIR } from "./support/env.js";
 // path with a retry."
 test.describe("upload and extraction", () => {
   test("uploading three photos as one document reaches done and the extracted text can be read", async ({ page }) => {
+    test.setTimeout(60_000); // extra room for the extraction poll under full-suite parallel load (M5 added another upload-heavy spec to the mix)
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -31,7 +32,7 @@ test.describe("upload and extraction", () => {
 
     const card = page.getByTestId("document-card").filter({ hasText: "Trois photos" });
     await expect(card.getByText("3 pages")).toBeVisible();
-    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
+    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
 
     await card.getByRole("button", { name: "Voir le texte" }).click();
     // FixtureDocumentExtractor's "valid" case (docs/TESTING.md's required

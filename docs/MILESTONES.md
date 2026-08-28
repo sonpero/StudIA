@@ -151,12 +151,12 @@ planner producing dated tasks, today's task list, replanning when a day is misse
 the plan redistribute.
 
 **Acceptance**
-- [ ] The planner is a pure function, property-tested: never schedules past the deadline, never exceeds daily capacity, covers every notion when `feasible: true`
-- [ ] Same inputs always yield the same plan (asserted), including on the infeasible/best-effort path
-- [ ] Infeasible workloads return `feasible: false` with a correct `shortfallMinutes`, never a silently broken invariant or a dropped notion; malformed input (deadline in the past, zero capacity, no usable day) returns a typed `PlanningInputError` instead
-- [ ] `feasible` and `shortfallMinutes` reach `GET /api/documents/:id/plan` and the UI, which states the fact plainly and proposes options (more days, less scope) rather than scolding, per `docs/UI.md`
-- [ ] No LLM in the planning path (asserted by dependency-cruiser)
-- [ ] Playwright: create a deadline, verify the plan, miss a day, verify replanning
+- [x] The planner is a pure function, property-tested: never schedules past the deadline, never exceeds daily capacity, covers every notion when `feasible: true`
+- [x] Same inputs always yield the same plan (asserted), including on the infeasible/best-effort path
+- [x] Infeasible workloads return `feasible: false` with a correct `shortfallMinutes`, never a silently broken invariant or a dropped notion; malformed input (deadline in the past, zero capacity, no usable day) returns a typed `PlanningInputError` instead
+- [x] `feasible` and `shortfallMinutes` reach `GET /api/documents/:id/plan` and the UI, which states the fact plainly and proposes options (more days, less scope) rather than scolding, per `docs/UI.md`
+- [x] No LLM in the planning path (asserted by dependency-cruiser)
+- [x] Playwright: create a deadline, verify the plan, miss a day, verify replanning
 
 ---
 
