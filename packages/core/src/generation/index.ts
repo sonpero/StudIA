@@ -1,5 +1,7 @@
 export type { Card, CardType, CardState, GeneratedCard } from "./domain/types.js";
 export type { CardGenerator, CardRepository, GenerationError } from "./domain/ports.js";
+// For the eval script's distractor-quality measurement (docs/MILESTONES.md M4).
+export { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible } from "./domain/mcq-invariants.js";
 
 export { handleGenerationJob, type HandleGenerationJobDeps, type GenerateCardsPayload } from "./application/handle-generation-job.js";
 export { generateForNotion, type GenerateForNotionDeps } from "./application/generate-for-notion.js";

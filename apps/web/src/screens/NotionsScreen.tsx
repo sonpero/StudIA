@@ -10,6 +10,7 @@ import {
   getNotionsProgress,
   getProgress,
   listNotions,
+  type CardType,
   type Difficulty,
   type NotionProgress,
 } from "../lib/notions-api.js";
@@ -20,6 +21,10 @@ import {
 const GENERATION_POLL_MS = 1500;
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Facile", medium: "Moyen", hard: "Difficile" };
+// User choice of activity type (docs/modules/generation.md's open question,
+// settled in M4): flashcard checked by default, matching M3's behaviour.
+const CARD_TYPE_LABEL: Record<CardType, string> = { flashcard: "Flashcards", mcq: "QCM", open: "Questions ouvertes" };
+const ALL_CARD_TYPES: CardType[] = ["flashcard", "mcq", "open"];
 
 function notionProgressLabel(progress: NotionProgress | undefined): string {
   if (!progress || progress.totalCards === 0) return "Pas encore de fiches";
@@ -49,6 +54,16 @@ export function NotionsScreen({
   const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<Set<CardType>>(new Set<CardType>(["flashcard"]));
+
+  function toggleType(type: CardType) {
+    setSelectedTypes((current) => {
+      const next = new Set(current);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
 
   function toggleBody(notionId: string) {
     setExpandedNotionIds((current) => {
@@ -107,7 +122,7 @@ export function NotionsScreen({
   async function handleGenerate() {
     setGenerateError(false);
     try {
-      await generateCardsForDocument(documentId);
+      await generateCardsForDocument(documentId, Array.from(selectedTypes));
       setGenerating(true);
     } catch {
       setGenerateError(true);
@@ -180,7 +195,7 @@ export function NotionsScreen({
             </p>
           )}
           {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
-          <Button variant="secondary" disabled={generating} onClick={() => void handleGenerate()}>
+          <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
             {generateLabel}
           </Button>
           <Button variant="accent" onClick={() => onReview()}>
@@ -188,6 +203,16 @@ export function NotionsScreen({
           </Button>
         </div>
       </div>
+
+      <fieldset className="mb-6 flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
+        <legend className="mb-1 text-sm text-text-muted">Types de fiches à créer</legend>
+        {ALL_CARD_TYPES.map((type) => (
+          <label key={type} className="flex items-center gap-2">
+            <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
+            {CARD_TYPE_LABEL[type]}
+          </label>
+        ))}
+      </fieldset>
 
       <div className="flex flex-col gap-3">
         {notions.map((notion) => {

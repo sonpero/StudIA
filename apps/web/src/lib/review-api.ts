@@ -53,3 +53,18 @@ export async function abandonSession(sessionId: string): Promise<void> {
   const res = await apiFetch(`/api/review/sessions/${sessionId}/abandon`, { method: "POST" });
   if (!res.ok) throw new Error("Impossible de quitter la session.");
 }
+
+export type GradeResult = { correct: boolean; feedback: string; suggestedRating: Rating };
+
+// mcq and open cards both go through this — the server is the sole source
+// of truth for the rating (mcq: exact match, review/domain/grade-mcq.ts;
+// open: the LLM port). The client never computes a verdict itself.
+export async function gradeAnswer(cardId: string, given: string): Promise<GradeResult> {
+  const res = await apiFetch(`/api/review/cards/${cardId}/grade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ given }),
+  });
+  if (!res.ok) throw new Error("Impossible de corriger ta réponse.");
+  return res.json() as Promise<GradeResult>;
+}

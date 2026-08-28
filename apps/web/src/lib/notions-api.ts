@@ -20,8 +20,16 @@ export async function listNotions(documentId: string): Promise<Notion[]> {
   return res.json() as Promise<Notion[]>;
 }
 
-export async function generateCardsForDocument(documentId: string): Promise<void> {
-  const res = await apiFetch(`/api/documents/${documentId}/generate`, { method: "POST" });
+export type CardType = "flashcard" | "mcq" | "open";
+
+// types is optional: omitting it keeps the server's flashcard-only default
+// (docs/modules/generation.md's open question — "user choice in M4").
+export async function generateCardsForDocument(documentId: string, types?: CardType[]): Promise<void> {
+  const res = await apiFetch(`/api/documents/${documentId}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(types ? { types } : {}),
+  });
   if (!res.ok) throw new Error("Impossible de lancer la création des fiches.");
 }
 

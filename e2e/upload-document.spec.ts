@@ -40,6 +40,7 @@ test.describe("upload and extraction", () => {
   });
 
   test("a failed extraction shows a retry, and the retry works", async ({ page }) => {
+    test.setTimeout(60_000); // extra room under full-suite parallel load
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -71,6 +72,8 @@ test.describe("upload and extraction", () => {
 
     await retryButton.click();
 
-    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
+    // Extra room under full-suite parallel load (the shared background
+    // worker processes every e2e test's jobs from one process).
+    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
   });
 });

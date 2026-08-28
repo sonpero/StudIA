@@ -1,5 +1,6 @@
+import type { Result } from "../../shared/index.js";
 import type { DueCard } from "./due-card.js";
-import type { CardSchedule, Review } from "./types.js";
+import type { CardSchedule, Rating, Review } from "./types.js";
 
 export type Session = {
   id: string;
@@ -8,6 +9,22 @@ export type Session = {
   startedAt: string;
   endedAt: string | null;
 };
+
+export type GradeError = { kind: "model-error"; message: string };
+
+// M4 (docs/modules/review.md). Used for open cards only: mcq is graded by
+// exact option match in domain/grade-mcq.ts, never by a model.
+// suggestedRating is a suggestion, not a write: the user can override it
+// before the client calls submitReview, because a model marking a correct
+// answer wrong and silently damaging the schedule is the worst failure
+// mode here.
+export interface AnswerGrader {
+  grade(input: {
+    question: string;
+    expected: string;
+    given: string;
+  }): Promise<Result<{ correct: boolean; feedback: string; suggestedRating: Rating }, GradeError>>;
+}
 
 export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };
 

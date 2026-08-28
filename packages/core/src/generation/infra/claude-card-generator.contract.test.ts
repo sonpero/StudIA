@@ -122,4 +122,102 @@ describe("ClaudeCardGenerator (transport level, via MSW)", () => {
     expect(callCount).toBe(2);
     expect(result.ok).toBe(false);
   });
+
+  it("mcq valid: a schema- and refine-conforming tool call on the first attempt does not retry", async () => {
+    let callCount = 0;
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, () => {
+        callCount += 1;
+        return anthropicToolUseResponse([
+          { question: "Quelle molécule la photosynthèse produit-elle ?", options: ["Oxygène", "Azote", "Hydrogène", "Chlore"], answer: "Oxygène" },
+        ]);
+      }),
+    );
+
+    const generator = new ClaudeCardGenerator(createLanguageModel({ apiKey: "test-key" }));
+    const result = await generator.generate({ notion, types: ["mcq"] });
+
+    expect(callCount).toBe(1);
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        { type: "mcq", question: "Quelle molécule la photosynthèse produit-elle ?", answer: "Oxygène", options: ["Oxygène", "Azote", "Hydrogène", "Chlore"] },
+      ],
+    });
+  });
+
+  it("mcq refine-violation: the answer missing from the options retries once with the validation error fed back, then fails if still missing", async () => {
+    let callCount = 0;
+    const requestBodies: string[] = [];
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+        callCount += 1;
+        requestBodies.push(await request.clone().text());
+        return anthropicToolUseResponse([
+          { question: "Quelle molécule la photosynthèse produit-elle ?", options: ["Azote", "Hydrogène", "Chlore", "Carbone"], answer: "Oxygène" },
+        ]);
+      }),
+    );
+
+    const generator = new ClaudeCardGenerator(createLanguageModel({ apiKey: "test-key" }));
+    const result = await generator.generate({ notion, types: ["mcq"] });
+
+    expect(callCount).toBe(2);
+    expect(requestBodies[1]).toContain("format attendu");
+    expect(result.ok).toBe(false);
+  });
+
+  it("mcq refine-violation: duplicate options (case/whitespace-insensitive) are rejected", async () => {
+    let callCount = 0;
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, () => {
+        callCount += 1;
+        return anthropicToolUseResponse([
+          { question: "Quelle molécule la photosynthèse produit-elle ?", options: ["Oxygène", " oxygène", "Hydrogène", "Chlore"], answer: "Oxygène" },
+        ]);
+      }),
+    );
+
+    const generator = new ClaudeCardGenerator(createLanguageModel({ apiKey: "test-key" }));
+    const result = await generator.generate({ notion, types: ["mcq"] });
+
+    expect(callCount).toBe(2);
+    expect(result.ok).toBe(false);
+  });
+
+  it("open valid: a schema-conforming tool call produces an open card with no options", async () => {
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, () =>
+        anthropicToolUseResponse([{ question: "Explique le rôle de la chlorophylle.", answer: "Elle capte la lumière pour la photosynthèse." }]),
+      ),
+    );
+
+    const generator = new ClaudeCardGenerator(createLanguageModel({ apiKey: "test-key" }));
+    const result = await generator.generate({ notion, types: ["open"] });
+
+    expect(result).toEqual({
+      ok: true,
+      value: [{ type: "open", question: "Explique le rôle de la chlorophylle.", answer: "Elle capte la lumière pour la photosynthèse.", options: null }],
+    });
+  });
+
+  it("multiple types: makes one call per type (docs/modules/generation.md), not one combined call", async () => {
+    let callCount = 0;
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, () => {
+        callCount += 1;
+        if (callCount === 1) return anthropicToolUseResponse([{ question: "Que produit la photosynthèse ?", answer: "De l'oxygène" }]);
+        return anthropicToolUseResponse([
+          { question: "Quel gaz la photosynthèse libère-t-elle ?", options: ["Oxygène", "Azote", "Hydrogène", "Chlore"], answer: "Oxygène" },
+        ]);
+      }),
+    );
+
+    const generator = new ClaudeCardGenerator(createLanguageModel({ apiKey: "test-key" }));
+    const result = await generator.generate({ notion, types: ["flashcard", "mcq"] });
+
+    expect(callCount).toBe(2);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.map((c) => c.type)).toEqual(["flashcard", "mcq"]);
+  });
 });

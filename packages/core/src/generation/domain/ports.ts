@@ -2,9 +2,7 @@ import type { Difficulty } from "../../content/index.js";
 import type { Result } from "../../shared/index.js";
 import type { Card, CardType, GeneratedCard } from "./types.js";
 
-export type GenerationError =
-  | { kind: "model-error"; message: string }
-  | { kind: "unsupported-type"; message: string };
+export type GenerationError = { kind: "model-error"; message: string };
 
 export interface CardGenerator {
   generate(input: {

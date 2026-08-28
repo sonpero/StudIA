@@ -158,6 +158,83 @@ describe("review routes", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("grades an open card's answer, outside any transaction, never writing a review itself", async () => {
+    const seedDb = openDatabase(dbPath);
+    seedDb.run(sql`INSERT INTO cards (id, notion_id, user_id, type, state, question, answer, options_json, created_at)
+        VALUES ('open-1', 'n1', (SELECT id FROM users WHERE username='alice'), 'open', 'active', 'Question ouverte ?', 'Réponse modèle', NULL, ${now.toISOString()})`);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/cards/open-1/grade",
+      headers: { cookie: aliceCookie },
+      payload: { given: "Ma réponse." },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ correct: true, feedback: expect.any(String) as string, suggestedRating: 3 });
+    // Grading alone must not create a review or a schedule (docs/modules/
+    // review.md: it calls the port outside any transaction, submitReview is
+    // a separate call the client makes afterward).
+    expect(seedDb.all(sql`SELECT * FROM reviews WHERE card_id = 'open-1'`)).toEqual([]);
+    expect(seedDb.all(sql`SELECT * FROM card_schedules WHERE card_id = 'open-1'`)).toEqual([]);
+  });
+
+  it("grading rejects a flashcard (400): flashcards are self-rated, never graded", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/cards/c1/grade",
+      headers: { cookie: aliceCookie },
+      payload: { given: "Ma réponse." },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("grades an mcq card server-side (the source of truth for the rating, never the client): correct option", async () => {
+    const seedDb = openDatabase(dbPath);
+    seedDb.run(sql`INSERT INTO cards (id, notion_id, user_id, type, state, question, answer, options_json, created_at)
+        VALUES ('mcq-1', 'n1', (SELECT id FROM users WHERE username='alice'), 'mcq', 'active', 'Quel gaz ?', 'Oxygène', '["Oxygène","Azote","Hydrogène","Chlore"]', ${now.toISOString()})`);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/cards/mcq-1/grade",
+      headers: { cookie: aliceCookie },
+      payload: { given: "Oxygène" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ correct: true, feedback: "Correct.", suggestedRating: 3 });
+  });
+
+  it("grades an mcq card server-side: incorrect option maps to again(1)", async () => {
+    const seedDb = openDatabase(dbPath);
+    seedDb.run(sql`INSERT INTO cards (id, notion_id, user_id, type, state, question, answer, options_json, created_at)
+        VALUES ('mcq-1', 'n1', (SELECT id FROM users WHERE username='alice'), 'mcq', 'active', 'Quel gaz ?', 'Oxygène', '["Oxygène","Azote","Hydrogène","Chlore"]', ${now.toISOString()})`);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/cards/mcq-1/grade",
+      headers: { cookie: aliceCookie },
+      payload: { given: "Azote" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ correct: false, feedback: "Incorrect. La bonne réponse était : Oxygène", suggestedRating: 1 });
+  });
+
+  it("grading someone else's card is rejected (403)", async () => {
+    const seedDb = openDatabase(dbPath);
+    seedDb.run(sql`INSERT INTO cards (id, notion_id, user_id, type, state, question, answer, options_json, created_at)
+        VALUES ('open-1', 'n1', (SELECT id FROM users WHERE username='alice'), 'open', 'active', 'Question ouverte ?', 'Réponse modèle', NULL, ${now.toISOString()})`);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/cards/open-1/grade",
+      headers: { cookie: bobCookie },
+      payload: { given: "Ma réponse." },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
   it("abandoning a session ends it, and preserves already-answered reviews", async () => {
     const start = await app.inject({ method: "POST", url: "/api/review/sessions", headers: { cookie: aliceCookie }, payload: { dayBoundary } });
     const { sessionId } = start.json<{ sessionId: string }>();
