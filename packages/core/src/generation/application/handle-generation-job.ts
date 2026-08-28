@@ -43,8 +43,15 @@ export async function handleGenerationJob(
   });
   if (!result.ok) return { ok: false, error: result.error.message };
 
-  if (!isValidCardCount(result.value.length)) {
-    return { ok: false, error: `Generation produced ${String(result.value.length)} cards, expected 1 to 5` };
+  // Checked per requested type, not the combined total: a notion generating
+  // several activity types at once (docs/MILESTONES.md M4) legitimately
+  // produces more than 5 cards altogether, but each type's own generateObject
+  // call (docs/modules/generation.md: "one call per type") still owes 1 to 5.
+  for (const type of payload.types) {
+    const countForType = result.value.filter((c) => c.type === type).length;
+    if (!isValidCardCount(countForType)) {
+      return { ok: false, error: `Generation produced ${String(countForType)} ${type} cards, expected 1 to 5` };
+    }
   }
   const leaking = result.value.find((c) => questionLeaksAnswer(c.question, c.answer));
   if (leaking) return { ok: false, error: `Question leaks its answer: "${leaking.question}"` };

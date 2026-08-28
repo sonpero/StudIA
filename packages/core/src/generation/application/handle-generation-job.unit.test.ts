@@ -129,6 +129,49 @@ describe("handleGenerationJob", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("checks the 1-5 card count per requested type, not the combined total: 3 flashcards + 3 mcq (6 total) succeeds", async () => {
+    const cardRepo = fakeCardRepository();
+    const notionRepo = fakeNotionRepositoryForGeneration(aNotion());
+    const generator = fakeCardGenerator(() =>
+      Promise.resolve(
+        ok([
+          { type: "flashcard", question: "Q1 ?", answer: "R1", options: null },
+          { type: "flashcard", question: "Q2 ?", answer: "R2", options: null },
+          { type: "flashcard", question: "Q3 ?", answer: "R3", options: null },
+          { type: "mcq", question: "Q4 ?", answer: "Bon", options: ["Bon", "A", "B", "C"] },
+          { type: "mcq", question: "Q5 ?", answer: "Bon", options: ["Bon", "A", "B", "C"] },
+          { type: "mcq", question: "Q6 ?", answer: "Bon", options: ["Bon", "A", "B", "C"] },
+        ]),
+      ),
+    );
+
+    const result = await handleGenerationJob(
+      { cardRepo, notionRepo, generator, idGenerator: uuidV7Generator },
+      { notionId: "n1", types: ["flashcard", "mcq"] },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    expect(result).toEqual({ ok: true, value: undefined });
+    expect(await cardRepo.listCards("u1", "n1")).toHaveLength(6);
+  });
+
+  it("fails when one requested type produced zero cards, even though another type's count is valid", async () => {
+    const cardRepo = fakeCardRepository();
+    const notionRepo = fakeNotionRepositoryForGeneration(aNotion());
+    const generator = fakeCardGenerator(() =>
+      Promise.resolve(ok([{ type: "flashcard", question: "Q1 ?", answer: "R1", options: null }])),
+    );
+
+    const result = await handleGenerationJob(
+      { cardRepo, notionRepo, generator, idGenerator: uuidV7Generator },
+      { notionId: "n1", types: ["flashcard", "open"] },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await cardRepo.listCards("u1", "n1")).toHaveLength(0);
+  });
+
   it("fails the job when the generator itself errors", async () => {
     const cardRepo = fakeCardRepository();
     const notionRepo = fakeNotionRepositoryForGeneration(aNotion());

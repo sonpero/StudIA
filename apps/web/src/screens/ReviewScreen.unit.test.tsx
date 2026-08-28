@@ -239,6 +239,203 @@ describe("ReviewScreen", () => {
     expect(calls).toEqual([expect.objectContaining({ dayBoundary: new Date(2026, 7, 29, 0, 0, 0, 0).toISOString() })]);
   });
 
+  const mcqCard = {
+    cardId: "m1",
+    notionId: "n1",
+    type: "mcq" as const,
+    state: "active" as const,
+    question: "Quel gaz la photosynthèse libère-t-elle ?",
+    answer: "Oxygène",
+    options: ["Oxygène", "Azote", "Hydrogène", "Chlore"],
+    schedule: null,
+    mastered: false,
+  };
+
+  it("mcq: selecting an option asks the server to grade it, shows its feedback, then rates and advances using the server's suggestedRating", async () => {
+    const user = userEvent.setup();
+    const calls: { url: string; body?: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        calls.push({ url, body: init?.body ? (JSON.parse(init.body as string) as unknown) : undefined });
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [mcqCard] }), { status: 200 }));
+        if (url === "/api/review/cards/m1/grade") {
+          return Promise.resolve(new Response(JSON.stringify({ correct: true, feedback: "Correct.", suggestedRating: 3 }), { status: 200 }));
+        }
+        if (url === "/api/review/cards/m1") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ cardId: "m1", userId: "u1", due: "2026-01-05T00:00:00Z", stability: 2.3, difficulty: 2.1, reps: 1, lapses: 0, lastReviewedAt: "2026-01-01T00:00:00Z" }), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    expect(await screen.findByText("Quel gaz la photosynthèse libère-t-elle ?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Oxygène" }));
+    expect(await screen.findByText("Correct.")).toBeInTheDocument();
+    expect(calls.find((c) => c.url === "/api/review/cards/m1/grade")?.body).toEqual({ given: "Oxygène" });
+
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+
+    expect(await screen.findByText(/tu as terminé cette session/i)).toBeInTheDocument();
+    expect(calls.find((c) => c.url === "/api/review/cards/m1")?.body).toMatchObject({ rating: 3 });
+  });
+
+  // The regression test for the actual bug report: the server's verdict
+  // must win even when it disagrees with what a naive client-side string
+  // comparison would have produced — proving the rating is never
+  // recomputed in the browser.
+  it("mcq: the rating that reaches submitReview is the server's suggestedRating, not a client-side recomputation", async () => {
+    const user = userEvent.setup();
+    const calls: { url: string; body?: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        calls.push({ url, body: init?.body ? (JSON.parse(init.body as string) as unknown) : undefined });
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [mcqCard] }), { status: 200 }));
+        if (url === "/api/review/cards/m1/grade") {
+          // The client picked the textually-correct option ("Oxygène"), but
+          // the server disagrees (e.g. the card was edited server-side).
+          // If the client were still computing its own verdict, it would
+          // submit rating 3; asserting 1 here proves it defers entirely to
+          // the server's response instead.
+          return Promise.resolve(new Response(JSON.stringify({ correct: false, feedback: "Incorrect. La bonne réponse était : Azote", suggestedRating: 1 }), { status: 200 }));
+        }
+        if (url === "/api/review/cards/m1") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ cardId: "m1", userId: "u1", due: "2026-01-05T00:00:00Z", stability: 2.3, difficulty: 2.1, reps: 1, lapses: 0, lastReviewedAt: "2026-01-01T00:00:00Z" }), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Quel gaz la photosynthèse libère-t-elle ?");
+
+    await user.click(screen.getByRole("button", { name: "Oxygène" }));
+    expect(await screen.findByText("Incorrect. La bonne réponse était : Azote")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+
+    await screen.findByText(/tu as terminé cette session/i);
+    const submitCalls = calls.filter((c) => c.url === "/api/review/cards/m1");
+    expect(submitCalls).toHaveLength(1);
+    expect(submitCalls[0]?.body).toMatchObject({ rating: 1 });
+  });
+
+  it("mcq: a grading failure shows an error and re-enables the options for a retry", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [mcqCard] }), { status: 200 }));
+        if (url === "/api/review/cards/m1/grade") return Promise.resolve(new Response(null, { status: 502 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Quel gaz la photosynthèse libère-t-elle ?");
+
+    await user.click(screen.getByRole("button", { name: "Oxygène" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de corriger ta réponse/i);
+    expect(screen.getByRole("button", { name: "Oxygène" })).not.toBeDisabled();
+  });
+
+  it("open: submitting an answer shows the grader's feedback and the suggested rating, and lets the user override it", async () => {
+    const user = userEvent.setup();
+    const openCard = {
+      cardId: "o1",
+      notionId: "n1",
+      type: "open" as const,
+      state: "active" as const,
+      question: "Explique le rôle de la chlorophylle.",
+      answer: "Elle capte la lumière pour la photosynthèse.",
+      options: null,
+      schedule: null,
+      mastered: false,
+    };
+    const calls: { url: string; body?: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        calls.push({ url, body: init?.body ? (JSON.parse(init.body as string) as unknown) : undefined });
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [openCard] }), { status: 200 }));
+        if (url === "/api/review/cards/o1/grade") {
+          return Promise.resolve(new Response(JSON.stringify({ correct: true, feedback: "Bien vu.", suggestedRating: 3 }), { status: 200 }));
+        }
+        if (url === "/api/review/cards/o1") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ cardId: "o1", userId: "u1", due: "2026-01-05T00:00:00Z", stability: 2.3, difficulty: 2.1, reps: 1, lapses: 0, lastReviewedAt: "2026-01-01T00:00:00Z" }), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Explique le rôle de la chlorophylle.");
+
+    await user.type(screen.getByLabelText("Ta réponse"), "Elle transforme la lumière en énergie.");
+    await user.click(screen.getByRole("button", { name: /valider ma réponse/i }));
+
+    expect(await screen.findByText(/bien vu/i)).toBeInTheDocument();
+    expect(screen.getByText("Elle capte la lumière pour la photosynthèse.")).toBeInTheDocument();
+    expect(calls.find((c) => c.url === "/api/review/cards/o1/grade")?.body).toEqual({ given: "Elle transforme la lumière en énergie." });
+
+    // The suggestion can be overridden (docs/modules/review.md): pick a
+    // different rating than the one the grader suggested.
+    await user.click(screen.getByRole("button", { name: "Facile" }));
+
+    await screen.findByText(/tu as terminé cette session/i);
+    // Exactly one submitReview call, carrying the override (4), never the
+    // LLM's own suggestion (3): no telescoping between the two.
+    const submitCalls = calls.filter((c) => c.url === "/api/review/cards/o1");
+    expect(submitCalls).toHaveLength(1);
+    expect(submitCalls[0]?.body).toMatchObject({ rating: 4 });
+  });
+
+  it("open: shows an error and lets the user retry when grading fails", async () => {
+    const user = userEvent.setup();
+    const openCard = {
+      cardId: "o1",
+      notionId: "n1",
+      type: "open" as const,
+      state: "active" as const,
+      question: "Explique le rôle de la chlorophylle.",
+      answer: "Elle capte la lumière pour la photosynthèse.",
+      options: null,
+      schedule: null,
+      mastered: false,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [openCard] }), { status: 200 }));
+        if (url === "/api/review/cards/o1/grade") return Promise.resolve(new Response(null, { status: 502 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Explique le rôle de la chlorophylle.");
+
+    await user.type(screen.getByLabelText("Ta réponse"), "Une réponse.");
+    await user.click(screen.getByRole("button", { name: /valider ma réponse/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de corriger ta réponse/i);
+  });
+
   it("never shows a countdown or urgency copy while reviewing", async () => {
     vi.stubGlobal(
       "fetch",

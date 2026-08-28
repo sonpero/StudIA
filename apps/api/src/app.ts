@@ -52,7 +52,7 @@ export function buildApp(opts: BuildAppOptions) {
   });
   const contentDeps = buildContentDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const generationDeps = buildGenerationDeps(db);
-  const reviewDeps = buildReviewDeps(db);
+  const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
 
   const app = Fastify({ logger: true });
 
@@ -97,6 +97,8 @@ export function buildApp(opts: BuildAppOptions) {
   });
   void app.register(reviewRoutes, {
     repo: reviewDeps.repo,
+    cardRepo: generationDeps.repo,
+    grader: reviewDeps.grader,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });

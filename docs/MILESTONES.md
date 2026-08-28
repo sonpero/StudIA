@@ -134,9 +134,9 @@ scoring feeding back into FSRS.
 **Demo** — Same course, three activity types, each producing a review outcome.
 
 **Acceptance**
-- [ ] `.refine()` guarantees the correct answer is among the options and distractors are distinct
-- [ ] Eval measures distractor quality on the golden set
-- [ ] Playwright: one scenario per activity type
+- [x] `.refine()` guarantees the correct answer is among the options and distractors are distinct
+- [x] Eval measures distractor quality on the golden set
+- [x] Playwright: one scenario per activity type
 
 ---
 

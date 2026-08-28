@@ -104,6 +104,28 @@ describe("cards routes", () => {
     expect(status.json()).toEqual({ done: 0, total: 1, failed: 0 });
   });
 
+  it("an empty or missing body defaults to flashcard-only (M3's original behaviour)", async () => {
+    await app.inject({ method: "POST", url: "/api/documents/doc-1/generate", headers: { cookie: aliceCookie } });
+
+    const seedDb = openDatabase(dbPath);
+    const [job] = seedDb.all<{ payload: string }>(sql`SELECT payload_json AS payload FROM jobs WHERE type = 'generate-cards'`);
+    expect(JSON.parse(job!.payload)).toMatchObject({ types: ["flashcard"] });
+  });
+
+  it("accepts an explicit types selection, letting the user choose which activities to create (docs/modules/generation.md: 'user choice in M4')", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/documents/doc-1/generate",
+      headers: { cookie: aliceCookie },
+      payload: { types: ["flashcard", "mcq", "open"] },
+    });
+    expect(res.statusCode).toBe(202);
+
+    const seedDb = openDatabase(dbPath);
+    const [job] = seedDb.all<{ payload: string }>(sql`SELECT payload_json AS payload FROM jobs WHERE type = 'generate-cards'`);
+    expect(JSON.parse(job!.payload)).toMatchObject({ types: ["flashcard", "mcq", "open"] });
+  });
+
   it("deletes a card", async () => {
     const res = await app.inject({ method: "DELETE", url: "/api/cards/c1", headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(204);

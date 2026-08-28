@@ -80,8 +80,10 @@ is the worst failure mode here.
 - `startSession(userId, now, filter)` — creates a session, draws its cards
 - `submitReview(userId, cardId, rating, elapsedMs, now)` — writes the review,
   recomputes the schedule, both in one short transaction
-- `gradeOpenAnswer(userId, cardId, given)` — M4, calls the port outside any
-  transaction
+- `gradeAnswer(userId, cardId, given)` — M4, the single entry point for both
+  mcq (exact match, `domain/grade-mcq.ts`, never a model) and open (calls the
+  port outside any transaction). The server is the source of truth for the
+  rating either way; the client never grades on its own.
 - `getProgress(userId, documentId)` — `{ mastered, total }`
 - `abandonSession(userId, sessionId)` — answered cards keep their reviews
 
@@ -134,7 +136,7 @@ recoverable instead of destructive.
 | `GET /api/review/due?documentId=&limit=` | Due and new cards |
 | `POST /api/review/sessions` | Start a session |
 | `POST /api/review/cards/:id` | `{ rating, elapsedMs }`, returns the new schedule |
-| `POST /api/review/cards/:id/grade` | M4, `{ given }` for open cards |
+| `POST /api/review/cards/:id/grade` | M4, `{ given }`, mcq and open (never flashcard, which is self-rated) |
 | `GET /api/documents/:id/progress` | `{ mastered, total }` |
 
 ## Out of scope

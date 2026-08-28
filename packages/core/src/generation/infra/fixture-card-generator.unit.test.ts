@@ -38,4 +38,36 @@ describe("FixtureCardGenerator", () => {
     const result = await generator.generate({ notion, types: ["flashcard"] });
     expect(result.ok).toBe(false);
   });
+
+  it("valid: mcq cards satisfy the domain invariants (4 options, answer among them, distinct)", async () => {
+    const generator = new FixtureCardGenerator("valid");
+    const result = await generator.generate({ notion, types: ["mcq"] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.length).toBeGreaterThanOrEqual(1);
+    for (const card of result.value) {
+      expect(card.type).toBe("mcq");
+      expect(card.options).toHaveLength(4);
+      expect(card.options).toContain(card.answer);
+      expect(new Set(card.options?.map((o) => o.trim().toLowerCase())).size).toBe(4);
+    }
+  });
+
+  it("valid: open cards have no options", async () => {
+    const generator = new FixtureCardGenerator("valid");
+    const result = await generator.generate({ notion, types: ["open"] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.length).toBeGreaterThanOrEqual(1);
+    expect(result.value.every((c) => c.type === "open" && c.options === null && c.question && c.answer)).toBe(true);
+  });
+
+  it("valid: generates cards for every requested type in one call", async () => {
+    const generator = new FixtureCardGenerator("valid");
+    const result = await generator.generate({ notion, types: ["flashcard", "mcq", "open"] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const types = new Set(result.value.map((c) => c.type));
+    expect(types).toEqual(new Set(["flashcard", "mcq", "open"]));
+  });
 });

@@ -210,6 +210,55 @@ describe("NotionsScreen", () => {
     expect(calls).toContainEqual("POST /api/documents/doc-1/generate");
   });
 
+  it("generation: defaults to flashcards only, and sends the user's chosen types (docs/modules/generation.md: 'user choice in M4')", async () => {
+    const user = userEvent.setup();
+    const bodies: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes("/generate") && init?.method === "POST") bodies.push(init.body ? JSON.parse(init.body as string) : undefined);
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 1, failed: 0 }), { status: 200 }));
+        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    expect(screen.getByRole("checkbox", { name: "Flashcards" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "QCM" })).not.toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+    expect(bodies).toEqual([{ types: ["flashcard"] }]);
+
+    await user.click(screen.getByRole("checkbox", { name: "QCM" }));
+    await user.click(screen.getByRole("checkbox", { name: "Questions ouvertes" }));
+    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+
+    expect(bodies).toContainEqual({ types: ["flashcard", "mcq", "open"] });
+  });
+
+  it("generation: unchecking every type disables the button", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    await user.click(screen.getByRole("checkbox", { name: "Flashcards" }));
+
+    expect(screen.getByRole("button", { name: /créer les fiches/i })).toBeDisabled();
+  });
+
   it("generation: disables the button and shows an in-progress state while cards are being created", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
