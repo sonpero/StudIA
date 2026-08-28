@@ -4,6 +4,11 @@ export interface GetProgressDeps {
   repo: ReviewRepository;
 }
 
-export function getProgress(deps: GetProgressDeps, userId: string, documentId: string): Promise<{ mastered: number; total: number }> {
-  return deps.repo.getProgress(userId, documentId);
+export function getProgress(
+  deps: GetProgressDeps,
+  userId: string,
+  documentId: string,
+  now: Date,
+): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
+  return deps.repo.getProgress(userId, documentId, now);
 }

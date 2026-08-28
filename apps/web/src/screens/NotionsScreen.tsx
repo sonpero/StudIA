@@ -1,10 +1,23 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
-import { generateCardsForDocument, getNotionsProgress, getProgress, listNotions, type Difficulty, type NotionProgress } from "../lib/notions-api.js";
+import {
+  generateCardsForDocument,
+  getGenerationStatus,
+  getNotionsProgress,
+  getProgress,
+  listNotions,
+  type Difficulty,
+  type NotionProgress,
+} from "../lib/notions-api.js";
+
+// Generation is much faster than extraction (a handful of small LLM calls,
+// not a whole document read), so a fixed short interval is enough — no need
+// for DocumentsScreen/NotionsScreen's 30s backoff.
+const GENERATION_POLL_MS = 1500;
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Facile", medium: "Moyen", hard: "Difficile" };
 
@@ -34,6 +47,8 @@ export function NotionsScreen({
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
   const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState(false);
 
   function toggleBody(notionId: string) {
     setExpandedNotionIds((current) => {
@@ -62,10 +77,41 @@ export function NotionsScreen({
   const progressQuery = useQuery({ queryKey: ["progress", documentId], queryFn: () => getProgress(documentId) });
   const notionsProgressQuery = useQuery({ queryKey: ["notions-progress", documentId], queryFn: () => getNotionsProgress(documentId) });
 
-  async function handleGenerate() {
-    await generateCardsForDocument(documentId);
+  const generationStatusQuery = useQuery({
+    queryKey: ["generation-status", documentId],
+    queryFn: () => getGenerationStatus(documentId),
+    enabled: generating,
+    refetchInterval: (q) => {
+      const status = q.state.data;
+      if (!status) return GENERATION_POLL_MS;
+      return status.done + status.failed < status.total ? GENERATION_POLL_MS : false;
+    },
+  });
+  const generationStatus = generationStatusQuery.data;
+  const generationComplete = generating && generationStatus !== undefined && generationStatus.done + generationStatus.failed >= generationStatus.total;
+
+  useEffect(() => {
+    if (!generationComplete) return;
+    setGenerating(false);
+    void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
+  }, [generationComplete, documentId, queryClient]);
+
+  useEffect(() => {
+    if (generationStatusQuery.status !== "error") return;
+    setGenerating(false);
+    setGenerateError(true);
+  }, [generationStatusQuery.status]);
+
+  async function handleGenerate() {
+    setGenerateError(false);
+    try {
+      await generateCardsForDocument(documentId);
+      setGenerating(true);
+    } catch {
+      setGenerateError(true);
+    }
   }
 
   if (notionsQuery.status === "pending") {
@@ -109,19 +155,33 @@ export function NotionsScreen({
 
   const progress = progressQuery.data;
   const notionsProgress = notionsProgressQuery.data;
+  const allNotionsHaveCards =
+    notionsProgress !== undefined && notions.every((notion) => (notionsProgress.find((p) => p.notionId === notion.id)?.totalCards ?? 0) > 0);
+  const generateLabel = generating ? "Création en cours…" : allNotionsHaveCards ? "Régénérer les fiches" : "Créer les fiches";
 
   return (
     <main className="p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        <div className="flex items-center gap-3">
+          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+            Retour à mes cours
+          </button>
+          <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        </div>
         <div className="flex items-center gap-3">
           {progress && (
             <p className="text-sm text-text-muted">
               {progress.mastered} / {progress.total} notions maîtrisées
             </p>
           )}
-          <Button variant="secondary" onClick={() => void handleGenerate()}>
-            Créer les fiches
+          {generating && (
+            <p aria-live="polite" className="text-sm text-text-muted">
+              {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
+            </p>
+          )}
+          {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
+          <Button variant="secondary" disabled={generating} onClick={() => void handleGenerate()}>
+            {generateLabel}
           </Button>
           <Button variant="accent" onClick={() => onReview()}>
             Réviser

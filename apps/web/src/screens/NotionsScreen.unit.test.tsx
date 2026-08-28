@@ -68,6 +68,30 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("2 / 5 notions maîtrisées")).toBeInTheDocument();
   });
 
+  it("ready state: offers a way back to the courses list (not just the empty/error states)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("Photosynthèse");
+
+    await user.click(screen.getByRole("button", { name: /retour à mes cours/i }));
+
+    expect(onBack).toHaveBeenCalled();
+  });
+
   it("ready state: shows each notion's own mastery progress, with a distinct label when it has no cards yet", async () => {
     vi.stubGlobal(
       "fetch",
@@ -171,7 +195,9 @@ describe("NotionsScreen", () => {
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         calls.push(`${init?.method ?? "GET"} ${url}`);
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 1, failed: 0 }), { status: 200 }));
         if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 }));
         return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
       }),
@@ -182,5 +208,100 @@ describe("NotionsScreen", () => {
     await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
 
     expect(calls).toContainEqual("POST /api/documents/doc-1/generate");
+  });
+
+  it("generation: disables the button and shows an in-progress state while cards are being created", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        // Never resolves "done": the status stays in progress for the
+        // whole test, so the loading state is observable, not a flash.
+        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 3, failed: 0 }), { status: 200 }));
+        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+
+    expect(await screen.findByText(/création en cours/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 \/ 3/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /création en cours/i })).toBeDisabled();
+  });
+
+  it("generation: tracks progress via generation-status and invalidates notions/progress once done", async () => {
+    const user = userEvent.setup();
+    let statusCalls = 0;
+    let notionsProgressCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          notionsProgressCalls += 1;
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (url.includes("/generation-status")) {
+          statusCalls += 1;
+          const body = statusCalls === 1 ? { done: 1, total: 3, failed: 0 } : { done: 3, total: 3, failed: 0 };
+          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+        }
+        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    const notionsProgressCallsBefore = notionsProgressCalls;
+    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+
+    expect(await screen.findByText(/1 \/ 3/)).toBeInTheDocument();
+    // Once done/total match, the button returns to normal and the
+    // notions-progress query (consumed by every notion's mastery label)
+    // gets invalidated, proving the refresh actually happened.
+    await waitFor(() => expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled(), { timeout: 4000 });
+    await waitFor(() => expect(notionsProgressCalls).toBeGreaterThan(notionsProgressCallsBefore), { timeout: 4000 });
+  });
+
+  it("generation: shows an error and re-enables the button if starting generation fails", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (url.includes("/generate")) return Promise.resolve(new Response(null, { status: 500 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de créer les fiches/i);
+    expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled();
+  });
+
+  it("generation: renames the button to 'Régénérer les fiches' once every notion already has cards", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 3 }]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByRole("button", { name: /régénérer les fiches/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^créer les fiches$/i })).not.toBeInTheDocument();
   });
 });

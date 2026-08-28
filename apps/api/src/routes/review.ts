@@ -58,7 +58,7 @@ export const reviewRoutes: FastifyPluginCallback<ReviewRoutesOptions> = (app, op
 
   app.get("/api/documents/:id/progress", async (request) => {
     const { id } = request.params as { id: string };
-    return getProgress({ repo: opts.repo }, request.user!.id, id);
+    return getProgress({ repo: opts.repo }, request.user!.id, id, opts.clock.now());
   });
 
   app.get("/api/documents/:id/notions-progress", async (request) => {

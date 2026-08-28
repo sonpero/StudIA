@@ -94,7 +94,7 @@ test.describe("generate cards and review", () => {
     // docs/modules/generation.md) until it has none left — this only
     // touches this notion's cards, proving the notionId filter is wired
     // end to end, not just at the API layer.
-    const nothingDueYet = page.getByText("Rien à réviser pour l'instant.");
+    const nothingDueYet = page.getByText("Tout est à jour.");
     const revealButton = page.getByRole("button", { name: "Révéler la réponse" });
     const sessionDone = page.getByText("Tu as terminé cette session.");
     for (let i = 0; i < 5; i += 1) {

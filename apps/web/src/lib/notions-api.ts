@@ -32,10 +32,10 @@ export async function getGenerationStatus(documentId: string): Promise<Generatio
   return res.json() as Promise<GenerationStatus>;
 }
 
-export async function getProgress(documentId: string): Promise<{ mastered: number; total: number }> {
+export async function getProgress(documentId: string): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
   const res = await apiFetch(`/api/documents/${documentId}/progress`);
   if (!res.ok) throw new Error("Impossible de charger la progression.");
-  return res.json() as Promise<{ mastered: number; total: number }>;
+  return res.json() as Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
 }
 
 export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };

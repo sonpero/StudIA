@@ -149,7 +149,7 @@ describe("review routes", () => {
   it("reports progress for the document", async () => {
     const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/progress", headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ mastered: 0, total: 1 });
+    expect(res.json()).toEqual({ mastered: 0, total: 1, nextDueDate: null });
   });
 
   it("reports progress per notion for the document", async () => {

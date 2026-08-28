@@ -1,20 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { getProgress } from "../lib/notions-api.js";
 import { abandonSession, startSession, submitReview, type CardSchedule, type DueCard, type Rating } from "../lib/review-api.js";
 
 const RATING_LABEL: Record<Rating, string> = { 1: "À revoir", 2: "Difficile", 3: "Correct", 4: "Facile" };
 
 const dueDateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
+function formatDate(iso: string): string {
+  return dueDateFormatter.format(new Date(iso));
+}
+
 function formatDueDate(schedule: CardSchedule | null): string {
-  return schedule ? dueDateFormatter.format(new Date(schedule.due)) : "Nouvelle fiche";
+  return schedule ? formatDate(schedule.due) : "Nouvelle fiche";
 }
 
 export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: string; notionId?: string; onLeave: () => void }) {
+  const queryClient = useQueryClient();
   const [revealed, setRevealed] = useState(false);
   const [index, setIndex] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -29,6 +35,16 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
     },
   });
 
+  // Backs the empty state's "next due date" and the completion recap.
+  // Shares NotionsScreen's ["progress", documentId] cache entry — often
+  // already warm from the screen the user just came from — and is the
+  // query item 5's post-rating invalidation targets.
+  const progressQuery = useQuery({
+    queryKey: ["progress", documentId],
+    queryFn: () => getProgress(documentId!),
+    enabled: Boolean(documentId),
+  });
+
   async function handleLeave() {
     if (sessionQuery.data) await abandonSession(sessionQuery.data.sessionId).catch(() => undefined);
     onLeave();
@@ -39,6 +55,10 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
     setSubmitting(true);
     try {
       await submitReview(card.cardId, rating, Date.now() - (startedAt ?? Date.now()));
+      if (documentId) {
+        void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
+        void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
+      }
       setIndex((i) => i + 1);
       setRevealed(false);
       setStartedAt(Date.now());
@@ -69,12 +89,17 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
 
   const { cards } = sessionQuery.data;
 
+  // Pure spaced repetition, no training-mode filler: nothing due is the
+  // normal, expected state, not a gap to explain away.
+  const nextDueDate = progressQuery.data?.nextDueDate;
+
   if (cards.length === 0) {
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Sleeping />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
-        <p>Rien à réviser pour l'instant.</p>
+        <p>Tout est à jour.</p>
+        {nextDueDate && <p className="text-sm text-text-muted">Prochaine fiche à réviser le {formatDate(nextDueDate)}.</p>}
         <Button variant="secondary" onClick={onLeave}>
           Retour
         </Button>
@@ -89,6 +114,10 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <p>Tu as terminé cette session.</p>
+        <p className="text-sm text-text-muted">
+          Tu as revu {cards.length} fiche{cards.length > 1 ? "s" : ""}.
+        </p>
+        {nextDueDate && <p className="text-sm text-text-muted">Prochaine fiche à réviser le {formatDate(nextDueDate)}.</p>}
         <Button variant="accent" onClick={onLeave}>
           Retour
         </Button>

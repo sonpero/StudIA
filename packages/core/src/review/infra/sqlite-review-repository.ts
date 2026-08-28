@@ -160,11 +160,22 @@ export class SqliteReviewRepository implements ReviewRepository {
     `);
   }
 
-  getProgress(userId: string, documentId: string): Promise<{ mastered: number; total: number }> {
+  getProgress(userId: string, documentId: string, now: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }> {
     const rows = this.getNotionCardCounts(userId, documentId);
     const total = rows.length;
     const mastered = rows.filter((row) => row.activeCount > 0 && row.activeCount === row.masteredActiveCount).length;
-    return Promise.resolve({ mastered, total });
+
+    const nextDueRow = this.db.get<{ nextDueDate: string | null }>(sql`
+      SELECT MIN(s.due) AS nextDueDate
+      FROM ${notionsTable} AS n
+      JOIN ${cardsTable} AS c ON c.notion_id = n.id AND c.user_id = n.user_id
+      JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
+      WHERE n.document_id = ${documentId} AND n.user_id = ${userId}
+        AND c.state = 'active'
+        AND s.due > ${now.toISOString()}
+    `);
+
+    return Promise.resolve({ mastered, total, nextDueDate: nextDueRow?.nextDueDate ?? null });
   }
 
   getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]> {

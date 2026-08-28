@@ -166,13 +166,39 @@ describe("SqliteReviewRepository", () => {
       aSchedule({ cardId: "not-mastered-card", stability: 1, reps: 1 }),
     );
 
-    expect(await repo.getProgress("u1", "doc-1")).toEqual({ mastered: 1, total: 2 });
+    expect(await repo.getProgress("u1", "doc-1", now)).toEqual({ mastered: 1, total: 2, nextDueDate: null });
   });
 
   it("getProgress counts a notion with no cards yet toward the total, but never as mastered", async () => {
     const { repo } = setup();
 
-    expect(await repo.getProgress("u1", "doc-1")).toEqual({ mastered: 0, total: 2 });
+    expect(await repo.getProgress("u1", "doc-1", now)).toEqual({ mastered: 0, total: 2, nextDueDate: null });
+  });
+
+  it("getProgress's nextDueDate is null when the document has no cards at all", async () => {
+    const { repo } = setup();
+
+    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBeNull();
+  });
+
+  it("getProgress's nextDueDate is null when every card is already due, not scheduled in the future", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "due-card", "n1", "u1");
+    await repo.submitReview("u1", aReview({ id: "r1", cardId: "due-card" }), aSchedule({ cardId: "due-card", due: "2026-01-09T00:00:00.000Z" }));
+
+    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBeNull();
+  });
+
+  it("getProgress's nextDueDate picks the closest future due date among a mix of due and future cards", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "already-due", "n1", "u1");
+    await repo.submitReview("u1", aReview({ id: "r1", cardId: "already-due" }), aSchedule({ cardId: "already-due", due: "2026-01-09T00:00:00.000Z" }));
+    seedCard(db, "soon", "n1", "u1");
+    await repo.submitReview("u1", aReview({ id: "r2", cardId: "soon" }), aSchedule({ cardId: "soon", due: "2026-01-12T00:00:00.000Z" }));
+    seedCard(db, "later", "n2", "u1");
+    await repo.submitReview("u1", aReview({ id: "r3", cardId: "later" }), aSchedule({ cardId: "later", due: "2026-01-20T00:00:00.000Z" }));
+
+    expect((await repo.getProgress("u1", "doc-1", now)).nextDueDate).toBe("2026-01-12T00:00:00.000Z");
   });
 
   it("getNotionsProgress reports mastered/total cards per notion, sharing getProgress's threshold and join", async () => {

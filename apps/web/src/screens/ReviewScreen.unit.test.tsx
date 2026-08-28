@@ -13,6 +13,7 @@ function renderScreen(props: { notionId?: string } = {}) {
       <ReviewScreen documentId="doc-1" notionId={props.notionId} onLeave={() => undefined} />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 const aDueCard = {
@@ -39,7 +40,7 @@ describe("ReviewScreen", () => {
     renderScreen();
 
     expect(screen.getByText("Révision")).toBeInTheDocument();
-    expect(screen.queryByText(/rien à réviser/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/tout est à jour/i)).not.toBeInTheDocument();
   });
 
   it("error state: shows the confused mascot and a retry action", async () => {
@@ -51,15 +52,48 @@ describe("ReviewScreen", () => {
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
-  it("empty state: nothing due, sleeping mascot, no urgency copy", async () => {
+  it("empty state: reframes as positive (everything is up to date), sleeping mascot, no urgency copy", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 })),
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
+      }),
     );
 
     renderScreen();
 
-    expect(await screen.findByText(/rien à réviser pour l'instant/i)).toBeInTheDocument();
+    expect(await screen.findByText(/tout est à jour/i)).toBeInTheDocument();
+    expect(screen.queryByText(/rien à réviser/i)).not.toBeInTheDocument();
+  });
+
+  it("empty state: shows the next due date when it is available", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 1, total: 3, nextDueDate: "2026-03-05T00:00:00.000Z" }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText(/5 mars 2026/i)).toBeInTheDocument();
+  });
+
+  it("empty state: says nothing about a next due date when none is known", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [] }), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    await screen.findByText(/tout est à jour/i);
+    expect(screen.queryByText(/prochaine fiche/i)).not.toBeInTheDocument();
   });
 
   it("ready state: shows the question, reveals the answer on demand, then rates and advances", async () => {
@@ -80,11 +114,13 @@ describe("ReviewScreen", () => {
             ),
           );
         }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
         throw new Error(`unexpected fetch: ${url}`);
       }),
     );
 
-    renderScreen();
+    const queryClient = renderScreen();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     expect(await screen.findByText("Que produit la photosynthèse ?")).toBeInTheDocument();
     expect(screen.queryByText("De l'oxygène")).not.toBeInTheDocument();
 
@@ -95,12 +131,47 @@ describe("ReviewScreen", () => {
 
     expect(await screen.findByText(/tu as terminé cette session/i)).toBeInTheDocument();
     expect(calls.find((c) => c.url === "/api/review/cards/c1")?.body).toMatchObject({ rating: 3 });
+    // Recap: how many fiches were reviewed this session (mastery itself
+    // doesn't move in one session, docs: give a sense of progress anyway).
+    expect(screen.getByText(/tu as revu 1 fiche/i)).toBeInTheDocument();
+    // Defensive invalidation (item 5): progress and notions-progress must
+    // be refetched after a rating, not just notions/review-session keys.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["progress", "doc-1"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["notions-progress", "doc-1"] });
+  });
+
+  it("completion recap: shows the next due date when it is available", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [aDueCard] }), { status: 200 }));
+        if (url === "/api/review/cards/c1") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ cardId: "c1", userId: "u1", due: "2026-01-05T00:00:00Z", stability: 2.3, difficulty: 2.1, reps: 1, lapses: 0, lastReviewedAt: "2026-01-01T00:00:00Z" }), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1, nextDueDate: "2026-03-05T00:00:00.000Z" }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Que produit la photosynthèse ?");
+    await user.click(screen.getByRole("button", { name: /révéler la réponse/i }));
+    await user.click(screen.getByRole("button", { name: /correct/i }));
+
+    await screen.findByText(/tu as terminé cette session/i);
+    expect(await screen.findByText(/5 mars 2026/i)).toBeInTheDocument();
   });
 
   it("ready state: shows 'Nouvelle fiche' for a card that has never been scheduled", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: "s1", cards: [aDueCard] }), { status: 200 })),
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [aDueCard] }), { status: 200 }));
+      }),
     );
 
     renderScreen();
@@ -116,7 +187,10 @@ describe("ReviewScreen", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: "s1", cards: [scheduledCard] }), { status: 200 })),
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [scheduledCard] }), { status: 200 }));
+      }),
     );
 
     renderScreen();
@@ -136,7 +210,7 @@ describe("ReviewScreen", () => {
     );
 
     renderScreen({ notionId: "n1" });
-    await screen.findByText(/rien à réviser pour l'instant/i);
+    await screen.findByText(/tout est à jour/i);
 
     expect(calls).toContainEqual({ documentId: "doc-1", notionId: "n1" });
   });
@@ -144,7 +218,10 @@ describe("ReviewScreen", () => {
   it("never shows a countdown or urgency copy while reviewing", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: "s1", cards: [aDueCard] }), { status: 200 })),
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [aDueCard] }), { status: 200 }));
+      }),
     );
 
     renderScreen();

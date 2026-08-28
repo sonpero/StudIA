@@ -26,7 +26,11 @@ export interface ReviewRepository {
   // both written together, or neither is (docs/modules/review.md).
   submitReview(userId: string, review: Review, newSchedule: CardSchedule): Promise<void>;
   getDueCards(userId: string, now: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]>;
-  getProgress(userId: string, documentId: string): Promise<{ mastered: number; total: number }>;
+  // nextDueDate is the earliest strictly-future due date among the
+  // document's active cards, or null if none — `now` is injected so it
+  // stays deterministic in tests (CLAUDE.md: no scheduling-adjacent code
+  // calls `new Date()` internally).
+  getProgress(userId: string, documentId: string, now: Date): Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
   // Same threshold and join as getProgress, factored so both share one
   // source of truth (docs/modules/review.md's mastery rule).
   getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]>;
