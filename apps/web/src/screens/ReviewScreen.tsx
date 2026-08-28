@@ -4,20 +4,26 @@ import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
-import { abandonSession, startSession, submitReview, type DueCard, type Rating } from "../lib/review-api.js";
+import { abandonSession, startSession, submitReview, type CardSchedule, type DueCard, type Rating } from "../lib/review-api.js";
 
 const RATING_LABEL: Record<Rating, string> = { 1: "À revoir", 2: "Difficile", 3: "Correct", 4: "Facile" };
 
-export function ReviewScreen({ documentId, onLeave }: { documentId?: string; onLeave: () => void }) {
+const dueDateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+function formatDueDate(schedule: CardSchedule | null): string {
+  return schedule ? dueDateFormatter.format(new Date(schedule.due)) : "Nouvelle fiche";
+}
+
+export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: string; notionId?: string; onLeave: () => void }) {
   const [revealed, setRevealed] = useState(false);
   const [index, setIndex] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const sessionQuery = useQuery({
-    queryKey: ["review-session", documentId],
+    queryKey: ["review-session", documentId, notionId],
     queryFn: async () => {
-      const result = await startSession(documentId);
+      const result = await startSession(documentId, notionId);
       setStartedAt(Date.now());
       return result;
     },
@@ -100,6 +106,12 @@ export function ReviewScreen({ documentId, onLeave }: { documentId?: string; onL
       </div>
 
       <Card className="flex min-h-48 w-full max-w-md flex-col justify-center gap-4 p-8 text-center">
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <span>Échéance : {formatDueDate(current.schedule)}</span>
+          {current.mastered && (
+            <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">Maîtrisée</span>
+          )}
+        </div>
         <p className="text-lg">{current.question}</p>
         {revealed && <p className="text-lg text-primary">{current.answer}</p>}
         {current.state === "stale" && <p className="text-xs text-text-muted">Cette fiche peut être obsolète, la notion a changé.</p>}

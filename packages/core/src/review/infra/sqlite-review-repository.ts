@@ -5,7 +5,7 @@ import { notionsTable } from "../../content/index.js";
 import type { CardType, CardState } from "../../generation/index.js";
 import type { DueCard } from "../domain/due-card.js";
 import { MASTERY_REPS_THRESHOLD, MASTERY_STABILITY_DAYS_THRESHOLD } from "../domain/mastery.js";
-import type { ReviewRepository } from "../domain/ports.js";
+import type { NotionProgress, ReviewRepository } from "../domain/ports.js";
 import type { CardSchedule, Review } from "../domain/types.js";
 import { cardSchedulesTable, reviewsTable, sessionsTable } from "./schema.js";
 
@@ -121,8 +121,9 @@ export class SqliteReviewRepository implements ReviewRepository {
     return Promise.resolve();
   }
 
-  getDueCards(userId: string, now: Date, filter: { documentId?: string; limit?: number }): Promise<DueCard[]> {
+  getDueCards(userId: string, now: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]> {
     const documentFilter = filter.documentId ? sql`AND n.document_id = ${filter.documentId}` : sql``;
+    const notionFilter = filter.notionId ? sql`AND c.notion_id = ${filter.notionId}` : sql``;
     const limitClause = filter.limit !== undefined ? sql`LIMIT ${filter.limit}` : sql``;
 
     const rows = this.db.all<DueCardRow>(sql`
@@ -135,6 +136,7 @@ export class SqliteReviewRepository implements ReviewRepository {
       LEFT JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
       WHERE c.user_id = ${userId}
         ${documentFilter}
+        ${notionFilter}
         AND (s.due IS NULL OR s.due <= ${now.toISOString()})
       ORDER BY (CASE WHEN s.due IS NULL THEN 1 ELSE 0 END), n.position, c.created_at
       ${limitClause}
@@ -143,9 +145,11 @@ export class SqliteReviewRepository implements ReviewRepository {
     return Promise.resolve(rows.map((row) => toDueCard(userId, row)));
   }
 
-  getProgress(userId: string, documentId: string): Promise<{ mastered: number; total: number }> {
-    const rows = this.db.all<{ activeCount: number; masteredActiveCount: number }>(sql`
-      SELECT
+  // Shared by getProgress (aggregated to notion-level mastery) and
+  // getNotionsProgress (returned per notion): one join, one threshold.
+  private getNotionCardCounts(userId: string, documentId: string): { notionId: string; activeCount: number; masteredActiveCount: number }[] {
+    return this.db.all<{ notionId: string; activeCount: number; masteredActiveCount: number }>(sql`
+      SELECT n.id AS notionId,
         COUNT(CASE WHEN c.state = 'active' THEN 1 END) AS activeCount,
         COUNT(CASE WHEN c.state = 'active' AND s.stability >= ${MASTERY_STABILITY_DAYS_THRESHOLD} AND s.reps >= ${MASTERY_REPS_THRESHOLD} THEN 1 END) AS masteredActiveCount
       FROM ${notionsTable} AS n
@@ -154,10 +158,18 @@ export class SqliteReviewRepository implements ReviewRepository {
       WHERE n.document_id = ${documentId} AND n.user_id = ${userId}
       GROUP BY n.id
     `);
+  }
 
+  getProgress(userId: string, documentId: string): Promise<{ mastered: number; total: number }> {
+    const rows = this.getNotionCardCounts(userId, documentId);
     const total = rows.length;
     const mastered = rows.filter((row) => row.activeCount > 0 && row.activeCount === row.masteredActiveCount).length;
     return Promise.resolve({ mastered, total });
+  }
+
+  getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]> {
+    const rows = this.getNotionCardCounts(userId, documentId);
+    return Promise.resolve(rows.map((row) => ({ notionId: row.notionId, masteredCards: row.masteredActiveCount, totalCards: row.activeCount })));
   }
 
   createSession(userId: string, session: { id: string; documentId: string | null; startedAt: string }): Promise<void> {

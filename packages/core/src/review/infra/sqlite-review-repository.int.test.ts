@@ -120,6 +120,16 @@ describe("SqliteReviewRepository", () => {
     expect(limited).toHaveLength(1);
   });
 
+  it("getDueCards filters by notionId, to review a single notion", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "c-in-n1", "n1", "u1");
+    seedCard(db, "c-in-n2", "n2", "u1");
+
+    const filtered = await repo.getDueCards("u1", now, { notionId: "n1" });
+
+    expect(filtered.map((c) => c.cardId)).toEqual(["c-in-n1"]);
+  });
+
   it("getDueCards includes stale cards, marked as such, and never a card whose notion was deleted", async () => {
     const { db, repo } = setup();
     seedCard(db, "stale-card", "n1", "u1", "stale");
@@ -163,6 +173,40 @@ describe("SqliteReviewRepository", () => {
     const { repo } = setup();
 
     expect(await repo.getProgress("u1", "doc-1")).toEqual({ mastered: 0, total: 2 });
+  });
+
+  it("getNotionsProgress reports mastered/total cards per notion, sharing getProgress's threshold and join", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "mastered-card", "n1", "u1");
+    await repo.submitReview(
+      "u1",
+      aReview({ id: "r1", cardId: "mastered-card" }),
+      aSchedule({ cardId: "mastered-card", stability: 30, reps: 5 }),
+    );
+    seedCard(db, "not-mastered-card", "n2", "u1");
+    await repo.submitReview(
+      "u1",
+      aReview({ id: "r2", cardId: "not-mastered-card" }),
+      aSchedule({ cardId: "not-mastered-card", stability: 1, reps: 1 }),
+    );
+
+    const progress = await repo.getNotionsProgress("u1", "doc-1");
+
+    expect(progress.sort((a, b) => a.notionId.localeCompare(b.notionId))).toEqual([
+      { notionId: "n1", masteredCards: 1, totalCards: 1 },
+      { notionId: "n2", masteredCards: 0, totalCards: 1 },
+    ]);
+  });
+
+  it("getNotionsProgress reports a notion with no cards yet as 0/0", async () => {
+    const { repo } = setup();
+
+    const progress = await repo.getNotionsProgress("u1", "doc-1");
+
+    expect(progress.sort((a, b) => a.notionId.localeCompare(b.notionId))).toEqual([
+      { notionId: "n1", masteredCards: 0, totalCards: 0 },
+      { notionId: "n2", masteredCards: 0, totalCards: 0 },
+    ]);
   });
 
   it("createSession then endSession round-trips, and rejects another user's session", async () => {

@@ -22,13 +22,17 @@ export type DueCard = {
   answer: string;
   options: string[] | null;
   schedule: CardSchedule | null;
+  mastered: boolean;
 };
 
-export async function startSession(documentId?: string): Promise<{ sessionId: string; cards: DueCard[] }> {
+export async function startSession(documentId?: string, notionId?: string): Promise<{ sessionId: string; cards: DueCard[] }> {
+  const body: { documentId?: string; notionId?: string } = {};
+  if (documentId) body.documentId = documentId;
+  if (notionId) body.notionId = notionId;
   const res = await apiFetch("/api/review/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(documentId ? { documentId } : {}),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Impossible de démarrer la révision.");
   return res.json() as Promise<{ sessionId: string; cards: DueCard[] }>;

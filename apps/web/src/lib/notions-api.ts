@@ -37,3 +37,11 @@ export async function getProgress(documentId: string): Promise<{ mastered: numbe
   if (!res.ok) throw new Error("Impossible de charger la progression.");
   return res.json() as Promise<{ mastered: number; total: number }>;
 }
+
+export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };
+
+export async function getNotionsProgress(documentId: string): Promise<NotionProgress[]> {
+  const res = await apiFetch(`/api/documents/${documentId}/notions-progress`);
+  if (!res.ok) throw new Error("Impossible de charger la progression par notion.");
+  return res.json() as Promise<NotionProgress[]>;
+}

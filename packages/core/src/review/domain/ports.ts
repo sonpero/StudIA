@@ -9,6 +9,8 @@ export type Session = {
   endedAt: string | null;
 };
 
+export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };
+
 // Not in docs/modules/review.md's Ports section (M3 has no LLM port at all),
 // but required by its own Use cases list, same reasoning as every other
 // module's repository port. Every method takes userId and filters on it.
@@ -23,8 +25,11 @@ export interface ReviewRepository {
   // One short transaction: the review row and the recomputed schedule are
   // both written together, or neither is (docs/modules/review.md).
   submitReview(userId: string, review: Review, newSchedule: CardSchedule): Promise<void>;
-  getDueCards(userId: string, now: Date, filter: { documentId?: string; limit?: number }): Promise<DueCard[]>;
+  getDueCards(userId: string, now: Date, filter: { documentId?: string; notionId?: string; limit?: number }): Promise<DueCard[]>;
   getProgress(userId: string, documentId: string): Promise<{ mastered: number; total: number }>;
+  // Same threshold and join as getProgress, factored so both share one
+  // source of truth (docs/modules/review.md's mastery rule).
+  getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]>;
   createSession(userId: string, session: { id: string; documentId: string | null; startedAt: string }): Promise<void>;
   endSession(userId: string, sessionId: string, endedAt: string): Promise<boolean>;
 }

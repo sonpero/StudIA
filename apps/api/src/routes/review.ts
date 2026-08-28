@@ -1,4 +1,4 @@
-import { abandonSession, getDueCards, getProgress, startSession, submitReview, type ReviewRepository } from "@studia/core";
+import { abandonSession, getDueCards, getNotionsProgress, getProgress, startSession, submitReview, type ReviewRepository } from "@studia/core";
 import type { FastifyPluginCallback } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -9,17 +9,21 @@ export interface ReviewRoutesOptions {
   clock: { now: () => Date };
 }
 
-const startSessionBodySchema = z.object({ documentId: z.string().optional(), limit: z.number().int().positive().optional() });
+const startSessionBodySchema = z.object({
+  documentId: z.string().optional(),
+  notionId: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 const submitReviewBodySchema = z.object({ rating: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), elapsedMs: z.number().int().nonnegative() });
 
 export const reviewRoutes: FastifyPluginCallback<ReviewRoutesOptions> = (app, opts, done) => {
   app.get("/api/review/due", async (request) => {
-    const { documentId, limit } = request.query as { documentId?: string; limit?: string };
+    const { documentId, notionId, limit } = request.query as { documentId?: string; notionId?: string; limit?: string };
     return getDueCards(
       { repo: opts.repo },
       request.user!.id,
       opts.clock.now(),
-      { documentId, limit: limit ? Number(limit) : undefined },
+      { documentId, notionId, limit: limit ? Number(limit) : undefined },
     );
   });
 
@@ -29,6 +33,7 @@ export const reviewRoutes: FastifyPluginCallback<ReviewRoutesOptions> = (app, op
     async (request) => {
       const result = await startSession({ repo: opts.repo, idGenerator: opts.idGenerator }, request.user!.id, opts.clock.now(), {
         documentId: request.body.documentId,
+        notionId: request.body.notionId,
         limit: request.body.limit,
       });
       return { sessionId: result.sessionId, cards: result.cards };
@@ -54,6 +59,11 @@ export const reviewRoutes: FastifyPluginCallback<ReviewRoutesOptions> = (app, op
   app.get("/api/documents/:id/progress", async (request) => {
     const { id } = request.params as { id: string };
     return getProgress({ repo: opts.repo }, request.user!.id, id);
+  });
+
+  app.get("/api/documents/:id/notions-progress", async (request) => {
+    const { id } = request.params as { id: string };
+    return getNotionsProgress({ repo: opts.repo }, request.user!.id, id);
   });
 
   done();

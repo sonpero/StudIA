@@ -69,6 +69,19 @@ describe("review routes", () => {
     expect(res.json()).toEqual([]);
   });
 
+  it("due cards are enriched with mastered, computed from the schedule", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/review/due", headers: { cookie: aliceCookie } });
+    expect(res.json<{ cardId: string; mastered: boolean }[]>()).toEqual([{ cardId: "c1", mastered: false, notionId: "n1", type: "flashcard", state: "active", question: "Question ?", answer: "Réponse", options: null, schedule: null }]);
+  });
+
+  it("GET /api/review/due filters by notionId, to review a single notion", async () => {
+    const matching = await app.inject({ method: "GET", url: "/api/review/due?notionId=n1", headers: { cookie: aliceCookie } });
+    expect(matching.json<{ cardId: string }[]>().map((c) => c.cardId)).toEqual(["c1"]);
+
+    const nonMatching = await app.inject({ method: "GET", url: "/api/review/due?notionId=does-not-exist", headers: { cookie: aliceCookie } });
+    expect(nonMatching.json()).toEqual([]);
+  });
+
   it("starts a session and draws its due cards", async () => {
     const res = await app.inject({
       method: "POST",
@@ -80,6 +93,17 @@ describe("review routes", () => {
     const body = res.json<{ sessionId: string; cards: { cardId: string }[] }>();
     expect(body.sessionId).toBeTruthy();
     expect(body.cards.map((c) => c.cardId)).toEqual(["c1"]);
+  });
+
+  it("starts a session scoped to a single notion via notionId", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/review/sessions",
+      headers: { cookie: aliceCookie },
+      payload: { documentId: "doc-1", notionId: "n1" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json<{ cards: { cardId: string }[] }>().cards.map((c) => c.cardId)).toEqual(["c1"]);
   });
 
   it("submits a review and returns the new schedule, pushing the due date out", async () => {
@@ -126,5 +150,11 @@ describe("review routes", () => {
     const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/progress", headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ mastered: 0, total: 1 });
+  });
+
+  it("reports progress per notion for the document", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/notions-progress", headers: { cookie: aliceCookie } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([{ notionId: "n1", masteredCards: 0, totalCards: 1 }]);
   });
 });

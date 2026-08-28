@@ -1,12 +1,17 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
-import { generateCardsForDocument, getProgress, listNotions, type Difficulty } from "../lib/notions-api.js";
+import { generateCardsForDocument, getNotionsProgress, getProgress, listNotions, type Difficulty, type NotionProgress } from "../lib/notions-api.js";
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Facile", medium: "Moyen", hard: "Difficile" };
+
+function notionProgressLabel(progress: NotionProgress | undefined): string {
+  if (!progress || progress.totalCards === 0) return "Pas encore de fiches";
+  return `${progress.masteredCards} / ${progress.totalCards} fiches maîtrisées`;
+}
 
 // Splitting into notions runs automatically after extraction
 // (docs/modules/content.md), asynchronously — never block the UI on a job
@@ -17,9 +22,27 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Facile", medium: "
 // document whose split job actually failed.
 const POLL_GIVE_UP_MS = 120_000;
 
-export function NotionsScreen({ documentId, onBack, onReview }: { documentId: string; onBack: () => void; onReview: () => void }) {
+export function NotionsScreen({
+  documentId,
+  onBack,
+  onReview,
+}: {
+  documentId: string;
+  onBack: () => void;
+  onReview: (notionId?: string) => void;
+}) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
+  const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
+
+  function toggleBody(notionId: string) {
+    setExpandedNotionIds((current) => {
+      const next = new Set(current);
+      if (next.has(notionId)) next.delete(notionId);
+      else next.add(notionId);
+      return next;
+    });
+  }
 
   const notionsQuery = useQuery({
     queryKey: ["notions", documentId],
@@ -37,10 +60,12 @@ export function NotionsScreen({ documentId, onBack, onReview }: { documentId: st
     },
   });
   const progressQuery = useQuery({ queryKey: ["progress", documentId], queryFn: () => getProgress(documentId) });
+  const notionsProgressQuery = useQuery({ queryKey: ["notions-progress", documentId], queryFn: () => getNotionsProgress(documentId) });
 
   async function handleGenerate() {
     await generateCardsForDocument(documentId);
     void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
+    void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
   }
 
   if (notionsQuery.status === "pending") {
@@ -83,6 +108,7 @@ export function NotionsScreen({ documentId, onBack, onReview }: { documentId: st
   }
 
   const progress = progressQuery.data;
+  const notionsProgress = notionsProgressQuery.data;
 
   return (
     <main className="p-8">
@@ -97,21 +123,42 @@ export function NotionsScreen({ documentId, onBack, onReview }: { documentId: st
           <Button variant="secondary" onClick={() => void handleGenerate()}>
             Créer les fiches
           </Button>
-          <Button variant="accent" onClick={onReview}>
+          <Button variant="accent" onClick={() => onReview()}>
             Réviser
           </Button>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        {notions.map((notion) => (
-          <Card key={notion.id} className="flex items-center justify-between gap-4" data-testid="notion-card">
-            <div>
-              <h3 className="font-[var(--font-display)] text-base font-extrabold">{notion.title}</h3>
-              <p className="text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
-            </div>
-          </Card>
-        ))}
+        {notions.map((notion) => {
+          const notionProgress = notionsProgress?.find((p) => p.notionId === notion.id);
+          const expanded = expandedNotionIds.has(notion.id);
+          return (
+            <Card key={notion.id} className="flex flex-col gap-3" data-testid="notion-card">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-[var(--font-display)] text-base font-extrabold">{notion.title}</h3>
+                  <p className="text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-text-muted">{notionProgressLabel(notionProgress)}</p>
+                  <Button variant="secondary" onClick={() => onReview(notion.id)}>
+                    Réviser cette notion
+                  </Button>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="self-start text-sm text-primary underline"
+                aria-expanded={expanded}
+                onClick={() => toggleBody(notion.id)}
+              >
+                {expanded ? "Masquer le contenu" : "Voir le contenu"}
+              </button>
+              {expanded && <p className="text-sm text-text">{notion.body}</p>}
+            </Card>
+          );
+        })}
       </div>
     </main>
   );

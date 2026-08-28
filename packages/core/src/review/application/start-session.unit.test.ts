@@ -27,9 +27,17 @@ describe("startSession", () => {
     const result = await startSession({ repo, idGenerator: uuidV7Generator }, "u1", now, { documentId: "doc-1" });
 
     expect(result.sessionId).toBeTruthy();
-    expect(result.cards).toEqual([aDueCard()]);
+    expect(result.cards).toEqual([{ ...aDueCard(), mastered: false }]);
     expect(repo.sessions).toEqual([
       expect.objectContaining({ userId: "u1", documentId: "doc-1", startedAt: now.toISOString(), endedAt: null }) as unknown,
     ]);
+  });
+
+  it("accepts a notionId filter, to review a single notion", async () => {
+    const repo = fakeReviewRepository({ dueCards: [aDueCard()] });
+
+    const result = await startSession({ repo, idGenerator: uuidV7Generator }, "u1", now, { documentId: "doc-1", notionId: "n1" });
+
+    expect(result.cards).toEqual([{ ...aDueCard(), mastered: false }]);
   });
 });

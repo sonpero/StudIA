@@ -15,7 +15,7 @@ function renderScreen() {
   );
 }
 
-const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Photosynthèse", body: "Corps.", difficulty: "medium" as const, position: 0, createdAt: "2026-01-01T00:00:00Z" };
+const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Photosynthèse", body: "La plante capte la lumière.", difficulty: "medium" as const, position: 0, createdAt: "2026-01-01T00:00:00Z" };
 
 describe("NotionsScreen", () => {
   afterEach(() => {
@@ -55,6 +55,7 @@ describe("NotionsScreen", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
         if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
       }),
@@ -67,9 +68,85 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("2 / 5 notions maîtrisées")).toBeInTheDocument();
   });
 
+  it("ready state: shows each notion's own mastery progress, with a distinct label when it has no cards yet", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText("1 / 4 fiches maîtrisées")).toBeInTheDocument();
+  });
+
+  it("ready state: a notion with no cards yet shows an inviting label, not a 0/0 count", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 0 }]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText("Pas encore de fiches")).toBeInTheDocument();
+    expect(screen.queryByText(/^0 \/ 0/)).not.toBeInTheDocument();
+  });
+
+  it("ready state: the notion's body is hidden by default and revealed on demand", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    expect(screen.queryByText("La plante capte la lumière.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("Voir le contenu"));
+
+    expect(screen.getByText("La plante capte la lumière.")).toBeInTheDocument();
+  });
+
+  it("clicking 'Réviser cette notion' starts a review scoped to that notion", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    const onReview = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("Photosynthèse");
+
+    await user.click(screen.getByRole("button", { name: /réviser cette notion/i }));
+
+    expect(onReview).toHaveBeenCalledWith("n1");
+  });
+
   it("polls while there are no notions yet, and shows them once splitting finishes", async () => {
     let notionsCallCount = 0;
     const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
       if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0 }), { status: 200 }));
       notionsCallCount += 1;
       // Empty at first (splitting still running), then populated — proves

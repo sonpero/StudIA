@@ -1,4 +1,4 @@
-import type { DueCard } from "../domain/due-card.js";
+import { withMastery, type DueCardWithMastery } from "../domain/mastery.js";
 import type { ReviewRepository } from "../domain/ports.js";
 
 export interface GetDueCardsDeps {
@@ -6,11 +6,12 @@ export interface GetDueCardsDeps {
 }
 
 // Due first, then new, ordered by notion position (docs/modules/review.md).
-export function getDueCards(
+export async function getDueCards(
   deps: GetDueCardsDeps,
   userId: string,
   now: Date,
-  filter: { documentId?: string; limit?: number },
-): Promise<DueCard[]> {
-  return deps.repo.getDueCards(userId, now, filter);
+  filter: { documentId?: string; notionId?: string; limit?: number },
+): Promise<DueCardWithMastery[]> {
+  const cards = await deps.repo.getDueCards(userId, now, filter);
+  return cards.map(withMastery);
 }
