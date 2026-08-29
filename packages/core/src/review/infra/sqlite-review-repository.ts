@@ -209,4 +209,52 @@ export class SqliteReviewRepository implements ReviewRepository {
     this.db.update(sessionsTable).set({ endedAt }).where(eq(sessionsTable.id, sessionId)).run();
     return Promise.resolve(true);
   }
+
+  // `c.state = 'active'` matches getNotionCardCounts's own filter exactly —
+  // divergent predicates would give the two callers different active-card
+  // counts for the same notion. scheduleCardId (the join's key column, the
+  // primary key of card_schedules) is the null sentinel, not an arbitrary
+  // payload column like `due`: a payload column could in principle be null
+  // on a real row without meaning "no row", the join key cannot.
+  getCardSchedulesForDocument(userId: string, documentId: string): Promise<{ notionId: string; cardId: string; schedule: CardSchedule | null }[]> {
+    const rows = this.db.all<{
+      notionId: string;
+      cardId: string;
+      scheduleCardId: string | null;
+      due: string | null;
+      stability: number | null;
+      difficulty: number | null;
+      reps: number | null;
+      lapses: number | null;
+      lastReviewedAt: string | null;
+    }>(sql`
+      SELECT n.id AS notionId, c.id AS cardId, s.card_id AS scheduleCardId,
+        s.due AS due, s.stability AS stability, s.difficulty AS difficulty,
+        s.reps AS reps, s.lapses AS lapses, s.last_reviewed_at AS lastReviewedAt
+      FROM ${notionsTable} AS n
+      JOIN ${cardsTable} AS c ON c.notion_id = n.id AND c.user_id = n.user_id
+      LEFT JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
+      WHERE n.document_id = ${documentId} AND n.user_id = ${userId} AND c.state = 'active'
+    `);
+
+    return Promise.resolve(
+      rows.map((row) => ({
+        notionId: row.notionId,
+        cardId: row.cardId,
+        schedule:
+          row.scheduleCardId === null
+            ? null
+            : {
+                cardId: row.cardId,
+                userId,
+                due: row.due!,
+                stability: row.stability!,
+                difficulty: row.difficulty!,
+                reps: row.reps!,
+                lapses: row.lapses!,
+                lastReviewedAt: row.lastReviewedAt,
+              },
+      })),
+    );
+  }
 }

@@ -37,6 +37,15 @@ function toFsrsCard(current: CardSchedule): FsrsCard {
 // (current === null) the caller (review/application) is the one that knows
 // the real cardId/userId and sets them on the result — this function only
 // computes the FSRS state transition.
+// Added for `progress` (docs/modules/progress.md): the projection crosses
+// the module boundary as a plain number, never as an ts-fsrs Card — this
+// file stays the only one that imports ts-fsrs. `at` is the target date to
+// project to (the deadline, or now+14d for a course with none), never
+// computed here.
+export function projectRetrievability(cardSchedule: CardSchedule, at: Date): number {
+  return engine.get_retrievability(toFsrsCard(cardSchedule), at, false);
+}
+
 export function schedule(current: CardSchedule | null, rating: Rating, now: Date): CardSchedule {
   const fsrsCard = current ? toFsrsCard(current) : createEmptyCard(now);
   const { card } = engine.next(fsrsCard, now, rating);

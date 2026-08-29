@@ -4,6 +4,7 @@ export type { ReviewRepository, Session, NotionProgress, AnswerGrader, GradeErro
 export { MASTERY_STABILITY_DAYS_THRESHOLD, MASTERY_REPS_THRESHOLD, isMastered, withMastery, type DueCardWithMastery } from "./domain/mastery.js";
 export { daysOverdue } from "./domain/days-overdue.js";
 export { gradeMcq } from "./domain/grade-mcq.js";
+export { projectRetrievability } from "./domain/scheduler.js";
 
 export { getDueCards, type GetDueCardsDeps } from "./application/get-due-cards.js";
 export { startSession, type StartSessionDeps } from "./application/start-session.js";

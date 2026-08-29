@@ -380,22 +380,41 @@ None of its own beyond its own repository. `progress` reads:
     documentId: string,
   ): Promise<{ notionId: string; cardId: string; schedule: CardSchedule | null }[]>
   ```
-  One row per active card belonging to the document's notions; `schedule` is
-  `null` for a card never reviewed (no `card_schedules` row), same
-  `LEFT JOIN` shape as the existing `getNotionCardCounts` helper `review`
-  already has internally. `progress` groups this single result set by
-  `notionId` and derives both `reviewed` (`schedule !== null`) and
-  `retrievability` from the same row — never a second call, and never
-  `review.getNotionsProgress` (a different, mastery-threshold-based
-  definition of "done," wrong for coverage's "has this ever been opened").
-- `review.projectRetrievability(schedule: CardSchedule, at: Date): number`
+  One row per **active** card belonging to the document's notions —
+  `c.state = 'active'`, matching `getNotionCardCounts`'s own filter
+  exactly, so the two callers never disagree on how many cards a notion
+  has. `schedule` is `null` for a card never reviewed (no `card_schedules`
+  row); the null check is on `s.card_id` (the join's key column, aliased
+  `scheduleCardId`), not on a payload column like `due` — a payload column
+  could in principle be null on a real row without meaning "no row," the
+  join key cannot. Same `LEFT JOIN` shape as the existing
+  `getNotionCardCounts` helper `review` already has internally. `progress`
+  groups this single result set by `notionId` and derives both `reviewed`
+  (`schedule !== null`) and `retrievability` from the same row — never a
+  second call, and never `review.getNotionsProgress` (a different,
+  mastery-threshold-based definition of "done," wrong for coverage's "has
+  this ever been opened"). Covered by a dedicated integration test:
+  `docs/TESTING.md`.
+
+  **A notion whose only cards are `stale`** (the notion's body changed
+  since generation — `cards.state` is `'active' | 'stale'`, there is no
+  soft-delete state; a hard-deleted card's row is simply gone) produces no
+  rows here, identically to a notion with zero cards at all: `cards: []`,
+  uncovered, `R = 0`. This is intentional, not an oversight — a stale
+  card's historical review state says nothing about whether the *current*
+  (edited) notion content has been reviewed, and `getNotionCardCounts`
+  already excludes stale cards from mastery the same way; `progress`
+  staying consistent with that existing convention, rather than inventing
+  a second rule for "does this count," is the point of matching the filter
+  exactly.
+- `review.projectRetrievability(cardSchedule: CardSchedule, at: Date): number`
   — **new**, exported pure function added to
   `review/domain/scheduler.ts` (the one file allowed to import `ts-fsrs`)
   and re-exported from `review/index.ts`:
   ```ts
   // Reuses the existing private toFsrsCard() already in this file.
-  export function projectRetrievability(schedule: CardSchedule, at: Date): number {
-    return engine.get_retrievability(toFsrsCard(schedule), at, false);
+  export function projectRetrievability(cardSchedule: CardSchedule, at: Date): number {
+    return engine.get_retrievability(toFsrsCard(cardSchedule), at, false);
   }
   ```
   Called once per non-null `schedule` row from the same
@@ -651,20 +670,29 @@ Property-based (`fast-check`) over `computeProgress`, replacing the old
    and after at a fixed target date, and assert the projected value did not
    decrease. (`ts-fsrs`'s own behaviour is not re-tested per
    `docs/TESTING.md`; this only checks the wiring.)
-4. **No deadline, weak form**: with fixed notions/cards (no activity) and
-   `now2 > now1`, `readiness(now2) <= readiness(now1)` — never increases.
-   Stated weakly, not strictly, because two things make strict decrease
-   false in general and `fast-check` will find them on the first run if the
-   property claims otherwise: `readiness` is already floored at `0` when
-   nothing has ever been reviewed (it cannot decrease below its own floor),
-   and the `now + PROGRESS_NO_DEADLINE_HORIZON_DAYS` projection is
-   whole-day granular, so advancing `now` without crossing a day boundary
-   leaves the projected date, and therefore `readiness`, unchanged.
-   **Strict form, conditioned**: when at least one card has been reviewed
-   *and* `now1`/`now2` project to different calendar days, then
-   `readiness(now2) < readiness(now1)` strictly. Both forms scoped to the
-   no-deadline branch — see "A deliberate consequence" above for why the
-   deadline branch is excluded here.
+4. **No deadline: splits into two halves, not a single property, and not a
+   relocation.** The original claim ("readiness decreases with no activity
+   as `now` advances") bundles two different things:
+   - **4a — domain-level, tested here, non-vacuous.** `computeProgress`
+     never recomputes `retrievability` from `now` — it's already-projected,
+     opaque input (see "Why `ProgressCardState`, not a raw FSRS card"
+     above). So: with `notions` (and therefore every card's
+     `retrievability`) held fixed, `readiness` (and `coverage`, same
+     reasoning) is **identical for any two valid values of `now`**,
+     deadline or no deadline. This is not vacuous despite currently being
+     true by construction: nothing stops a future edit from "helpfully"
+     inlining a `now`-dependent adjustment straight into `computeProgress`
+     (duplicating what `review.projectRetrievability` already does
+     upstream) — this property is exactly what would catch that
+     regression, proven below by mutating in such an adjustment.
+   - **4b — pipeline-level, moves to step 3.** The actual decay — the
+     number visibly dropping over time — only happens because `getProgress`
+     re-derives `retrievability` every call by projecting to a *sliding*
+     `now + PROGRESS_NO_DEADLINE_HORIZON_DAYS` target. That recomputation
+     lives outside `computeProgress` entirely (in `getProgress` +
+     `review.projectRetrievability`), so this half is tested there, once
+     both exist. Same weak-vs-strict shape as originally stated (floored at
+     `0`; whole-day granular), just one layer up.
 5. **4bis — with deadline**: with fixed notions/cards (no activity) and
    `deadline.setAt <= now1 < now2 <= deadline.date` — bounded to this
    window because `computeProgress` returns `Err` for any `now` past

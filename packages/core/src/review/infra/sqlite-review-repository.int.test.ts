@@ -300,4 +300,36 @@ describe("SqliteReviewRepository", () => {
     expect(await repo.findSchedule("u1", "c1")).toBeNull();
     expect(db.all(sql`SELECT * FROM reviews WHERE card_id = 'c1'`)).toEqual([]);
   });
+
+  // Added for `progress` (docs/modules/progress.md): a coupling point the
+  // spec calls out explicitly. One row per active card, schedule null vs.
+  // populated read off the same query's join-key column — never a second
+  // read, never a partial object (some schedule fields present, others
+  // missing) if the null check is wrong.
+  it("getCardSchedulesForDocument returns one row per active card, schedule null when never reviewed, populated when it has, excludes stale cards", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "reviewed", "n1", "u1");
+    seedCard(db, "never-reviewed", "n1", "u1");
+    seedCard(db, "stale-card", "n2", "u1", "stale");
+    await repo.submitReview("u1", aReview({ id: "r1", cardId: "reviewed" }), aSchedule({ cardId: "reviewed" }));
+
+    const rows = await repo.getCardSchedulesForDocument("u1", "doc-1");
+
+    expect(rows).toHaveLength(2);
+    const byCardId = new Map(rows.map((row) => [row.cardId, row]));
+    expect(byCardId.get("reviewed")).toEqual({ notionId: "n1", cardId: "reviewed", schedule: aSchedule({ cardId: "reviewed" }) });
+    expect(byCardId.get("never-reviewed")).toEqual({ notionId: "n1", cardId: "never-reviewed", schedule: null });
+    expect(byCardId.has("stale-card")).toBe(false);
+  });
+
+  it("getCardSchedulesForDocument is scoped by user and document", async () => {
+    const { db, repo } = setup();
+    seedDocument(db, "doc-2", "u1");
+    seedNotion(db, "n3", "doc-2", "u1", 0);
+    seedCard(db, "c-doc1", "n1", "u1");
+    seedCard(db, "c-doc2", "n3", "u1");
+
+    expect((await repo.getCardSchedulesForDocument("u1", "doc-1")).map((row) => row.cardId)).toEqual(["c-doc1"]);
+    expect(await repo.getCardSchedulesForDocument("u2", "doc-1")).toEqual([]);
+  });
 });

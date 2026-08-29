@@ -29,6 +29,7 @@ export function fakeReviewRepository(
       Promise.resolve(dueCards.filter((c) => c.schedule === null || new Date(c.schedule.due) < dayBoundary).slice(0, filter.limit)),
     getProgress: (_userId, _documentId, _dayBoundary) => Promise.resolve({ mastered: 0, total: 0, nextDueDate: null }),
     getNotionsProgress: (_userId, _documentId) => Promise.resolve([]),
+    getCardSchedulesForDocument: (_userId, _documentId) => Promise.resolve([]),
     createSession: (userId, session) => {
       sessions.push({ id: session.id, userId, documentId: session.documentId, startedAt: session.startedAt, endedAt: null });
       return Promise.resolve();

@@ -56,4 +56,10 @@ export interface ReviewRepository {
   getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]>;
   createSession(userId: string, session: { id: string; documentId: string | null; startedAt: string }): Promise<void>;
   endSession(userId: string, sessionId: string, endedAt: string): Promise<boolean>;
+  // Added for `progress` (docs/modules/progress.md): one row per active
+  // card of the document's notions. schedule is null when the card has
+  // never been reviewed (no card_schedules row) — same LEFT JOIN shape and
+  // the same `c.state = 'active'` filter as getNotionCardCounts, so the two
+  // callers never disagree on which cards count as active for a notion.
+  getCardSchedulesForDocument(userId: string, documentId: string): Promise<{ notionId: string; cardId: string; schedule: CardSchedule | null }[]>;
 }
