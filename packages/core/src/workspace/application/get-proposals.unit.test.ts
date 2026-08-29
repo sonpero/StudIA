@@ -28,13 +28,40 @@ function aProposal(overrides: Partial<TodoProposal> = {}): TodoProposal {
 }
 
 describe("getProposals", () => {
-  it("returns the job's proposals for their owner", async () => {
+  it("returns the job's status and its proposals for their owner", async () => {
     const repo = fakeTodoRepository({ proposals: [aProposal()] });
-    const jobQueue = fakeJobQueueForWorkspace([aJob()]);
+    const jobQueue = fakeJobQueueForWorkspace([aJob({ status: "done" })]);
 
     const result = await getProposals({ repo, jobQueue }, "u1", "job-1");
 
-    expect(result).toEqual({ ok: true, value: [aProposal()] });
+    expect(result).toEqual({ ok: true, value: { status: "done", lastError: null, proposals: [aProposal()] } });
+  });
+
+  it("still-running: status is pending/running, proposals empty — distinct from a finished empty result", async () => {
+    const repo = fakeTodoRepository({ proposals: [] });
+    const jobQueue = fakeJobQueueForWorkspace([aJob({ status: "running" })]);
+
+    const result = await getProposals({ repo, jobQueue }, "u1", "job-1");
+
+    expect(result).toEqual({ ok: true, value: { status: "running", lastError: null, proposals: [] } });
+  });
+
+  it("failed: carries the job's own readable lastError, never a raw code", async () => {
+    const repo = fakeTodoRepository({ proposals: [] });
+    const jobQueue = fakeJobQueueForWorkspace([aJob({ status: "failed", lastError: "La photo est trop floue pour être lue." })]);
+
+    const result = await getProposals({ repo, jobQueue }, "u1", "job-1");
+
+    expect(result).toEqual({ ok: true, value: { status: "failed", lastError: "La photo est trop floue pour être lue.", proposals: [] } });
+  });
+
+  it("a legible-but-empty photo's job is done with an empty array, not not-found and not failed", async () => {
+    const repo = fakeTodoRepository({ proposals: [] });
+    const jobQueue = fakeJobQueueForWorkspace([aJob({ status: "done" })]);
+
+    const result = await getProposals({ repo, jobQueue }, "u1", "job-1");
+
+    expect(result).toEqual({ ok: true, value: { status: "done", lastError: null, proposals: [] } });
   });
 
   it("returns Err('not-found') for a job belonging to another user", async () => {
@@ -53,14 +80,5 @@ describe("getProposals", () => {
     const result = await getProposals({ repo, jobQueue }, "u1", "missing");
 
     expect(result).toEqual({ ok: false, error: "not-found" });
-  });
-
-  it("a legible-but-empty photo's job returns an empty array, not not-found", async () => {
-    const repo = fakeTodoRepository({ proposals: [] });
-    const jobQueue = fakeJobQueueForWorkspace([aJob()]);
-
-    const result = await getProposals({ repo, jobQueue }, "u1", "job-1");
-
-    expect(result).toEqual({ ok: true, value: [] });
   });
 });

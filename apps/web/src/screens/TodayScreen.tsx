@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useId, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
-import { getToday, type TodayView } from "../lib/today-api.js";
+import { uploadTodoPhoto } from "../lib/proposals-api.js";
+import { getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
 
 const QUERY_KEY = ["today"];
 
@@ -25,19 +27,58 @@ function CourseCountCard({ documentTitle, count, unit }: { documentTitle: string
   );
 }
 
-// Read-only for now (docs/modules/workspace.md's step 1 CRUD exists at the
-// API, but the creation/edit form and the checkbox interaction land with
-// step 4's confirmation screen work) — no button, no checkbox here yet.
-function TodoRow({ todo }: { todo: TodayView["todos"][number] }) {
+function TodoRow({ todo, onToggle }: { todo: TodayView["todos"][number]; onToggle: (done: boolean) => void }) {
   return (
-    <li className={todo.done ? "line-through text-text-muted" : "text-text"} data-testid="todo-row">
-      {todo.label}
+    <li className="flex items-center gap-2" data-testid="todo-row">
+      <input type="checkbox" checked={todo.done} onChange={(e) => onToggle(e.target.checked)} aria-label={todo.label} />
+      <span className={todo.done ? "line-through text-text-muted" : "text-text"}>{todo.label}</span>
     </li>
   );
 }
 
-export function TodayScreen({ onBack }: { onBack: () => void }) {
+// Reused in both the empty and ready states: the only way in this screen to
+// reach the photo-extraction flow (docs/modules/workspace.md's step 3).
+function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputId = useId();
+
+  async function handleChange(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const { jobId } = await uploadTodoPhoto(file);
+      onUploaded(jobId);
+    } catch {
+      setError("Impossible d'envoyer la photo. Vérifie ta connexion et réessaie.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={inputId} className="text-sm font-medium">
+        Ajouter des todos depuis une photo de l'agenda
+      </label>
+      <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(e) => void handleChange(e.target.files?.[0])} className="text-sm" />
+      {error && (
+        <p role="alert" className="text-sm text-warning">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function TodayScreen({ onBack, onOpenProposals }: { onBack: () => void; onOpenProposals: (jobId: string) => void }) {
+  const queryClient = useQueryClient();
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: getToday });
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) => toggleTodo(id, done),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
   if (query.status === "pending") {
     return (
@@ -82,6 +123,7 @@ export function TodayScreen({ onBack }: { onBack: () => void }) {
         <Idle />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
         <p>Rien de prévu pour l'instant. Profites-en pour prendre un cours en photo.</p>
+        <PhotoUploadInput onUploaded={onOpenProposals} />
       </main>
     );
   }
@@ -128,18 +170,19 @@ export function TodayScreen({ onBack }: { onBack: () => void }) {
         </section>
       )}
 
-      {view.todos.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-text-muted">Todos</h2>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-text-muted">Todos</h2>
+        {view.todos.length > 0 && (
           <Card>
             <ul className="flex flex-col gap-2">
               {view.todos.map((todo) => (
-                <TodoRow key={todo.id} todo={todo} />
+                <TodoRow key={todo.id} todo={todo} onToggle={(done) => toggleMutation.mutate({ id: todo.id, done })} />
               ))}
             </ul>
           </Card>
-        </section>
-      )}
+        )}
+        <PhotoUploadInput onUploaded={onOpenProposals} />
+      </section>
     </main>
   );
 }

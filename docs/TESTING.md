@@ -218,6 +218,7 @@ rules from `docs/UI.md` honestly.
 | `no-fsrs-outside-review` | `ts-fsrs` imported outside `review/domain/scheduler.ts` |
 | `no-circular-dependency` | Any import cycle, anywhere in the cruised graph |
 | `workspace-no-cross-module-sql` | `workspace/infra/**` importing a VALUE (not just a type) from another module's `index.ts` |
+| `no-second-ai-client-wrapper` | `@ai-sdk/<provider>` imported anywhere but `shared/model-client.ts` |
 | `frozen-kernels` | `jobs/**` and `shared/**` importing any business module |
 
 Each rule ships with a deliberate violation in a scratch branch to prove it fires.
@@ -295,6 +296,23 @@ kernels, not business modules with tables of their own, so the rule's `to`
 now excludes them by name (`(?!workspace/|shared/|jobs/)`). Re-ran the
 value-import/type-only-import check above after the fix: still fires on
 `content`'s table, still silent on a type-only reference.
+
+`no-second-ai-client-wrapper`'s non-vacuity (M6 step 4) was checked by
+temporarily adding `import { createAnthropic } from "@ai-sdk/anthropic";
+export const __tempSecondClient = createAnthropic({ apiKey: "x" });` to
+`workspace/infra/claude-todo-extractor.ts`, running `pnpm lint`, and reading
+the failure before reverting:
+
+```
+error no-second-ai-client-wrapper: packages/core/src/workspace/infra/claude-todo-extractor.ts → node_modules/.pnpm/@ai-sdk+anthropic@1.2.12_zod@3.25.76/node_modules/@ai-sdk/anthropic/dist/index.mjs
+```
+
+No pre-existing violations were found when the rule was first added — every
+current adapter already goes through `shared.createLanguageModel`. This is
+the rule M6's acceptance box ("todo extraction reuses the existing port, no
+new LLM adapter") rests on: `ClaudeTodoExtractor` is a new adapter *class*
+(expected, CLAUDE.md rule 3), but this rule is what makes it not a second
+client wrapper.
 
 Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves

@@ -281,9 +281,9 @@ describe("workspace routes", () => {
   });
 
   describe("proposals: GET, confirm, reject", () => {
-    function seedProposalsJob(jobId: string, userId: string, storedPath: string) {
-      openDatabase(dbPath).run(sql`INSERT INTO jobs (id, user_id, type, payload_json, status, run_after, created_at, updated_at)
-          VALUES (${jobId}, ${userId}, 'extract-todos', ${JSON.stringify({ storedPath })}, 'done', ${now.toISOString()}, ${now.toISOString()}, ${now.toISOString()})`);
+    function seedProposalsJob(jobId: string, ownerId: string, storedPath: string, status: "pending" | "running" | "done" | "failed" = "done", lastError: string | null = null) {
+      openDatabase(dbPath).run(sql`INSERT INTO jobs (id, user_id, type, payload_json, status, last_error, run_after, created_at, updated_at)
+          VALUES (${jobId}, ${ownerId}, 'extract-todos', ${JSON.stringify({ storedPath })}, ${status}, ${lastError}, ${now.toISOString()}, ${now.toISOString()}, ${now.toISOString()})`);
     }
 
     function seedProposal(id: string, jobId: string, userId: string, label: string) {
@@ -295,15 +295,37 @@ describe("workspace routes", () => {
       return openDatabase(dbPath).all<{ id: string }>(sql`SELECT id FROM users WHERE username = ${username}`)[0]!.id;
     }
 
-    it("GET returns the job's proposals", async () => {
+    it("GET returns the job's status and its proposals", async () => {
       const alice = userId("alice");
-      seedProposalsJob("job-1", alice, "u/job-1/0.jpg");
+      seedProposalsJob("job-1", alice, "u/job-1/0.jpg", "done");
       seedProposal("p1", "job-1", alice, "Rendre le devoir de maths");
 
       const res = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual([{ id: "p1", jobId: "job-1", userId: alice, label: "Rendre le devoir de maths", dueDate: "2026-03-10", subjectHint: "Maths", createdAt: now.toISOString() }]);
+      expect(res.json()).toEqual({
+        status: "done",
+        lastError: null,
+        proposals: [{ id: "p1", jobId: "job-1", userId: alice, label: "Rendre le devoir de maths", dueDate: "2026-03-10", subjectHint: "Maths", createdAt: now.toISOString() }],
+      });
+    });
+
+    it("GET while still extracting: status pending/running, no proposals yet — distinct from a finished empty result", async () => {
+      seedProposalsJob("job-1", userId("alice"), "u/job-1/0.jpg", "running");
+
+      const res = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: "running", lastError: null, proposals: [] });
+    });
+
+    it("GET after a failed extraction: carries the readable reason, never a raw error code", async () => {
+      seedProposalsJob("job-1", userId("alice"), "u/job-1/0.jpg", "failed", "La photo est trop floue pour être lue.");
+
+      const res = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: "failed", lastError: "La photo est trop floue pour être lue.", proposals: [] });
     });
 
     it("GET rejects another user's job (403)", async () => {
@@ -331,7 +353,7 @@ describe("workspace routes", () => {
       expect(todos[0]).toMatchObject({ label: "Rendre le devoir de maths", source: "photo" });
 
       const getAfter = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
-      expect(getAfter.json()).toEqual([]);
+      expect(getAfter.json<{ proposals: unknown[] }>().proposals).toEqual([]);
       await expect(fileStore.read(storedPath)).rejects.toThrow();
     });
 
@@ -346,7 +368,7 @@ describe("workspace routes", () => {
 
       expect(res.statusCode).toBe(204);
       const getAfter = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
-      expect(getAfter.json()).toEqual([]);
+      expect(getAfter.json<{ proposals: unknown[] }>().proposals).toEqual([]);
       await expect(fileStore.read(storedPath)).rejects.toThrow();
 
       const todayRes = await app.inject({ method: "GET", url: "/api/today?today=2026-03-02&dayBoundary=2026-03-03T00%3A00%3A00.000Z", headers: { cookie: aliceCookie } });

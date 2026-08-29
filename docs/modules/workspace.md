@@ -369,6 +369,18 @@ use to read their own job payloads back. No new table, no denormalized
 column repeated across a job's proposal rows, and it works identically
 whether the job produced zero proposals or several.
 
+**Assumed limitation, same category as `progress.md`'s for
+`listNotionsForUser`/`getCardSchedulesForUser`, not previously stated here:**
+`jobQueue.listJobs(userId, 'extract-todos')` returns every `extract-todos`
+job the user has ever created, unpaginated, and `findTodoPhotoUpload` scans
+that whole list to find one by id — on every `getProposals`, `confirmProposals`,
+and `rejectProposals` call. `listTodos` is the same shape, once over. Both
+are fine at "a handful of users" (CLAUDE.md), each uploading occasionally —
+this stops being true once a single user's history of planner-photo uploads
+grows large, at which point this needs a real lookup (indexed by id, not a
+linear scan of everything), not copying this pattern as-is into the next
+module that wants "read a job back."
+
 **Both paths are tested, and neither fails on an already-deleted file.**
 `FileStore.delete` (`LocalFileStore`) already calls Node's `rm` with
 `force: true` — a missing file is a no-op there, not an error — so
@@ -379,17 +391,21 @@ attempt, `not-found` from the DB half is impossible since the job/proposals
 were already handled — see the transaction ordering above) without a
 special case.
 
-**Known, narrower gap, disclosed rather than left implicit: a permanently
-failed job's photo is not cleaned up.** If `TodoExtractor.extract` reports
-`legible: false`, or the job exhausts its retries, `handleTodoPhotoJob`
-never reaches the success path, so no confirm/reject ever happens for it,
-and the file is never deleted by this mechanism. This mirrors, not
-contradicts, `ingestion`'s own precedent: a permanently failed extraction
-there doesn't auto-delete its pages either — only an explicit terminal
-action does (there, `deleteDocument`; here, there is no equivalent for a
-failed photo upload in this milestone, since there is no `documents`-like
-row to attach a "delete this failed upload" action to). Smaller and more
-defensible than blanket retention, but real — not silently traded away.
+**Narrower than first thought — revised in step 4.** An earlier draft of
+this section treated a permanently failed job's photo as uncleanable by
+this mechanism: no confirm/reject would ever happen for it, so no
+cleanup. That assumed the confirmation screen (step 4) would have nothing
+to call for a failed job. It does: `confirmProposals`/`rejectProposals`
+are keyed on the **job's** existence, not on its status or on having any
+proposals (see above) — a `failed` job still has a job row, so
+`rejectProposals` (wired to the screen's "Fermer" action on the failure
+state, `docs/UI.md`'s error-state pattern) still finds it, still deletes
+its (zero) proposals, and still deletes its file. **The gap is real only
+if the person never opens or dismisses the failed job's screen** — closing
+the tab immediately, or a job that fails without the person ever coming
+back to check on it. Smaller still than the version this replaces, and
+now stated precisely rather than as a blanket "failed jobs leak," which
+was not quite true once the screen exists to dismiss them from.
 
 ## API
 
@@ -398,7 +414,7 @@ defensible than blanket retention, but real — not silently traded away.
 | `GET /api/today` | The composed view |
 | `POST /api/todos` · `PATCH /api/todos/:id` · `DELETE /api/todos/:id` | CRUD |
 | `POST /api/todos/from-photo` | Multipart, writes the photo via `FileStore`, enqueues extraction |
-| `GET /api/todos/proposals/:jobId` | Proposals awaiting confirmation |
+| `GET /api/todos/proposals/:jobId` | `{ status, lastError, proposals }` — see below |
 | `POST /api/todos/proposals/:jobId/confirm` | `{ accepted: [...] }` |
 | `POST /api/todos/proposals/:jobId/reject` | No body |
 
@@ -406,9 +422,65 @@ defensible than blanket retention, but real — not silently traded away.
 though its own prose two paragraphs above it says "rejecting deletes it" —
 a real gap, not a rename. Added here.
 
+**`GET`'s response carries the job's `status` and `lastError`, not just the
+proposal array — found missing while building step 4's confirmation
+screen, not in any earlier draft.** A bare `TodoProposal[]` cannot
+distinguish three states that all look like "empty": still extracting
+(`pending`/`running`), extracted with genuinely nothing found (`done`,
+empty — a valid, non-error outcome per this module's Domain section), and
+failed (needs `lastError`'s human-readable reason, e.g. "La photo est trop
+floue pour être lue.", never a raw code). The confirmation screen cannot
+render its required states — "extraction in progress," "nothing found,"
+"failed with a reason" — without this. Every field the screen needs comes
+from a single call: no separate "job status" endpoint.
+
 Pomodoro's two routes from the original draft (`POST /api/pomodoro` ·
 `PATCH /api/pomodoro/:id`) move to M7's own spec — not built, not routed,
 not tested this milestone.
+
+## UI
+
+**TodayScreen.** Loading (skeleton), error (`confused` mascot, retry), empty
+(`idle` mascot, invite — but the photo-upload input is still present, since
+"nothing due" is not a reason to hide the one way to add something), ready.
+Todos are rendered with a real checkbox (`PATCH .../:id`, invalidating the
+view on success) — the read-only rendering from step 2 was a disclosed,
+temporary simplification pending this step, not a permanent design.
+
+**ProposalsScreen — where the milestone's central invariant becomes
+visible.** The person sees proposals, accepts some, and confirming is the
+only thing that writes to `todos`; the screen's whole job is to make that
+legible, not just enforce it server-side. Four states, all driven by one
+`GET .../proposals/:jobId` poll (`status`/`lastError`/`proposals`, see API
+above):
+
+- **Still extracting** (`pending`/`running`): a plain in-progress message,
+  polled every 1.5s (matching `NotionsScreen`'s own generation-status poll
+  interval) until the job settles — never confused with the other three
+  states, which is exactly why `GET` needed `status` in the first place.
+- **Done, zero proposals**: `idle` mascot, "Aucun devoir trouvé sur cette
+  photo." — a legitimate result (a legible photo can genuinely have nothing
+  on it), never presented as a problem or a bare `0`. A "Fermer" button
+  calls `rejectProposals`, which is also what cleans up the file for this
+  case (see "Where the photo itself goes" above).
+- **Failed**: `confused` mascot, the job's own `lastError` verbatim (e.g.
+  "La photo est trop floue pour être lue.") — never a raw error code, never
+  a generic "something went wrong." "Fermer" calls `rejectProposals` here
+  too, which is what actually closes the file-cleanup gap noted above, for
+  whoever clicks it.
+- **Ready**: one row per proposal, checked by default (the common case is a
+  correctly read photo; unchecking a wrong one is lighter than checking
+  every right one). Each row shows `label`, `dueDate` (or "sans échéance
+  indiquée"), and `subjectHint` as **plain text next to the label, never a
+  course-selection control** — matching this module's own Open question
+  below: subject is a hint, linking to a course is a manual, separate
+  action the person takes afterward, not something this screen guesses at.
+  "Confirmer la sélection" sends exactly the checked ids; "Tout rejeter" is
+  a second, explicit action for "none of these," not a side effect of
+  unchecking everything and confirming (see `rejectProposals`'s own
+  comment for why these stay two functions). No mascot here — a list of
+  proposals to review is data-dense, `docs/UI.md`'s rule for `ProgressScreen`
+  and `TodayScreen`'s own ready states applies the same way here.
 
 ## Out of scope
 
@@ -436,10 +508,66 @@ above).
   `progress.listProgress` already has a dedicated test for
   (`docs/modules/progress.md`), applied here to `dueCards` and
   `notionsBelowTarget` grouping
-- Playwright: photo of a planner to a confirmed, ticked todo
+- Unit: `getProposals` returns `status`/`lastError` distinctly for
+  still-extracting, done-empty, and failed — all three otherwise look like
+  the same empty array
+- Component: `ProposalsScreen`'s four states (still extracting, done-empty,
+  failed with the reason, ready with checkboxes default-checked); subject
+  shown as text, never a `combobox`/course-selection control; confirming
+  sends only the checked ids
+- Component: `TodayScreen`'s todo checkbox sends exactly `{ done: true }`
+  for the toggled todo, no others
+- Playwright (`e2e/todo-photo.spec.ts`): photo of a planner to a confirmed,
+  ticked todo, checked twice — that the unaccepted proposal never becomes a
+  todo, and that the tick survives a reload (persisted, not local state)
 
 ## Open questions
 
 - Should todos extracted from a photo be linked to a course automatically by
   matching the subject name? Tempting, wrong when it guesses badly. Currently the
-  extractor returns `subject` as a hint and the user links manually.
+  extractor returns `subject` as a hint and the user links manually — unchanged
+  through all four steps of this milestone; the temptation to auto-link was not
+  taken anywhere in the implementation either.
+
+## Process
+
+Test-first throughout all four steps, prospective, with exactly one
+disclosed exception: `claude-todo-extractor.contract.test.ts` and
+`fixture-todo-extractor.unit.test.ts` (step 3) were written and run after
+their adapters already existed, not before — verified correct once
+written, not prospectively red first. Every other file across all four
+steps — the repository, every application-layer function, every route, the
+domain exports, `TodayScreen`, `ProposalsScreen` — was written test-first
+and run to a confirmed failure (missing module, 404, or a wrong number
+worked out by hand) before its implementation existed. Three real defects
+were found and fixed while implementing rather than being caught in
+review: `JobQueue.enqueue`'s id can't be known before the file it names
+must already exist (`uploadId`, not `jobId`), a barrel collision on
+`ExtractionError` (renamed `TodoExtractionError`), and a genuine false
+positive in `workspace-no-cross-module-sql` once it met workspace's own
+LLM adapters (excluded `shared`/`jobs`, the frozen kernels, from its `to`).
+A fourth was found while building step 4 rather than earlier: `getProposals`
+returning a bare array could not distinguish "still extracting" from "done,
+empty" from "failed," which the confirmation screen needed to render
+correctly — fixed before the screen was built on top of it, not after.
+
+## Known debts
+
+- **A permanently failed job's photo is cleaned up only if the person
+  opens and dismisses its confirmation screen** (see "Where the photo
+  itself goes, and when it leaves"). Closing the tab on a failed upload
+  and never returning leaks that one file. Narrower than the gap this
+  replaced (which assumed no dismiss action would ever exist), but real.
+- **`jobQueue.listJobs`-based lookups are unpaginated** (`findTodoPhotoUpload`,
+  and `listTodos` the same way) — assumed fine at "a handful of users,"
+  stated so it is not copied unexamined into the next module that wants to
+  read a job back (see "Where the photo itself goes, and when it leaves").
+- **No manual todo-creation or edit *form* was built in the UI this
+  milestone**, only the backend CRUD (step 1) and the checkbox this step
+  added. `docs/MILESTONES.md`'s M6 acceptance boxes and its own demo
+  ("photograph a school planner page, get todo items, tick them off") do
+  not require one, and none was built beyond what they require — CLAUDE.md's
+  "build only what the current milestone requires."
+- Pomodoro and Spotify: not designed, not built, not routed — M7 in full,
+  per this module's own header and `docs/MILESTONES.md`. Nothing in this
+  milestone's implementation forecloses either.

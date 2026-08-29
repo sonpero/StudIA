@@ -206,8 +206,8 @@ adapter).
 **Demo** — Photograph a school planner page, get todo items, tick them off.
 
 **Acceptance**
-- [ ] Todo extraction reuses the existing port, no new LLM adapter
-- [ ] Playwright: photo to checked-off todo
+- [x] Todo extraction reuses the existing port, no new LLM adapter
+- [x] Playwright: photo to checked-off todo
 
 ---
 

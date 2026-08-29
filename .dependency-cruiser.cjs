@@ -57,6 +57,19 @@ module.exports = {
       },
     },
     {
+      name: "no-second-ai-client-wrapper",
+      comment:
+        "@ai-sdk/<provider> (the model client CONSTRUCTION package) may only be imported from shared/model-client.ts — every real LLM adapter builds its client via shared.createLanguageModel, never a client of its own (CLAUDE.md: 'no second client wrapper'). This is what M6's acceptance box ('todo extraction reuses the existing port, no new LLM adapter') actually rests on: ClaudeTodoExtractor is a new adapter CLASS, which is expected (CLAUDE.md rule 3: every port gets one) — this rule is what makes it not a second client wrapper. Deliberately narrower than no-ai-in-progress/no-fsrs-outside-review's `(ai|@ai-sdk)` match: `ai`'s generateObject/LanguageModel are meant to be imported directly by every adapter (vision-extractor.ts, claude-todo-extractor.ts, ...) — only the provider package that actually constructs a client is restricted.",
+      severity: "error",
+      from: {
+        pathNot: "^packages/core/src/shared/model-client\\.ts$",
+      },
+      to: {
+        // Same pnpm-nesting note as no-ai-in-progress above.
+        path: "(^|/)node_modules/@ai-sdk/",
+      },
+    },
+    {
       name: "no-circular-dependency",
       comment:
         "No import cycle, anywhere: two modules that must each load before the other can is exactly the coupling this repo's module-per-domain design (CLAUDE.md) rules out. The concrete case this exists to catch: review <-> progress, considered and rejected for M6 (docs/modules/progress.md's 'notionsBelowTarget' section).",

@@ -24,3 +24,8 @@ export async function getToday(): Promise<TodayView> {
   if (!res.ok) throw new Error("Impossible de charger ta journée.");
   return res.json() as Promise<TodayView>;
 }
+
+export async function toggleTodo(id: string, done: boolean): Promise<void> {
+  const res = await apiFetch(`/api/todos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) });
+  if (!res.ok) throw new Error("Impossible de mettre à jour ce todo.");
+}

@@ -2,15 +2,16 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TodayScreen } from "./TodayScreen.js";
 import type { TodayView } from "../lib/today-api.js";
 
-function renderScreen() {
+function renderScreen(onOpenProposals: (jobId: string) => void = () => undefined) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <TodayScreen onBack={() => undefined} />
+      <TodayScreen onBack={() => undefined} onOpenProposals={onOpenProposals} />
     </QueryClientProvider>,
   );
 }
@@ -75,15 +76,72 @@ describe("TodayScreen", () => {
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
   });
 
-  it("ready: lists existing todos, read-only — no checkbox or button to toggle them yet", async () => {
+  it("ready: each todo has a checkbox reflecting its done state", async () => {
     stubFetch({
       ...emptyView,
       todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
     });
     renderScreen();
     await screen.findByText("Réviser le chapitre 3");
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /ajouter/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Réviser le chapitre 3" })).not.toBeChecked();
+  });
+
+  it("checking a todo's checkbox sends done: true for that todo, and only that one", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (init?.method === "PATCH") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(null, { status: 200 }));
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...emptyView,
+              todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
+            }),
+            { status: 200 },
+          ),
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText("Réviser le chapitre 3");
+
+    await user.click(screen.getByRole("checkbox", { name: "Réviser le chapitre 3" }));
+
+    expect(calls).toEqual([{ url: "/api/todos/t1", body: { done: true } }]);
+  });
+
+  it("offers a way to add todos from a planner photo", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    expect(screen.getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
+  });
+
+  it("uploading a photo opens the proposals screen for the returned job", async () => {
+    const onOpenProposals = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
+          return Promise.resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen(onOpenProposals);
+    await screen.findByText(/rien de prévu/i);
+
+    const input = screen.getByLabelText(/photo de l'agenda/i);
+    const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
+    await user.upload(input, file);
+
+    expect(onOpenProposals).toHaveBeenCalledWith("job-1");
   });
 
   it("ready: a done todo is visually distinguished from a pending one", async () => {

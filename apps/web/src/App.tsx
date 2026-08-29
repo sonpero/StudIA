@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./lib/auth-context.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
 import { ProgressScreen } from "./screens/ProgressScreen.js";
+import { ProposalsScreen } from "./screens/ProposalsScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
 import { TodayScreen } from "./screens/TodayScreen.js";
 
@@ -23,7 +24,8 @@ type View =
   | { name: "notions"; documentId: string }
   | { name: "review"; documentId: string; notionId?: string }
   | { name: "progress"; fromDocumentId: string }
-  | { name: "today" };
+  | { name: "today" }
+  | { name: "proposals"; jobId: string };
 
 function AppShell() {
   const auth = useAuth();
@@ -82,7 +84,10 @@ function AppShell() {
         />
       )}
       {view.name === "progress" && <ProgressScreen onBack={() => setView({ name: "notions", documentId: view.fromDocumentId })} />}
-      {view.name === "today" && <TodayScreen onBack={() => setView({ name: "documents" })} />}
+      {view.name === "today" && (
+        <TodayScreen onBack={() => setView({ name: "documents" })} onOpenProposals={(jobId) => setView({ name: "proposals", jobId })} />
+      )}
+      {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
     </div>
   );
 }
