@@ -29,4 +29,28 @@ describe("updateTodo", () => {
 
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
+
+  it("sets done to true", async () => {
+    const repo = fakeTodoRepository({ todos: [aTodo] });
+
+    const result = await updateTodo({ repo }, "u1", "t1", { done: true });
+
+    expect(result).toEqual({ ok: true, value: { ...aTodo, done: true } });
+  });
+
+  it("sets done back to false", async () => {
+    const repo = fakeTodoRepository({ todos: [{ ...aTodo, done: true }] });
+
+    const result = await updateTodo({ repo }, "u1", "t1", { done: false });
+
+    expect(result).toEqual({ ok: true, value: { ...aTodo, done: false } });
+  });
+
+  it("applies done together with another field in one call", async () => {
+    const repo = fakeTodoRepository({ todos: [aTodo] });
+
+    const result = await updateTodo({ repo }, "u1", "t1", { label: "Nouveau libellé", done: true });
+
+    expect(result).toEqual({ ok: true, value: { ...aTodo, label: "Nouveau libellé", done: true } });
+  });
 });

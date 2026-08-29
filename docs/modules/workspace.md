@@ -202,7 +202,14 @@ resolving weekday names in post-processing cannot recover.
   `progress.listProgress` explicitly avoids, and no direct SQL against
   another module's tables (asserted by `dependency-cruiser`, same as the
   original draft's Key tests intent).
-- `createTodo`, `updateTodo`, `toggleTodo`, `deleteTodo`
+- `createTodo`, `updateTodo`, `deleteTodo`. `updateTodo`'s patch includes
+  `done` — checking a todo off is not a separate `toggleTodo` function or
+  route. An earlier version of this step split them, and the one
+  `PATCH /api/todos/:id` route dispatched on whether the body contained
+  `done`, silently dropping any other field sent alongside it: correctness
+  depended on the caller never combining them, a convention rather than a
+  contract. Fixed by making the route apply every field present, `done`
+  included, in one call.
 - `handleTodoPhotoJob(payload, ctx)` — extract todos from a planner photo,
   idempotent per upload (re-running it must not duplicate `todo_proposals`
   rows — same idempotence discipline as `ingestion.handleExtractionJob`'s

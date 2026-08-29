@@ -112,6 +112,17 @@ describe("workspace routes", () => {
       expect(res.json<TodoBody>().done).toBe(true);
     });
 
+    it("applies every field in the body, done combined with a label edit, in one call", async () => {
+      const { id } = await createAliceTodo();
+
+      const res = await app.inject({ method: "PATCH", url: `/api/todos/${id}`, headers: { cookie: aliceCookie }, payload: { label: "Nouveau libellé", done: true } });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<TodoBody>();
+      expect(body.label).toBe("Nouveau libellé");
+      expect(body.done).toBe(true);
+    });
+
     it("links a documentId the caller owns", async () => {
       const { id } = await createAliceTodo();
 

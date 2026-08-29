@@ -3,7 +3,6 @@ export type { TodoRepository } from "./domain/ports.js";
 
 export { createTodo, type CreateTodoDeps, type CreateTodoInput } from "./application/create-todo.js";
 export { updateTodo, type UpdateTodoDeps, type UpdateTodoPatch } from "./application/update-todo.js";
-export { toggleTodo, type ToggleTodoDeps } from "./application/toggle-todo.js";
 export { deleteTodo, type DeleteTodoDeps } from "./application/delete-todo.js";
 
 export { SqliteTodoRepository, type WorkspaceDb } from "./infra/sqlite-todo-repository.js";

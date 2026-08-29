@@ -1,13 +1,4 @@
-import {
-  createTodo,
-  deleteTodo,
-  toggleTodo,
-  updateTodo,
-  type Clock,
-  type DocumentRepository,
-  type IdGenerator,
-  type TodoRepository,
-} from "@studia/core";
+import { createTodo, deleteTodo, updateTodo, type Clock, type DocumentRepository, type IdGenerator, type TodoRepository } from "@studia/core";
 import type { FastifyPluginCallback } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -67,14 +58,7 @@ export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (a
       const userId = request.user!.id;
       if (!(await documentIdIsValid(userId, request.body.documentId))) return reply.code(400).send({ error: "invalid-document" });
 
-      // One route, two named use cases (docs/modules/workspace.md's step 1):
-      // a body with `done` toggles and ignores any other field sent
-      // alongside it; the client's checkbox and edit-form actions always
-      // submit disjoint bodies, so this is never exercised in practice, but
-      // it is a real simplification worth stating plainly rather than
-      // silently dropping fields.
-      const { done, ...patch } = request.body;
-      const result = done === undefined ? await updateTodo(deps, userId, id, patch) : await toggleTodo(deps, userId, id, done);
+      const result = await updateTodo(deps, userId, id, request.body);
       if (!result.ok) return reply.code(403).send({ error: "not-found" });
       return result.value;
     },
