@@ -158,7 +158,7 @@ Primary (bottom bar on mobile, top group in the sidebar):
 
 - **Aujourd'hui** — home
 - **Mes cours** — documents, notions, upload
-- **Planning** — plan, deadlines, todo
+- **Progression** — deadlines, coverage and readiness per course
 - **Tuteur** — AI chat scoped to a course
 
 Secondary (sidebar only, below a divider; behind the user chip on mobile):
@@ -228,10 +228,62 @@ are meant to be unhurried and leaving must never feel like a trap. One card at a
 time, generous whitespace. Space to reveal, 1 to 4 to rate on desktop. Leaving
 mid-session saves progress. No timer, no countdown, no "hurry".
 
-**Planning** — Vertical list of days with subject-coloured entries, and a month
-view on desktop. A missed day is restated, not scolded: the plan simply
-redistributes and says so. Never red-flag an overdue task; use `--warning`, never
-`--accent`.
+**Progression** (M5: `progress` module — see `docs/modules/progress.md`) —
+One card per course, no day list, no calendar. Each card carries two gauges
+and one status line.
+
+- **Coverage** — the neutral progress device (`--primary` over `--border`,
+  real percentage always shown), answering "how much of this course have I
+  opened at all": the share of notions with at least one review done,
+  regardless of how well it went.
+- **Readiness** — same neutral device, a second gauge, answering a
+  different question: "if I do nothing else between now and the exam, how
+  will this hold up that day." It is a projection forward to the deadline,
+  not a reading of today.
+- **Status line** — one sentence per course stating the deadline, both
+  percentages, and, only when behind, how many notions: *"Maths, contrôle
+  dans 9 jours, 54 % de préparation, 7 notions à consolider avant
+  l'échéance."* No countdown widget: the day count is a fact restated on
+  load, never a ticking or colour-shifting clock.
+
+Two things this screen must explain, or the numbers read as broken:
+
+- **Coverage can look low right after notions are added to a course** — the
+  denominator grows before any of the new content has been touched. The
+  screen never claims coverage "dropped": this module computes everything
+  at read time and keeps no previous reading to compare against — no plan,
+  no history, no snapshot (`docs/modules/progress.md`). Instead, whenever
+  there are notions created in roughly the last week that have never been
+  reviewed, it states that present-tense fact next to the number: *"3
+  fiches ajoutées récemment n'ont pas encore été travaillées."* A low or
+  moved number must never be left for the student to puzzle over, but the
+  explanation is a fact about today's notions, never a comparison to a
+  remembered past state.
+- **Readiness can hold perfectly still for weeks while the course quietly
+  slides behind.** With a deadline set, readiness only moves after an
+  actual review — it is not recomputed to decay on its own merely because
+  time passed. What does move on its own is the target the course is
+  measured against, which climbs toward the exam date regardless of
+  activity, so the status can worsen (ahead → on-track → behind) with the
+  readiness percentage completely unchanged. This must not read as the
+  screen being frozen or broken: the status word and, once behind, the
+  notion count are what carry the "time is passing" signal, deliberately
+  instead of the percentage — see `docs/modules/progress.md` for why.
+
+**On the deadline day itself, never show the status word, `--warning`
+styling, or the notion count.** The target the course is measured against
+reaches its ceiling exactly on that day by construction, so most courses
+would otherwise flip to "behind" with a large notion count on the one
+morning nothing can still be done about it — the loudest possible alarm at
+the least actionable moment, the direct opposite of "no urgency." Show the
+two percentages plainly, with a neutral "c'est aujourd'hui" framing and no
+status word at all that day.
+
+A course behind its target is stated as a fact, never scolded: the status
+word plus the notion count (never a percentage-point deficit, never a time
+estimate), in `--warning`, never `--accent`, and never a comment on why or
+since when. No streak, no "tu n'as pas ouvert ce cours depuis 5 jours", no
+red.
 
 **Tuteur** — Standard chat, scoped to one selected course, streamed answers with
 citations back to notions. Fiche in `thinking` while it streams, and gone once the

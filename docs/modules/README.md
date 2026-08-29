@@ -11,7 +11,7 @@ Do not read the others unless you need to understand a boundary you are calling.
 | [`content`](./content.md) | M3 | Notions, search |
 | [`generation`](./generation.md) | M3, M4 | Cards: flashcards, MCQs, open questions |
 | [`review`](./review.md) | M3, M4 | Scheduling, FSRS, sessions |
-| [`planning`](./planning.md) | M5 | Deadlines, backward plan |
+| [`progress`](./progress.md) | M5 | Deadlines, per-course coverage/readiness |
 | [`workspace`](./workspace.md) | M6, M7 | Today view, todos, pomodoro |
 | [`tutor`](./tutor.md) | M8 | RAG chat over a course |
 

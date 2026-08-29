@@ -140,43 +140,60 @@ scoring feeding back into FSRS.
 
 ---
 
-## M5 — Planning
+## M5 — Progress
 
-Parallelisable with M4.
+Parallelisable with M4. Module renamed from `planning` to `progress` mid-M5
+(see `docs/modules/progress.md`): the milestone kept its number but its
+scope changed completely, below.
 
-**Scope** — Deadline on a document, availability per weekday, pure backward
-planner producing dated tasks, today's task list, replanning when a day is missed.
+**Scope** — Deadline on a document (unchanged persistence), and a pure,
+read-time computation of two per-course percentages — coverage and
+readiness — plus a status derived from a target trajectory. No availability,
+no dated plan, no daily dose, no minute estimates, no replanning. The
+person decides what to do with the numbers; this module only reports them.
 
-**Demo** — Set an exam date two weeks out, get a daily plan, skip a day, watch
-the plan redistribute.
+**Demo** — Set an exam date, see coverage and readiness for the course,
+review a due card, see readiness rise.
 
 **Acceptance**
-- [ ] The planner is a pure function, property-tested: never schedules past the deadline, never exceeds daily capacity, covers every notion when `feasible: true`
-- [ ] Same inputs always yield the same plan (asserted), including on the infeasible/best-effort path
-- [ ] Infeasible workloads return `feasible: false` with a correct `shortfallMinutes`, never a silently broken invariant or a dropped notion; malformed input (deadline in the past, zero capacity, no usable day) returns a typed `PlanningInputError` instead
-- [ ] `feasible` and `shortfallMinutes` reach `GET /api/documents/:id/plan` and the UI, which states the fact plainly and proposes options (more days, less scope) rather than scolding, per `docs/UI.md`
-- [ ] No LLM in the planning path (asserted by dependency-cruiser)
-- [ ] Playwright: create a deadline, verify the plan, miss a day, verify replanning
+- [ ] `computeProgress` is a pure function, property-tested: `coverage` and `readiness` always in `[0, 1]`, `readiness <= coverage` always, deterministic on repeated calls
+- [ ] With no deadline and no activity, `readiness` never increases as `now` advances (strictly decreases only once at least one card has been reviewed and a day boundary is crossed); with a deadline and no activity, `status` never improves as `now` advances within `[deadline.setAt, deadline.date]` (`ahead > on-track > behind`, non-increasing) — see `docs/modules/progress.md` for why these are two different fields, not one, and why both are stated weakly rather than strictly
+- [ ] `PROGRESS_TARGET_READINESS` (`0.9`, matching `review`'s own FSRS retention target) and `PROGRESS_NO_DEADLINE_HORIZON_DAYS` (`14`) are named, exported constants, not literals inlined in the formulas
+- [ ] On the deadline day itself, the screen never shows `status`-driven `--warning` styling or `behindByNotions` — `target` reaching its ceiling exactly that day would otherwise flip most courses to `'behind'` on the one morning nothing can still be done, the opposite of `docs/UI.md`'s "no urgency" rule
+- [ ] `ProgressListItem` and the single-document progress response both carry `title`, `deadlineDate`, and `deadlineLabel` — including on the `'error'` branch — so the mandatory status phrase renders without a second call in either case
+- [ ] A course with zero notions and no deadline is `'no-deadline'`, not `'on-track'` — deadline-nullity is checked before the zero-notions special case, never the reverse
+- [ ] `behindByNotions` counts notions whose projected `R` is below `target(now)` — deterministic, `0` outside `status === 'behind'`, at least `1` whenever it is `'behind'`, never a percentage or a time estimate
+- [ ] `recentlyAddedUnreviewed` explains a low coverage number statelessly (from `notion.createdAt` and `now` alone, no stored previous reading) rather than by detecting a drop
+- [ ] Malformed input (deadline in the past) returns a typed `ProgressInputError`; zero notions, no deadline, deadline today, and all-notions-never-seen are all defined, never `NaN`
+- [ ] No LLM and no `ts-fsrs` import inside `progress/**` (asserted by dependency-cruiser's `no-ai-in-progress` and `no-fsrs-outside-review`)
+- [ ] `GET /api/documents/:id/deadline` exists and round-trips what `POST` stored (fixes the M5-as-shipped debt below)
+- [ ] `setDeadline` preserves `createdAt` when updating an existing deadline's date or label — only a delete-then-set restarts the target trajectory
+- [ ] The migration dropping `availability` and `plan_history` leaves `deadlines`, its rows, and its `deadlines_document_unique` constraint untouched, and replays cleanly from empty and from a `0006`-era database
+- [ ] `coverage` and `readiness` are sourced from a single `getCardSchedulesForDocument` read, never two separate queries — covered by an integration test; this is the invariant that keeps `readiness <= coverage` from breaking intermittently
+- [ ] The screen respects `docs/UI.md`: `--warning` (never `--accent`) for `'behind'`, no urgency or blame in copy, and a stateless explanation (`recentlyAddedUnreviewed`) when recently-added notions explain a low coverage number
+- [ ] Playwright: set a deadline, verify coverage and readiness render, review a due card, verify readiness rises
 
-**Process note.** `domain/build-plan.ts` and `infra/sqlite-planning-repository.ts`
-were written before their tests: TDD (`CLAUDE.md`'s test-first workflow) was
-not followed for these two files on this milestone. Coverage was validated
-after the fact by property testing (`fast-check`, six hard invariants plus
-the conditional one) and by a manual mutation-testing pass — one deliberate
-fault at a time, reverted via `git checkout` between each — rather than by
-a genuine red-then-green cycle. Boxes above stay unchecked until the human
-has reviewed the mutation → test table.
+**Process note.** The original `planning` scope this milestone shipped
+first (see below) recorded that `domain/build-plan.ts` and
+`infra/sqlite-planning-repository.ts` were written before their tests, a
+genuine `CLAUDE.md` test-first violation caught only after the fact by
+property and mutation testing. Both files are deleted entirely by this
+rewrite, so that specific debt does not carry forward — but it is not
+excused either: every file in the `progress` rewrite
+(`compute-progress.ts`, its repository, the new `review` port method and
+pure export, the routes, the screen) is red, then green, with no exceptions
+this time.
 
-**Known debts, logged rather than left in code comments:**
-- No `GET /api/documents/:id/deadline` or `GET /api/availability` route
-  exists (the API table above lists only 5 routes). `PlanningScreen`'s
-  deadline and availability forms are therefore write-only: they do not
-  pre-fill from a previously saved value, and a page reload loses whatever
-  was last set until the user re-enters it.
-- `buildPlan`'s `history` input (`{date, completed}[]`) is accepted per the
-  domain signature but not read by any logic: replanning after a missed day
-  needs none of it (calling `buildPlan` again from today is sufficient).
-  Reserved for M6, which is expected to be the first real consumer.
+**Known debts:** none. Both debts logged against the original `planning`
+scope (missing `GET .../deadline`, `buildPlan`'s unused `history` input) are
+resolved by this rewrite, not carried forward.
+
+M5 was never formally accepted under its original scope (the process note's
+boxes were still unchecked, pending mutation-table review) — it is being
+redirected, not reopened after acceptance. The original planner/availability
+scope this section used to describe is preserved in git history
+(`docs/modules/planning.md` as of commit `da7a204` and earlier), not
+duplicated here.
 
 ---
 
