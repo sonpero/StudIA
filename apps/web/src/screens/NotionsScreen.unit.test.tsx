@@ -10,7 +10,7 @@ function renderScreen() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={() => undefined} onOpenProgress={() => undefined} />
+      <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={() => undefined} />
     </QueryClientProvider>,
   );
 }
@@ -82,7 +82,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");
@@ -157,7 +157,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");

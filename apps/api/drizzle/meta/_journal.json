@@ -50,6 +50,13 @@
       "when": 1787944010373,
       "tag": "0006_neat_clea",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788000446815,
+      "tag": "0007_chubby_george_stacy",
+      "breakpoints": true
     }
   ]
 }
