@@ -1,4 +1,16 @@
-import { createTodo, deleteTodo, updateTodo, type Clock, type DocumentRepository, type IdGenerator, type TodoRepository } from "@studia/core";
+import {
+  createTodo,
+  deleteTodo,
+  getToday,
+  updateTodo,
+  type Clock,
+  type DocumentRepository,
+  type IdGenerator,
+  type NotionRepository,
+  type ProgressRepository,
+  type ReviewRepository,
+  type TodoRepository,
+} from "@studia/core";
 import type { FastifyPluginCallback } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -6,6 +18,9 @@ import { z } from "zod";
 export interface WorkspaceRoutesOptions {
   repo: TodoRepository;
   documentRepo: DocumentRepository;
+  notionRepo: NotionRepository;
+  reviewRepo: ReviewRepository;
+  progressRepo: ProgressRepository;
   idGenerator: IdGenerator;
   clock: Clock;
 }
@@ -25,8 +40,24 @@ const updateTodoBodySchema = z
   })
   .refine((body) => Object.keys(body).length > 0, { message: "at least one field is required" });
 
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (app, opts, done) => {
   const deps = { repo: opts.repo, idGenerator: opts.idGenerator };
+  const getTodayDeps = { todoRepo: opts.repo, documentRepo: opts.documentRepo, notionRepo: opts.notionRepo, reviewRepo: opts.reviewRepo, progressRepo: opts.progressRepo };
+
+  // Same rule and same helper shape as progress's own today (client-computed
+  // local calendar day, never guessed server-side) and review's own
+  // dayBoundary (client-computed local "start of tomorrow") — two different
+  // clocks for two different reasons (getToday's own doc comment), each
+  // validated the same way its own module's existing routes already do.
+  app.get("/api/today", async (request, reply) => {
+    const { today, dayBoundary } = request.query as { today?: string; dayBoundary?: string };
+    if (!today || !DATE_KEY_PATTERN.test(today)) return reply.code(400).send({ error: "today-required" });
+    if (!dayBoundary || Number.isNaN(new Date(dayBoundary).getTime())) return reply.code(400).send({ error: "day-boundary-required" });
+
+    return getToday(getTodayDeps, request.user!.id, new Date(`${today}T00:00:00.000Z`), new Date(dayBoundary));
+  });
 
   // documentId is a secondary, optional field on the todo body, not the
   // URL's primary resource — a bad link is reported as a 400 validation

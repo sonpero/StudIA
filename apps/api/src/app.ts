@@ -119,6 +119,9 @@ export function buildApp(opts: BuildAppOptions) {
   void app.register(workspaceRoutes, {
     repo: workspaceDeps.repo,
     documentRepo: ingestionDeps.repo,
+    notionRepo: contentDeps.repo,
+    reviewRepo: reviewDeps.repo,
+    progressRepo: progressDeps.repo,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });

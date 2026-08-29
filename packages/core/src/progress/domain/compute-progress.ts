@@ -47,6 +47,22 @@ function notionReadiness(notion: ProgressNotion): number {
   return average(notion.cards.map((c) => c.retrievability));
 }
 
+// Only meaningful with a deadline. target is evaluated at `now`, not at
+// the deadline (unlike readiness, always evaluated at the deadline by the
+// caller) — this is what lets status react to time passing even though
+// readiness itself does not (docs/modules/progress.md).
+function targetFor(deadline: ProgressDeadlineInput, now: Date, todayKey: string): number {
+  const spanDays = daysBetween(deadline.setAt, deadline.date);
+  const elapsedDays = daysBetween(deadline.setAt, todayKey);
+  const fraction = spanDays <= 0 ? 1 : clamp(elapsedDays / spanDays, 0, 1);
+  return PROGRESS_TARGET_READINESS * fraction;
+}
+
+function statusFor(readiness: number, target: number): CourseProgress["status"] {
+  const gap = readiness - target;
+  return readiness < target ? "behind" : gap > PROGRESS_STATUS_MARGIN ? "ahead" : "on-track";
+}
+
 export function computeProgress(input: { notions: ProgressNotion[]; deadline: ProgressDeadlineInput | null; now: Date }): Result<CourseProgress, ProgressInputError> {
   const { notions, deadline, now } = input;
   const todayKey = toDateKey(now.toISOString());
@@ -68,18 +84,44 @@ export function computeProgress(input: { notions: ProgressNotion[]; deadline: Pr
     return ok({ coverage, readiness, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed });
   }
 
-  // Only meaningful with a deadline. target is evaluated at `now`, not at
-  // the deadline (unlike readiness, always evaluated at the deadline by
-  // the caller) — this is what lets status react to time passing even
-  // though readiness itself does not (docs/modules/progress.md).
-  const spanDays = daysBetween(deadline.setAt, deadline.date);
-  const elapsedDays = daysBetween(deadline.setAt, todayKey);
-  const fraction = spanDays <= 0 ? 1 : clamp(elapsedDays / spanDays, 0, 1);
-  const target = PROGRESS_TARGET_READINESS * fraction;
-
-  const gap = readiness - target;
-  const status: CourseProgress["status"] = readiness < target ? "behind" : gap > PROGRESS_STATUS_MARGIN ? "ahead" : "on-track";
+  const target = targetFor(deadline, now, todayKey);
+  const status = statusFor(readiness, target);
   const behindByNotions = status === "behind" ? perNotionReadiness.filter((r) => r < target).length : 0;
 
   return ok({ coverage, readiness, status, behindByNotions, recentlyAddedUnreviewed });
+}
+
+// M6 (docs/modules/progress.md's "notionsBelowTarget" section): the same
+// selection behindByNotions counts above, as identities rather than a
+// count — for workspace's TodayView to fold into its own composition.
+// Shares targetFor/statusFor with computeProgress (never a second copy of
+// the formula) and gates on status === 'behind' the same way
+// behindByNotions does, not a raw per-notion test: a notion can sit below
+// target while the course-level average still reads 'on-track' (the
+// margin absorbs it), and behindByNotions already made the product call
+// that this does not surface in that case either — the two must never
+// disagree (see this file's property test asserting exactly that).
+// No order beyond `notions`' own — never a priority, never a ranking
+// (progress's Out of scope rule: it never recommends or sequences
+// anything, including through this export).
+export function notionsBelowTarget(input: { notions: ProgressNotion[]; deadline: ProgressDeadlineInput | null; now: Date }): Result<string[], ProgressInputError> {
+  const { notions, deadline, now } = input;
+  const todayKey = toDateKey(now.toISOString());
+
+  if (deadline !== null && deadline.date < todayKey) {
+    return err({ kind: "deadline-in-past" });
+  }
+  if (notions.length === 0 || deadline === null) {
+    return ok([]);
+  }
+
+  const perNotionReadiness = notions.map(notionReadiness);
+  const readiness = average(perNotionReadiness);
+  const target = targetFor(deadline, now, todayKey);
+  const status = statusFor(readiness, target);
+  if (status !== "behind") {
+    return ok([]);
+  }
+
+  return ok(notions.filter((_, i) => perNotionReadiness[i]! < target).map((n) => n.id));
 }

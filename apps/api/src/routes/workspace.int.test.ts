@@ -189,4 +189,57 @@ describe("workspace routes", () => {
       expect(res.statusCode).toBe(401);
     });
   });
+
+  describe("GET /api/today", () => {
+    const query = "today=2026-03-02&dayBoundary=2026-03-03T00%3A00%3A00.000Z";
+
+    it("composes the view (200): a todo the caller created appears in it", async () => {
+      await createAliceTodo({ label: "Réviser le chapitre 3" });
+
+      const res = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{ date: string; todos: TodoBody[] }>();
+      expect(body.date).toBe("2026-03-02");
+      expect(body.todos).toHaveLength(1);
+      expect(body.todos[0]?.label).toBe("Réviser le chapitre 3");
+    });
+
+    it("is empty for a user with nothing at all", async () => {
+      const res = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: bobCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [] });
+    });
+
+    it("scopes todos to the caller: bob's todo never appears in alice's view", async () => {
+      const bobTodoRes = await app.inject({ method: "POST", url: "/api/todos", headers: { cookie: bobCookie }, payload: { label: "Todo de Bob" } });
+      expect(bobTodoRes.statusCode).toBe(201);
+
+      const res = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: aliceCookie } });
+
+      expect(res.json<{ todos: TodoBody[] }>().todos).toEqual([]);
+    });
+
+    it("rejects a missing or invalid today (400)", async () => {
+      const missing = await app.inject({ method: "GET", url: "/api/today?dayBoundary=2026-03-03T00%3A00%3A00.000Z", headers: { cookie: aliceCookie } });
+      expect(missing.statusCode).toBe(400);
+
+      const invalid = await app.inject({ method: "GET", url: "/api/today?today=not-a-date&dayBoundary=2026-03-03T00%3A00%3A00.000Z", headers: { cookie: aliceCookie } });
+      expect(invalid.statusCode).toBe(400);
+    });
+
+    it("rejects a missing or invalid dayBoundary (400)", async () => {
+      const missing = await app.inject({ method: "GET", url: "/api/today?today=2026-03-02", headers: { cookie: aliceCookie } });
+      expect(missing.statusCode).toBe(400);
+
+      const invalid = await app.inject({ method: "GET", url: "/api/today?today=2026-03-02&dayBoundary=not-a-date", headers: { cookie: aliceCookie } });
+      expect(invalid.statusCode).toBe(400);
+    });
+
+    it("requires authentication (401)", async () => {
+      const res = await app.inject({ method: "GET", url: `/api/today?${query}` });
+      expect(res.statusCode).toBe(401);
+    });
+  });
 });

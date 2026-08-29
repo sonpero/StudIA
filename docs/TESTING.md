@@ -217,6 +217,7 @@ rules from `docs/UI.md` honestly.
 | `no-ai-in-progress` | `progress/**` importing any AI package |
 | `no-fsrs-outside-review` | `ts-fsrs` imported outside `review/domain/scheduler.ts` |
 | `no-circular-dependency` | Any import cycle, anywhere in the cruised graph |
+| `workspace-no-cross-module-sql` | `workspace/infra/**` importing a VALUE (not just a type) from another module's `index.ts` |
 | `frozen-kernels` | `jobs/**` and `shared/**` importing any business module |
 
 Each rule ships with a deliberate violation in a scratch branch to prove it fires.
@@ -254,6 +255,35 @@ different entry point.) This rule was added ahead of M6 specifically because
 → progress` edge that would have closed exactly this cycle; before this
 rule, nothing in `pnpm lint` would have caught a future agent doing it
 anyway.
+
+`workspace-no-cross-module-sql`'s non-vacuity (M6) was checked in both
+directions, because a plain `to.path` rule turned out not to be able to
+express this constraint at all: another module's schema tables are
+legitimately re-exported from its own `index.ts` (for other modules'
+documented cross-module joins, e.g. `review`'s own), so the file-level edge
+from `workspace/infra/**` to that `index.ts` looks identical whether it's a
+forbidden join or an allowed type-only reference — confirmed empirically by
+adding `export { notionsTable as __tempTestTable } from "../../content/index.js";`
+to `workspace/application/create-todo.ts` against a first-draft `to.path`-only
+rule and finding it did **not** fire. The fix was `dependencyTypesNot:
+["type-only"]`, which `depcruise --output-type json` showed distinguishes a
+plain `import`/`export` (`dependencyTypes: ["local", "export"]`) from an
+`import type` (`dependencyTypes: ["local", "type-only", "import"]`). With
+that rule in place:
+
+- A value re-export (`export { notionsTable as __tempCrossModuleTable }
+  from "../../content/index.js";` added to
+  `workspace/infra/sqlite-todo-repository.ts`) fired:
+  ```
+  error workspace-no-cross-module-sql: packages/core/src/workspace/infra/sqlite-todo-repository.ts → packages/core/src/content/index.ts
+  ```
+- The same file with only `import type { Notion as __TempNotion } from
+  "../../content/index.js";` added produced no violation — proving the rule
+  doesn't also block the legitimate type-only references `workspace`'s own
+  repository has no reason to need in the first place, and would need if it
+  ever did.
+
+Both edits were reverted after observing the expected result.
 
 Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves

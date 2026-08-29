@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { computeProgress, readinessProjectionDate } from "./compute-progress.js";
+import { computeProgress, notionsBelowTarget, readinessProjectionDate } from "./compute-progress.js";
 import { PROGRESS_NO_DEADLINE_HORIZON_DAYS, PROGRESS_RECENTLY_ADDED_DAYS, PROGRESS_STATUS_MARGIN, PROGRESS_TARGET_READINESS, type ProgressCardState, type ProgressDeadlineInput, type ProgressNotion } from "./types.js";
 
 const NOW = new Date("2026-03-02T09:00:00.000Z");
@@ -306,6 +306,66 @@ describe("computeProgress — exported constants", () => {
     expect(PROGRESS_RECENTLY_ADDED_DAYS).toBe(7);
     expect(PROGRESS_TARGET_READINESS).toBe(0.9);
     expect(PROGRESS_NO_DEADLINE_HORIZON_DAYS).toBe(14);
+  });
+});
+
+// M6 (docs/modules/progress.md's "notionsBelowTarget" section, docs/modules/
+// workspace.md's "Why workspace composes, not review"): same selection
+// behindByNotions counts, exposed as identities for workspace's TodayView.
+// Must never disagree with computeProgress, or two screens reading the same
+// computation would show contradictory things for the same course.
+describe("notionsBelowTarget — coherent with computeProgress by construction", () => {
+  it("non-empty iff computeProgress's status is 'behind' for the same input, and always the same length as behindByNotions", () => {
+    fc.assert(
+      fc.property(validParamsArb, ({ notions, deadline }) => {
+        const progress = computeProgress({ notions, deadline, now: NOW });
+        const belowTarget = notionsBelowTarget({ notions, deadline, now: NOW });
+
+        expect(belowTarget.ok).toBe(progress.ok);
+        if (!progress.ok || !belowTarget.ok) return;
+
+        expect(belowTarget.value.length > 0).toBe(progress.value.status === "behind");
+        expect(belowTarget.value.length).toBe(progress.value.behindByNotions);
+      }),
+    );
+  });
+
+  it("returns the same Err as computeProgress for a deadline in the past", () => {
+    fc.assert(
+      fc.property(notionsArb(), fc.integer({ min: 1, max: 60 }), (notions, daysInPast) => {
+        const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-daysInPast - 10), date: dateKeyOffset(-daysInPast) };
+        expect(notionsBelowTarget({ notions, deadline, now: NOW })).toEqual({ ok: false, error: { kind: "deadline-in-past" } });
+      }),
+    );
+  });
+
+  it("is always empty with no deadline, regardless of how low any notion's R is", () => {
+    fc.assert(
+      fc.property(notionsArb(), (notions) => {
+        expect(notionsBelowTarget({ notions, deadline: null, now: NOW })).toEqual({ ok: true, value: [] });
+      }),
+    );
+  });
+});
+
+describe("notionsBelowTarget — edge cases and identity", () => {
+  it("is empty for zero notions, with or without a deadline", () => {
+    const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-10), date: dateKeyOffset(10) };
+    expect(notionsBelowTarget({ notions: [], deadline, now: NOW })).toEqual({ ok: true, value: [] });
+    expect(notionsBelowTarget({ notions: [], deadline: null, now: NOW })).toEqual({ ok: true, value: [] });
+  });
+
+  it("names exactly the notions with R(notion) < target(now), in the order they were given — not just a count", () => {
+    const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-10), date: dateKeyOffset(10) };
+    const notions: ProgressNotion[] = [
+      { id: "n1", createdAt: OLD_CREATED_AT, cards: [{ retrievability: 0.1, reviewed: true }] },
+      { id: "n2", createdAt: OLD_CREATED_AT, cards: [{ retrievability: 0.99, reviewed: true }] },
+      { id: "n3", createdAt: OLD_CREATED_AT, cards: [{ retrievability: 0, reviewed: false }] },
+    ];
+
+    const result = notionsBelowTarget({ notions, deadline, now: NOW });
+
+    expect(result).toEqual({ ok: true, value: ["n1", "n3"] });
   });
 });
 

@@ -7,6 +7,7 @@ import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
 import { ProgressScreen } from "./screens/ProgressScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
+import { TodayScreen } from "./screens/TodayScreen.js";
 
 // No router dependency for M3's small navigation surface (a handful of
 // screens, linear flow): a state machine is enough, and adding a router
@@ -14,12 +15,15 @@ import { ReviewScreen } from "./screens/ReviewScreen.js";
 // small. "progress" shows every course (docs/modules/progress.md), reached
 // from whichever course's NotionsScreen the student was on; fromDocumentId
 // is only so "back" returns to that same course, not a scoping parameter
-// for the progress screen itself.
+// for the progress screen itself. "today" (M6, docs/modules/workspace.md)
+// is reachable from anywhere via the header, not scoped to a document —
+// "back" always returns to the documents list, the app's other home.
 type View =
   | { name: "documents" }
   | { name: "notions"; documentId: string }
   | { name: "review"; documentId: string; notionId?: string }
-  | { name: "progress"; fromDocumentId: string };
+  | { name: "progress"; fromDocumentId: string }
+  | { name: "today" };
 
 function AppShell() {
   const auth = useAuth();
@@ -50,6 +54,9 @@ function AppShell() {
       <header className="flex items-center justify-between border-b border-border bg-surface px-8 py-4">
         <span className="font-[var(--font-display)] text-lg font-extrabold">{APP_NAME}</span>
         <div className="flex items-center gap-3 text-sm">
+          <button type="button" className="underline" onClick={() => setView({ name: "today" })}>
+            Aujourd'hui
+          </button>
           <p>Bonjour, {auth.user?.username}.</p>
           <button type="button" onClick={() => void auth.logout()}>
             Se déconnecter
@@ -75,6 +82,7 @@ function AppShell() {
         />
       )}
       {view.name === "progress" && <ProgressScreen onBack={() => setView({ name: "notions", documentId: view.fromDocumentId })} />}
+      {view.name === "today" && <TodayScreen onBack={() => setView({ name: "documents" })} />}
     </div>
   );
 }
