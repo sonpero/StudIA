@@ -13,7 +13,7 @@ prior knowledge of the app.
 **They take the time they need.** StudIA is not a habit-loop app. It never rushes
 anyone, never counts down at them, never implies they are behind. The interface
 proposes; the person decides. This is a product rule, not a style preference, and
-it constrains the planning and review screens directly.
+it constrains the progress and review screens directly.
 
 ---
 

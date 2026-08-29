@@ -297,10 +297,26 @@ l'échéance") reads as an actionable instruction, so the count itself must
 name something real — "these specific notions currently sit below where
 they need to be," not an abstract quota nobody's next review actually
 produces. The per-notion threshold above is exactly that: a concrete,
-identifiable set. **`review`'s M6 successor to `getDueCards` is expected to
-reuse this exact selection** (`R(notion) < target(now)`) to decide what to
-put in front of the user next, rather than inventing a second definition of
-"needs work."
+identifiable set.
+
+**Correction to an earlier draft of this section**, which suggested
+`review`'s M6 successor to `getDueCards` would reuse this exact selection
+directly. It cannot: computing `target(now)` needs the deadline and the
+trajectory formula, both of which live in `progress`; `review` importing
+`progress` for that while `progress` already imports `review` (for
+`getCardSchedulesForDocument`/`projectRetrievability`, above) is a real
+runtime dependency cycle, not just a style concern — `progress`'s own
+`assemble-progress-notions.ts` already has a live, value-level `import {
+projectRetrievability } from "../../review/index.js"`, so the reverse edge
+would close the loop for real, not hypothetically. `docs/modules/
+workspace.md` resolves this: `progress` exposes the same selection as a
+plain read (`notionsBelowTarget` / `notionsBelowTargetForDocument`, gated
+the same way `behindByNotions` is, and doing no I/O of its own — see
+below), and `workspace` is the one
+that composes it with `review.getDueCards`, since aggregation across
+modules is `workspace`'s whole charter and neither `progress` nor `review`
+needs to know the other exists for this. `progress` still never orders or
+recommends anything itself — it hands back membership, not a priority.
 
 Expressed in notions, never in percentage points or minutes — a course-level
 count is the only thing this module can honestly say; it has no per-review
@@ -331,6 +347,106 @@ for a simpler reason: if every notion currently has `R = 0` (nothing ever
 reviewed) and `target > 0`, every notion satisfies `R < target`, so
 `behindByNotions` is the **total notion count** — every notion genuinely
 needs attention, not a formula quirk.
+
+### `notionsBelowTarget` — the same selection, as identities (PROPOSED, for M6)
+
+**Not yet implemented — a coupling point for `docs/modules/workspace.md`,
+shown here for review before it is written**, same discipline as
+`getCardSchedulesForDocument` in M5. Same input, same per-notion test as
+`behindByNotions`, but returns which notions rather than how many:
+
+```ts
+export function notionsBelowTarget(input: {
+  notions: ProgressNotion[];
+  deadline: ProgressDeadlineInput | null;
+  now: Date;
+}): Result<string[], ProgressInputError>;
+```
+
+`Result` shares `computeProgress`'s own `ProgressInputError` — a
+`deadline-in-past` course has no meaningful `target` to compare against,
+so this returns `Err` the same way `computeProgress` does, rather than
+inventing a second error shape.
+
+**Gated exactly like `behindByNotions`, not a raw per-notion test.** The
+returned array is empty whenever the course's own `status !== 'behind'` —
+even though some individual notion's `R` can in principle sit below
+`target` while the course-level average still reads `'on-track'` (the
+`0.1` margin absorbs that). `behindByNotions` already made this product
+call (never a small positive count outside `'behind'`); this function
+must agree with it, or a course `docs/modules/progress.md`'s own screen
+calls `'on-track'` would show up in `workspace`'s TodayView as "notions
+needing work," a direct contradiction between two screens reading the
+same computation. Implemented by factoring the shared `target`/`status`
+arithmetic out of `computeProgress` into one internal helper both this
+function and `computeProgress` call, never by duplicating the formula —
+covered by a property test asserting the two functions never disagree
+(non-empty result here iff `computeProgress`'s `status === 'behind'` for
+the same input), in addition to `notionsBelowTarget`'s own edge cases.
+
+**No order.** The array is in whatever order `notions` arrived in (i.e.
+`content.listNotionsForUser`'s own order) — no sort by "most behind,"
+no priority, no ranking. `workspace` decides how (or whether) to sequence
+or group what it receives; `progress` hands back a set, per its own Out
+of scope rule below.
+
+**Revised after review: not a batched, self-fetching "ForUser" function.**
+An earlier draft of this section proposed
+`getNotionsBelowTargetForUser(deps, userId, now)`, doing its own
+`listNotionsForUser` + `getCardSchedulesForUser` + `getDeadlinesForUser`
+reads, "mirroring `listProgress`'s batched shape." That is wrong the moment
+`workspace.getToday` needs *both* this and `upcomingDeadlines` (also sourced
+from those same three reads, today via `listProgress`): two independent
+calls into `progress` would each redo the same three batched reads,
+silently reintroducing the exact N+1-across-the-request problem `listProgress`
+was built to avoid within a single call. `workspace`'s own batched reads for
+`dueCards` grouping (`content.listNotionsForUser`) already overlap with what
+this function would need, too.
+
+The fix is to make the new export **do no I/O of its own at all**, so it is
+structurally impossible for it to duplicate a read — the caller always
+supplies rows it already has:
+
+```ts
+// progress/application/notions-below-target-for-document.ts (PROPOSED)
+// Pure given its inputs: no repository, no await, same category as
+// assembleProgressNotions above (which it calls internally) — takes rows
+// the caller already fetched, for one document.
+export function notionsBelowTargetForDocument(
+  notions: Notion[],
+  cardRows: NotionCardRow[],
+  deadline: Deadline | null,
+  now: Date,
+): string[];
+```
+
+Wraps the three existing pieces — builds `ProgressDeadlineInput` the same
+way `listProgress` already does inline, calls `readinessProjectionDate`,
+then `assembleProgressNotions`, then the new domain `notionsBelowTarget`
+above — and collapses its `Result` to a plain array (`Err` → `[]`): a
+lapsed deadline has no meaningful target to check notions against, and this
+function feeds "what to work on," not a status display, so there is no
+"don't silently drop this document" concern to preserve the way
+`listProgress`'s own aggregate list has to.
+
+`workspace.getToday` calls this once per document, in memory, after doing
+its *own* single round of batched reads (`documentRepo.listDocuments`,
+`content.listNotionsForUser`, `review.getCardSchedulesForUser`,
+`review.getDueCards`, `progress.ProgressRepository.getDeadlinesForUser` —
+the last one called directly, a repository port method already public via
+`progress/index.ts`'s `ProgressRepository` type export, exactly like
+`content.NotionRepository.listNotionsForUser` and
+`review.ReviewRepository.getCardSchedulesForUser` already are) grouped by
+`documentId` itself, the same shape `listProgress`'s own loop already uses.
+`progress.listProgress` is **not** called by `getToday` at all — see
+`docs/modules/workspace.md`'s Use cases section for the full accounting of
+which five reads happen, each exactly once, and why none of them are
+`listProgress` in disguise.
+
+Same cross-document-leakage risk `listProgress` already has a dedicated
+integration test for applies to `workspace`'s own grouping step here — that
+test lives in `workspace`'s own test suite (it groups the rows, not
+`progress`), not duplicated here.
 
 ### Edge cases (never `NaN`, always defined)
 
@@ -730,7 +846,10 @@ Everything the old `planning.md` excluded, plus everything `availability`
 made possible: no ordering of what to review next, no daily dose, no minute
 estimates, no calendar, no reminders, no todos (`workspace`), no generation.
 `review.getDueCards` remains the only source of "what's due right now";
-`progress` never recommends or sequences anything.
+`progress` never recommends or sequences anything — including through
+`notionsBelowTarget`/`notionsBelowTargetForDocument` above: an unordered set
+is not a recommendation, and `workspace`, not `progress`, decides what to
+do with it.
 
 ## Key tests
 

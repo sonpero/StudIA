@@ -71,7 +71,7 @@ infra/         adapters (SQLite repositories, LLM clients, filesystem)
 index.ts       the ONLY public surface of the module
 ```
 
-Modules: `identity`, `ingestion`, `content`, `generation`, `review`, `planning`,
+Modules: `identity`, `ingestion`, `content`, `generation`, `review`, `progress`,
 `workspace`, `tutor`, plus two shared kernels: `jobs` (queue and worker) and
 `shared` (`Result`, `Clock`, `IdGenerator`, the model client factory).
 
@@ -241,8 +241,13 @@ UI copy is French, tutoiement, sentence case. Do not write English UI strings
 ```
 DATA_DIR/studia.db
 DATA_DIR/uploads/{userId}/{documentId}/{pageIndex}.{ext}
+DATA_DIR/uploads/{userId}/todo-jobs/{jobId}/page.{ext}
 DATA_DIR/backups/studia-{ISO date}.db
 ```
+
+The `todo-jobs` path (M6, `docs/modules/workspace.md`) is for a school-planner
+photo, which is a one-shot job input, not a course document: no page ordering,
+no SHA-256 dedup, no `documents` row.
 
 Uploaded files are NEVER served as static assets. They go through an
 authenticated route that verifies the document belongs to the requesting user.

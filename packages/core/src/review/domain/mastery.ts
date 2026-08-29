@@ -2,9 +2,13 @@ import type { DueCard } from "./due-card.js";
 import type { CardSchedule } from "./types.js";
 
 // A card is mastered when stability >= 21 days and reps >= 3
-// (docs/modules/review.md). Defined once, exported, and read by planning
-// (M5) and workspace (M6) through this module's index.ts — never duplicate
-// this threshold elsewhere.
+// (docs/modules/review.md). `progress` (M5) does not use this threshold —
+// its readiness computation reads raw retrievability, not `mastered` — the
+// only current caller outside this module is the front end, and only
+// indirectly, via the `mastered` boolean withMastery already attaches
+// below. Kept exported in case workspace's M6 TodayView needs the raw
+// threshold rather than just that boolean; never duplicate it elsewhere if
+// so.
 export const MASTERY_STABILITY_DAYS_THRESHOLD = 21;
 export const MASTERY_REPS_THRESHOLD = 3;
 
