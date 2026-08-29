@@ -14,6 +14,9 @@ export async function setDeadline(deps: SetDeadlineDeps, userId: string, documen
     userId,
     date,
     label: label ?? null,
-    createdAt: now.toISOString(),
+    // Preserved across an update: createdAt anchors progress's target
+    // trajectory (docs/modules/progress.md). Only a fresh deadline (no
+    // existing row) gets `now` — moving the date must not restart the ramp.
+    createdAt: existing?.createdAt ?? now.toISOString(),
   });
 }
