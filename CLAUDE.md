@@ -241,13 +241,19 @@ UI copy is French, tutoiement, sentence case. Do not write English UI strings
 ```
 DATA_DIR/studia.db
 DATA_DIR/uploads/{userId}/{documentId}/{pageIndex}.{ext}
-DATA_DIR/uploads/{userId}/todo-jobs/{jobId}/page.{ext}
+DATA_DIR/uploads/{userId}/{jobId}/0.{ext}
 DATA_DIR/backups/studia-{ISO date}.db
 ```
 
-The `todo-jobs` path (M6, `docs/modules/workspace.md`) is for a school-planner
-photo, which is a one-shot job input, not a course document: no page ordering,
-no SHA-256 dedup, no `documents` row.
+The second uploads path (M6, `docs/modules/workspace.md`) is a school-planner
+photo: a one-shot job input, not a course document — no page ordering, no
+SHA-256 dedup, no `documents` row. It reuses `ingestion.FileStore.put`
+completely unmodified (a `jobId` where that call normally takes a
+`documentId`, page index always `0`, one photo per job) rather than adding a
+second storage helper for a nicer-looking path — the originally sketched
+`todo-jobs/{jobId}/page.{ext}` would have needed one. A `jobId` and a
+`documentId` are both UUIDv7s drawn from the same generator, so collision
+between the two subtrees is not a real risk worth designing around.
 
 Uploaded files are NEVER served as static assets. They go through an
 authenticated route that verifies the document belongs to the requesting user.

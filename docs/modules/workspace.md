@@ -138,11 +138,24 @@ one.
 
 ```ts
 interface TodoExtractor {
-  extract(input: { bytes: Buffer; today: string }): Promise<Result<ExtractedTodo[], ExtractionError>>;
+  extract(input: { bytes: Buffer; today: string }): Promise<Result<TodoExtractionOutput, ExtractionError>>;
 }
 
 type ExtractedTodo = { label: string; dueDate: string | null; subject: string | null };
+type TodoExtractionOutput = { todos: ExtractedTodo[]; legible: boolean; reason?: string };
 ```
+
+**`legible`/`reason` added to the output** (not in the original draft, which
+returned a bare `ExtractedTodo[]`). Without it, "the photo was too blurry to
+read" and "the photo was legible and genuinely has no homework written on
+it" are the same observable outcome — an empty array — and the two deserve
+different copy ("reprends la photo, elle est trop floue" vs. "aucun devoir
+trouvé sur cette photo"). `ingestion.VisionExtractor` already solved this
+identical problem for course pages with exactly this shape
+(`{ markdown, legible, reason? }`); `TodoExtractor` reuses the same solution
+for the same reason, not a new idea. `legible: false` is a success
+(`Ok`), never an `ExtractionError` — same rule as `VisionExtractor`'s own
+port.
 
 **Use the shared model client from `packages/core/src/shared/`, with its own
 prompt and output schema.** `ingestion` does export `VisionExtractor`
@@ -210,11 +223,47 @@ resolving weekday names in post-processing cannot recover.
   depended on the caller never combining them, a convention rather than a
   contract. Fixed by making the route apply every field present, `done`
   included, in one call.
-- `handleTodoPhotoJob(payload, ctx)` — extract todos from a planner photo,
-  idempotent per upload (re-running it must not duplicate `todo_proposals`
-  rows — same idempotence discipline as `ingestion.handleExtractionJob`'s
-  `upsertExtraction`, here achieved by deleting any existing proposal rows for
-  the job before inserting).
+- `handleTodoPhotoJob(payload: { storedPath: string }, ctx)` — reads the
+  photo via `fileStore.read`, calls `TodoExtractor.extract` with `ctx.now`
+  truncated to a date key as `today`. `legible: false` fails the job with
+  `result.value.reason` as `last_error`, same as
+  `ingestion.handleExtractionJob`'s identical check. Otherwise replaces
+  (never appends to) that job's proposal rows — idempotent per upload, same
+  discipline as `ingestion.handleExtractionJob`'s `upsertExtraction`: a
+  retry after a worker crash must not duplicate rows, achieved by deleting
+  any existing proposal rows for the job before inserting the new batch, in
+  one transaction. A legible photo with zero homework on it is a valid
+  success with zero proposals, not an error — see "Where the photo itself
+  goes" below for why this case still needs to be handled correctly at
+  confirm/reject time.
+- `confirmProposals(userId, jobId, acceptedIds, now)` /
+  `rejectProposals(userId, jobId)` — both keyed on the **job's own
+  existence and ownership**, not on whether it has any proposals: `Err
+  'not-found'` if `jobId` names no `extract-todos` job belonging to
+  `userId` (found via `jobQueue.listJobs(userId, 'extract-todos')`, the
+  same lookup `ingestion.retryExtraction`/`getDocument` already use for
+  their own job-payload reads — no new `jobs` capability needed). Keying on
+  the job rather than the proposals is what makes a legible-but-empty photo
+  (zero proposals, a valid outcome above) still confirmable/rejectable —
+  keying on "does at least one proposal exist" would leave that photo's
+  upload with no cleanup path at all, and `POST .../confirm` is currently
+  the only way `docs/modules/workspace.md`'s step 4 screen will have to
+  dismiss it.
+  - `confirmProposals`: creates a `Todo` (`source: 'photo'`) for each
+    accepted id, deletes **every** proposal for the job (accepted or not —
+    a proposal the person didn't accept is discarded, not left behind),
+    both in one transaction; not a loop calling the manual `createTodo`
+    use case, which inserts one row with no matching "delete these
+    proposals" step.
+  - `rejectProposals`: deletes every proposal for the job, creates no
+    todos. Functionally `confirmProposals(..., acceptedIds: [])` would do
+    the identical thing at the data layer — kept as a separate, named
+    function and route anyway, because "I don't want any of these" and "I
+    want some of these" are different intents for the person using the
+    screen, even when their storage-layer effect coincides.
+  - Both then call the file-cleanup step below, after their own DB
+    transaction commits, never inside it (file I/O does not belong in a
+    write transaction any more than an LLM call does).
 
 ## Persistence
 
@@ -264,7 +313,7 @@ results, so this table IS the job's output. Confirming copies the accepted rows
 into `todos` and deletes the proposal set; rejecting deletes it. One bad OCR
 pass therefore never silently fills someone's todo list with nonsense.
 
-### Where the photo itself goes
+### Where the photo itself goes, and when it leaves
 
 Not addressed by the original draft at all. `jobs.payload_json` is a small
 JSON column (`packages/core/src/jobs/infra/schema.ts`) — every existing job
@@ -274,12 +323,65 @@ is `{ documentId }`); a multi-hundred-KB photo does not belong there.
 answer: `FileStore`/`LocalFileStore` (`ingestion/index.ts`). `workspace`
 takes a `FileStore` dependency (the same shared instance `apps/api`/
 `apps/worker` already construct for `ingestion`) and writes the upload to
-`DATA_DIR/uploads/{userId}/todo-jobs/{jobId}/page.{ext}` — a new path
-pattern under the existing `DATA_DIR/uploads/` root, added to CLAUDE.md's
-Files section alongside the existing one. `handleTodoPhotoJob`'s payload is
-then just `{ storedPath }`, not the bytes. No `documents` row is created —
-there is no course here, no page ordering, no SHA-256 dedup: a planner photo
-is a one-shot job input, not a document.
+`DATA_DIR/uploads/{userId}/{jobId}/0.{ext}` — reusing
+`FileStore.put(userId, documentId, pageIndex, bytes, ext)` completely
+unmodified, a `jobId` where it normally takes a `documentId` and page index
+always `0` (one photo per job). CLAUDE.md's Files section documents this
+exact path. `handleTodoPhotoJob`'s payload is then just `{ storedPath }`,
+not the bytes. No `documents` row is created — there is no course here, no
+page ordering, no SHA-256 dedup: a planner photo is a one-shot job input,
+not a document.
+
+**No `documents` row means no lifecycle for this file by default** — unlike
+a course's pages, nothing's deletion carries this one away, and it would
+sit on the Railway volume forever. Two ways to close that, no implicit
+third:
+
+1. Delete it once its job's proposals are confirmed or rejected — the
+   natural end of its usefulness, since the spec already deletes the
+   proposal set at that exact moment.
+2. Accept indefinite retention, documented as a debt with its reason.
+
+**Decision: (1).** The file exists to feed exactly one extraction; once its
+proposals are confirmed (copied into `todos`) or rejected (discarded),
+nothing will ever read it again, and a small deployment ("a handful of
+users," CLAUDE.md) accumulating one abandoned photo per upload forever is a
+real, unbounded leak with no cleanup path at all — not a deferred nice-to-have.
+
+**How, without a new table or a per-proposal column.** The natural place to
+store `storedPath` for later deletion would be `todo_proposals` itself, but
+that fails the moment a legible photo has zero homework on it (see
+`handleTodoPhotoJob` above): zero proposal rows means nowhere to have
+stored it. The job row itself has no such gap — it exists the moment the
+photo is uploaded and is never deleted (`docs/modules/jobs.md`) — so
+`confirmProposals`/`rejectProposals` read `storedPath` back off the job's
+own payload via `jobQueue.listJobs(userId, 'extract-todos')`, the exact
+pattern `ingestion.retryExtraction`/`getDocument`/`list-documents` already
+use to read their own job payloads back. No new table, no denormalized
+column repeated across a job's proposal rows, and it works identically
+whether the job produced zero proposals or several.
+
+**Both paths are tested, and neither fails on an already-deleted file.**
+`FileStore.delete` (`LocalFileStore`) already calls Node's `rm` with
+`force: true` — a missing file is a no-op there, not an error — so
+`confirmProposals`/`rejectProposals` call it unconditionally, after their
+own DB transaction commits, with no extra existence check of their own.
+This also covers a retried confirm/reject (the file gone from the first
+attempt, `not-found` from the DB half is impossible since the job/proposals
+were already handled — see the transaction ordering above) without a
+special case.
+
+**Known, narrower gap, disclosed rather than left implicit: a permanently
+failed job's photo is not cleaned up.** If `TodoExtractor.extract` reports
+`legible: false`, or the job exhausts its retries, `handleTodoPhotoJob`
+never reaches the success path, so no confirm/reject ever happens for it,
+and the file is never deleted by this mechanism. This mirrors, not
+contradicts, `ingestion`'s own precedent: a permanently failed extraction
+there doesn't auto-delete its pages either — only an explicit terminal
+action does (there, `deleteDocument`; here, there is no equivalent for a
+failed photo upload in this milestone, since there is no `documents`-like
+row to attach a "delete this failed upload" action to). Smaller and more
+defensible than blanket retention, but real — not silently traded away.
 
 ## API
 
@@ -290,6 +392,11 @@ is a one-shot job input, not a document.
 | `POST /api/todos/from-photo` | Multipart, writes the photo via `FileStore`, enqueues extraction |
 | `GET /api/todos/proposals/:jobId` | Proposals awaiting confirmation |
 | `POST /api/todos/proposals/:jobId/confirm` | `{ accepted: [...] }` |
+| `POST /api/todos/proposals/:jobId/reject` | No body |
+
+**`reject` is missing from the original draft's table entirely**, even
+though its own prose two paragraphs above it says "rejecting deletes it" —
+a real gap, not a rename. Added here.
 
 Pomodoro's two routes from the original draft (`POST /api/pomodoro` ·
 `PATCH /api/pomodoro/:id`) move to M7's own spec — not built, not routed,
@@ -303,11 +410,17 @@ above).
 
 ## Key tests
 
+- **Integration, written first: proposals are never written to `todos`
+  before confirmation.** The central invariant of the photo-extraction
+  step — everything else in that step exists to protect it.
+- Integration: `confirmProposals` deletes the photo file and rejects a
+  retry safely — asserted for both the confirm and the reject path, and
+  again against a file already deleted (a second call must not fail)
 - Unit: `TodayView` composition with empty inputs, a full day, and a mix
 - Unit: `daysAway` at 0, 1 and negative
 - Contract: planner-photo fixture yields todos with resolved dates; an
-  illegible fixture returns a clear reason
-- Integration: proposals are not written to `todos` until confirmed
+  illegible fixture returns a clear reason; a legible-but-empty photo
+  succeeds with zero proposals, not an error
 - Integration: `getToday` makes no direct SQL query against another module's
   tables (asserted via `dependency-cruiser`)
 - Integration: `getToday`'s grouping by `documentId` does not cross-contaminate
