@@ -257,4 +257,51 @@ export class SqliteReviewRepository implements ReviewRepository {
       })),
     );
   }
+
+  // Batched counterpart to getCardSchedulesForDocument — same shape, same
+  // null-sentinel, same 'active' filter, minus the document_id filter,
+  // plus documentId per row (docs/modules/progress.md's listProgress).
+  getCardSchedulesForUser(userId: string): Promise<{ documentId: string; notionId: string; cardId: string; schedule: CardSchedule | null }[]> {
+    const rows = this.db.all<{
+      documentId: string;
+      notionId: string;
+      cardId: string;
+      scheduleCardId: string | null;
+      due: string | null;
+      stability: number | null;
+      difficulty: number | null;
+      reps: number | null;
+      lapses: number | null;
+      lastReviewedAt: string | null;
+    }>(sql`
+      SELECT n.document_id AS documentId, n.id AS notionId, c.id AS cardId, s.card_id AS scheduleCardId,
+        s.due AS due, s.stability AS stability, s.difficulty AS difficulty,
+        s.reps AS reps, s.lapses AS lapses, s.last_reviewed_at AS lastReviewedAt
+      FROM ${notionsTable} AS n
+      JOIN ${cardsTable} AS c ON c.notion_id = n.id AND c.user_id = n.user_id
+      LEFT JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
+      WHERE n.user_id = ${userId} AND c.state = 'active'
+    `);
+
+    return Promise.resolve(
+      rows.map((row) => ({
+        documentId: row.documentId,
+        notionId: row.notionId,
+        cardId: row.cardId,
+        schedule:
+          row.scheduleCardId === null
+            ? null
+            : {
+                cardId: row.cardId,
+                userId,
+                due: row.due!,
+                stability: row.stability!,
+                difficulty: row.difficulty!,
+                reps: row.reps!,
+                lapses: row.lapses!,
+                lastReviewedAt: row.lastReviewedAt,
+              },
+      })),
+    );
+  }
 }

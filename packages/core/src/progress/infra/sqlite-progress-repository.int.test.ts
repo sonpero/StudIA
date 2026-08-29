@@ -70,4 +70,17 @@ describe("SqliteProgressRepository", () => {
     expect(await repo.getDeadline("u1", "doc-1")).toBeNull();
     expect(await repo.getDeadline("u1", "doc-2")).not.toBeNull();
   });
+
+  // Added for listProgress (docs/modules/progress.md): every deadline the
+  // user has set, in one query — avoids an N+1 read across every course.
+  it("getDeadlinesForUser returns every deadline the user owns, scoped by user", async () => {
+    const { repo } = setup();
+    await repo.setDeadline("u1", { id: "d1", documentId: "doc-1", userId: "u1", date: "2026-03-20", label: "Contrôle", createdAt: now.toISOString() });
+    await repo.setDeadline("u1", { id: "d2", documentId: "doc-2", userId: "u1", date: "2026-03-21", label: null, createdAt: now.toISOString() });
+
+    const deadlines = await repo.getDeadlinesForUser("u1");
+
+    expect(deadlines.map((d) => d.documentId).sort()).toEqual(["doc-1", "doc-2"]);
+    expect(await repo.getDeadlinesForUser("u2")).toEqual([]);
+  });
 });

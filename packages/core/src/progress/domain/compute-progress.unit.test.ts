@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { computeProgress } from "./compute-progress.js";
+import { computeProgress, readinessProjectionDate } from "./compute-progress.js";
 import { PROGRESS_NO_DEADLINE_HORIZON_DAYS, PROGRESS_RECENTLY_ADDED_DAYS, PROGRESS_STATUS_MARGIN, PROGRESS_TARGET_READINESS, type ProgressCardState, type ProgressDeadlineInput, type ProgressNotion } from "./types.js";
 
 const NOW = new Date("2026-03-02T09:00:00.000Z");
@@ -306,5 +306,16 @@ describe("computeProgress — exported constants", () => {
     expect(PROGRESS_RECENTLY_ADDED_DAYS).toBe(7);
     expect(PROGRESS_TARGET_READINESS).toBe(0.9);
     expect(PROGRESS_NO_DEADLINE_HORIZON_DAYS).toBe(14);
+  });
+});
+
+describe("readinessProjectionDate", () => {
+  it("with a deadline, projects to the deadline's own date, not now", () => {
+    const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-10), date: dateKeyOffset(20) };
+    expect(readinessProjectionDate(deadline, NOW).toISOString().slice(0, 10)).toBe(dateKeyOffset(20));
+  });
+
+  it("without a deadline, projects to now + PROGRESS_NO_DEADLINE_HORIZON_DAYS", () => {
+    expect(readinessProjectionDate(null, NOW).toISOString().slice(0, 10)).toBe(dateKeyOffset(PROGRESS_NO_DEADLINE_HORIZON_DAYS));
   });
 });

@@ -56,6 +56,11 @@ export class SqliteNotionRepository implements NotionRepository {
     return Promise.resolve(rows.map(toNotion));
   }
 
+  listNotionsForUser(userId: string): Promise<Notion[]> {
+    const rows = this.db.select().from(notionsTable).where(eq(notionsTable.userId, userId)).orderBy(notionsTable.documentId, notionsTable.position).all();
+    return Promise.resolve(rows.map(toNotion));
+  }
+
   findNotion(userId: string, notionId: string): Promise<Notion | null> {
     const row = this.db
       .select()

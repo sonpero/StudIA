@@ -151,4 +151,26 @@ describe("SqliteNotionRepository", () => {
       /FOREIGN KEY/,
     );
   });
+
+  // Added for `progress`'s listProgress (docs/modules/progress.md): one
+  // query for every notion across every document the user owns, so
+  // aggregating N courses never costs N reads.
+  it("listNotionsForUser returns every notion across every document the user owns, scoped by user", async () => {
+    const { db, repo } = setup();
+    seedDocument(db, "doc-2", "u1");
+    await repo.replaceNotionsForDocument("u1", "doc-1", [aNotion({ id: "n1", documentId: "doc-1", position: 0 })]);
+    await repo.replaceNotionsForDocument("u1", "doc-2", [aNotion({ id: "n2", documentId: "doc-2", position: 0 })]);
+    // Another user's notion must never leak in.
+    seedDocument(db, "doc-u2", "u2");
+    await repo.replaceNotionsForDocument("u2", "doc-u2", [aNotion({ id: "n-u2", documentId: "doc-u2", userId: "u2", position: 0 })]);
+
+    const notions = await repo.listNotionsForUser("u1");
+
+    expect(notions.map((n) => n.id).sort()).toEqual(["n1", "n2"]);
+  });
+
+  it("listNotionsForUser is empty for a user who owns no notions", async () => {
+    const { repo } = setup();
+    expect(await repo.listNotionsForUser("u1")).toEqual([]);
+  });
 });

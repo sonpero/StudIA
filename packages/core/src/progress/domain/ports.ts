@@ -8,4 +8,7 @@ export interface ProgressRepository {
   // Upsert keyed by (userId, documentId): "Set or update" (docs/modules/progress.md's API).
   setDeadline(userId: string, deadline: Deadline): Promise<void>;
   deleteDeadline(userId: string, documentId: string): Promise<void>;
+  // Added for listProgress (docs/modules/progress.md): every deadline the
+  // user has set, in one query — avoids an N+1 read across every course.
+  getDeadlinesForUser(userId: string): Promise<Deadline[]>;
 }

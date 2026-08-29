@@ -62,4 +62,11 @@ export interface ReviewRepository {
   // the same `c.state = 'active'` filter as getNotionCardCounts, so the two
   // callers never disagree on which cards count as active for a notion.
   getCardSchedulesForDocument(userId: string, documentId: string): Promise<{ notionId: string; cardId: string; schedule: CardSchedule | null }[]>;
+  // Batched counterpart to getCardSchedulesForDocument, added for
+  // `progress`'s listProgress (docs/modules/progress.md): every active
+  // card's schedule across every document the user owns, in one query —
+  // avoids an N+1 read when aggregating progress across every course. Same
+  // null-sentinel and 'active' filter; documentId lets the caller group
+  // without a second read per document.
+  getCardSchedulesForUser(userId: string): Promise<{ documentId: string; notionId: string; cardId: string; schedule: CardSchedule | null }[]>;
 }

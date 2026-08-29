@@ -332,4 +332,32 @@ describe("SqliteReviewRepository", () => {
     expect((await repo.getCardSchedulesForDocument("u1", "doc-1")).map((row) => row.cardId)).toEqual(["c-doc1"]);
     expect(await repo.getCardSchedulesForDocument("u2", "doc-1")).toEqual([]);
   });
+
+  // Added for `progress`'s listProgress (docs/modules/progress.md): every
+  // active card's schedule across every document the user owns, in one
+  // query — the batched counterpart to getCardSchedulesForDocument, same
+  // null-sentinel and same 'active' filter, plus documentId per row so the
+  // caller can group without a second read per document.
+  it("getCardSchedulesForUser returns one row per active card across every document, with documentId, scoped by user", async () => {
+    const { db, repo } = setup();
+    seedDocument(db, "doc-2", "u1");
+    seedNotion(db, "n3", "doc-2", "u1", 0);
+    seedCard(db, "c1", "n1", "u1");
+    seedCard(db, "c3", "n3", "u1");
+    seedCard(db, "stale-card", "n2", "u1", "stale");
+    await repo.submitReview("u1", aReview({ id: "r1", cardId: "c1" }), aSchedule({ cardId: "c1" }));
+
+    const rows = await repo.getCardSchedulesForUser("u1");
+
+    expect(rows).toHaveLength(2);
+    const byCardId = new Map(rows.map((row) => [row.cardId, row]));
+    expect(byCardId.get("c1")).toEqual({ documentId: "doc-1", notionId: "n1", cardId: "c1", schedule: aSchedule({ cardId: "c1" }) });
+    expect(byCardId.get("c3")).toEqual({ documentId: "doc-2", notionId: "n3", cardId: "c3", schedule: null });
+    expect(byCardId.has("stale-card")).toBe(false);
+  });
+
+  it("getCardSchedulesForUser is empty for a user with no cards", async () => {
+    const { repo } = setup();
+    expect(await repo.getCardSchedulesForUser("u2")).toEqual([]);
+  });
 });

@@ -427,6 +427,30 @@ This is a real addition to `review`'s public surface — not a schema change
 it is a cross-module coupling point worth a second pair of eyes before it
 lands, since `review` is not this module's own to change unilaterally.
 
+**Batched counterparts, added for `listProgress` (below), to avoid an N+1
+read across every course:**
+
+- `content.NotionRepository.listNotionsForUser(userId): Promise<Notion[]>`
+  — every notion the user owns, across every document, in one query.
+- `review.ReviewRepository.getCardSchedulesForUser(userId): Promise<{ documentId: string; notionId: string; cardId: string; schedule: CardSchedule | null }[]>`
+  — the batched counterpart to `getCardSchedulesForDocument`: same
+  null-sentinel, same `c.state = 'active'` filter, minus the `document_id`
+  filter, plus `documentId` per row so the caller can group without a
+  second read per document. `getCardSchedulesForDocument` itself is
+  unchanged and still what `getCourseProgress` (single document) calls.
+- `progress.ProgressRepository.getDeadlinesForUser(userId): Promise<Deadline[]>`
+  — this module's own table, no cross-module review needed.
+
+**Assumed limitation, stated so it isn't copied elsewhere unexamined:**
+`listNotionsForUser` and `getCardSchedulesForUser` return everything for the
+user in one shot, no pagination. Acceptable at this app's current volume
+(CLAUDE.md: "a handful of users") where a user's total notion/card count
+across every course is small. This stops being true the moment a single
+user's course count grows enough that "every active card's schedule" is a
+large result set — at that point this pattern needs revisiting (a paginated
+or streamed read), not copying as-is into the next module that wants an
+N+1 fix.
+
 ## Use cases
 
 - `setDeadline(userId, documentId, date, now, label?)` — unchanged
@@ -444,7 +468,14 @@ lands, since `review` is not this module's own to change unilaterally.
 - `getDeadline(userId, documentId)` — **new application function**, thin
   read of the repository, backing the new `GET` route below (this fills the
   M5-as-shipped debt: the deadline form was write-only)
-- `getProgress(userId, documentId, now)` — assembles `computeProgress`'s
+- `getCourseProgress(userId, documentId, now)` — named `getCourseProgress`,
+  not the `getProgress` this spec originally used: `review` already exports
+  its own `getProgress` (the `{mastered, total, nextDueDate}` due-count
+  summary), and `packages/core/src/index.ts`'s barrel re-exports every
+  module with `export *` — two modules exporting the same name there is a
+  build error (`tsc`: "Module has already exported a member"), not a style
+  preference. Found and fixed while wiring this into the barrel; `review`'s
+  own `getProgress` is untouched. Assembles `computeProgress`'s
   input from `content.listNotions`, `review.getCardSchedulesForDocument` +
   `review.projectRetrievability`, and this module's own `getDeadline`
   (fetched exactly once); calls `computeProgress`; returns a `Result` that
@@ -462,17 +493,37 @@ lands, since `review` is not this module's own to change unilaterally.
   `Document` in hand (the route's existing ownership check, or
   `listProgress`'s own `documentRepo.listDocuments` call below) and
   composes it into the response, see API below.
-- `listProgress(userId, now)` — `getProgress` for every one of the user's
-  documents (`documentRepo.listDocuments`, which also supplies each
-  document's `title`), for the aggregate route. A document whose
-  `getProgress` call returns its error branch is **not** silently dropped
-  (unlike the old `getToday`, which dropped `PlanningInputError` documents
-  from an aggregate the user never sees per-item) — a stale exam date is
-  something the person can act on, and a course that mutely disappears from
-  the list would be more confusing than one flagged as needing attention.
-  Composes `title` with `getProgress`'s `deadlineDate`/`deadlineLabel` and
-  result into one `ProgressListItem` per document. See API below for the
-  shape.
+- `listProgress(userId, now)` — the equivalent of calling `getCourseProgress`
+  for every one of the user's documents, but **never actually loops it**:
+  four batched reads total (`documentRepo.listDocuments`,
+  `content.listNotionsForUser`, `review.getCardSchedulesForUser`,
+  `progress.getDeadlinesForUser`), grouped in-memory into three `Map`s keyed
+  by `documentId`, never N+N+N reads. A document whose computation errors
+  (`deadline-in-past`) is **not** silently dropped (unlike the old
+  `getToday`, which dropped `PlanningInputError` documents from an
+  aggregate the user never sees per-item) — a stale exam date is something
+  the person can act on.
+
+  **Two failure modes this grouping step can introduce, both covered by a
+  dedicated integration test with real repositories, not fakes:**
+  - *Cross-document leakage*: a `Map` keyed wrong (or not keyed by
+    `documentId` at all) doesn't throw and doesn't violate any bound — the
+    numbers stay internally consistent, they just describe the wrong
+    course. Tested with two documents, one fully covered and one fully
+    uncovered, asserting each keeps its own exact values, checked in both
+    directions.
+  - *Silent disappearance*: **the final assembly iterates over
+    `documentRepo.listDocuments`, never over the grouping `Map`s' keys.** A
+    document with zero notions is absent from all three `Map`s entirely; if
+    the loop walked a `Map`'s keys instead, that document would vanish from
+    the list instead of showing a coverage-0/readiness-0 entry. Tested
+    directly: a document with no notions still produces a `kind: 'ok'`
+    entry.
+
+  Composes `title` (from `documentRepo`) with `getCourseProgress`'s
+  assembly logic (factored into `assembleProgressNotions`, shared by both
+  use cases so the notion/card grouping logic is written once) into one
+  `ProgressListItem` per document. See API below for the shape.
 
 ## Persistence
 
@@ -526,9 +577,40 @@ and `planHistoryTable` are deleted along with their file-level exports from
 |---|---|
 | `POST /api/documents/:id/deadline` | Set or update (unchanged) |
 | `DELETE /api/documents/:id/deadline` | Remove (unchanged) |
-| `GET /api/documents/:id/deadline` | **New.** `200 { date, label }` if set, `404 { error: "not-found" }` if not. Fills the M5-as-shipped debt. |
-| `GET /api/documents/:id/progress?today=` | One course's progress, see shape below |
-| `GET /api/progress?today=` | Every course, see shape below |
+| `GET /api/documents/:id/deadline` | **New.** `200 { date, label }` if set, `404 { error: "no-deadline" }` if not — a distinct body from the `403 { error: "not-found" }` ownership check in the same file; both used to read `"not-found"` for two different meanings. Fills the M5-as-shipped debt. |
+| `GET /api/documents/:id/course-progress?today=` | One course's progress, see shape below |
+| `GET /api/course-progress?today=` | Every course, see shape below |
+
+**Named `course-progress`, not `progress` (diverges from an earlier draft of
+this spec, which wrote `GET /api/documents/:id/progress` and
+`GET /api/progress`).** `review` already owns
+`GET /api/documents/:id/progress` — discovered as a genuine route collision
+at boot time (Fastify: `FST_ERR_DUPLICATED_ROUTE`) while wiring this route
+in, not a naming preference. Investigated before deciding which side
+renames, per this module's own rule about not touching another module's
+surface unilaterally:
+
+- `review`'s route returns `{ mastered, total, nextDueDate }` — a
+  **document-level** mastery summary (`review/application/get-progress.ts`),
+  not per-notion; per-notion mastery is the separate, differently-named
+  `GET /api/documents/:id/notions-progress`
+  (`review.getNotionsProgress`). So it isn't "the less accurate name" either
+  — both routes are legitimately "document-level progress," just narrower
+  in what `review`'s reports (three counters, no coverage/readiness/status).
+- It is **already consumed**: `apps/web/src/lib/notions-api.ts`'s client
+  function calls it, used by both `NotionsScreen` and `ReviewScreen`, each
+  with a dozen-plus existing unit tests asserting against that exact
+  URL/shape. Renaming it would be a real, working M3/M4 feature changed for
+  a naming preference, in a module this rewrite does not own.
+
+Both facts point the same way: `progress`'s own new routes rename, not
+`review`'s existing one. The aggregate route is `course-progress` too, for
+symmetry, even though a bare `/api/progress` would not itself have
+collided. Same root cause and same fix shape as `getCourseProgress` not
+being named `getProgress` (see Use cases below): this module's names keep
+bumping into modules it doesn't own, at both the function and the route
+layer — recorded here so the next person who notices "course-progress" is
+an odd name doesn't have to redo this investigation.
 
 Removed entirely: `PUT /api/availability`, `GET /api/documents/:id/plan`,
 `GET /api/plan/today`, `POST /api/plan/days/:date/complete`.
@@ -550,14 +632,14 @@ single-document or list — carries `title`, `deadlineDate`, and
 deadline) can render its own actionable phrase too, not just the happy path.
 
 ```ts
-// GET /api/documents/:id/progress?today=
+// GET /api/documents/:id/course-progress?today=
 // 200:
 { title: string; deadlineDate: string | null; deadlineLabel: string | null; kind: 'ok'; progress: CourseProgress }
 // 422 (deadline-in-past):
 { title: string; deadlineDate: string; deadlineLabel: string | null; kind: 'error'; error: 'deadline-in-past' }
 
-// GET /api/progress?today= — an array, one entry per document, so a stale
-// deadline is visible rather than silently missing:
+// GET /api/course-progress?today= — an array, one entry per document, so a
+// stale deadline is visible rather than silently missing:
 type ProgressListItem =
   | { documentId: string; title: string; deadlineDate: string | null; deadlineLabel: string | null; kind: 'ok'; progress: CourseProgress }
   | { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; kind: 'error'; error: 'deadline-in-past' };
@@ -686,10 +768,10 @@ Property-based (`fast-check`) over `computeProgress`, replacing the old
      upstream) — this property is exactly what would catch that
      regression, proven below by mutating in such an adjustment.
    - **4b — pipeline-level, moves to step 3.** The actual decay — the
-     number visibly dropping over time — only happens because `getProgress`
+     number visibly dropping over time — only happens because `getCourseProgress`
      re-derives `retrievability` every call by projecting to a *sliding*
      `now + PROGRESS_NO_DEADLINE_HORIZON_DAYS` target. That recomputation
-     lives outside `computeProgress` entirely (in `getProgress` +
+     lives outside `computeProgress` entirely (in `getCourseProgress` +
      `review.projectRetrievability`), so this half is tested there, once
      both exist. Same weak-vs-strict shape as originally stated (floored at
      `0`; whole-day granular), just one layer up.

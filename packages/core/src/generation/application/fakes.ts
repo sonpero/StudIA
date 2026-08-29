@@ -99,6 +99,7 @@ export function fakeNotionRepositoryForGeneration(notion: Notion | null): Notion
   return {
     replaceNotionsForDocument: notImplemented("replaceNotionsForDocument"),
     listNotions: notImplemented("listNotions"),
+    listNotionsForUser: notImplemented("listNotionsForUser"),
     findNotion: () => Promise.resolve(notion),
     updateNotion: notImplemented("updateNotion"),
     reorderNotions: notImplemented("reorderNotions"),

@@ -18,6 +18,10 @@ export interface NotionRepository {
   // the document first, then inserts the new set in one call.
   replaceNotionsForDocument(userId: string, documentId: string, notions: Notion[]): Promise<void>;
   listNotions(userId: string, documentId: string): Promise<Notion[]>;
+  // Added for `progress`'s listProgress (docs/modules/progress.md): every
+  // notion the user owns, across every document, in one query — avoids an
+  // N+1 read when aggregating progress across every course.
+  listNotionsForUser(userId: string): Promise<Notion[]>;
   findNotion(userId: string, notionId: string): Promise<Notion | null>;
   updateNotion(
     userId: string,

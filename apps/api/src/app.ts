@@ -108,6 +108,8 @@ export function buildApp(opts: BuildAppOptions) {
   void app.register(progressRoutes, {
     repo: progressDeps.repo,
     documentRepo: ingestionDeps.repo,
+    notionRepo: contentDeps.repo,
+    reviewRepo: reviewDeps.repo,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });

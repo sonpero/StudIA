@@ -23,6 +23,8 @@ export function fakeNotionRepository(seed: Notion[] = []): NotionRepository & { 
       Promise.resolve(
         notions.filter((n) => n.userId === userId && n.documentId === documentId).sort((a, b) => a.position - b.position),
       ),
+    listNotionsForUser: (userId) =>
+      Promise.resolve([...notions.filter((n) => n.userId === userId)].sort((a, b) => a.documentId.localeCompare(b.documentId) || a.position - b.position)),
     findNotion: (userId, notionId) => Promise.resolve(own(userId, notionId) ?? null),
     updateNotion: (userId, notionId, patch) => {
       const notion = own(userId, notionId);

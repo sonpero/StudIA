@@ -1,6 +1,18 @@
 import { err, ok, type Result } from "../../shared/index.js";
-import { PROGRESS_RECENTLY_ADDED_DAYS, PROGRESS_STATUS_MARGIN, PROGRESS_TARGET_READINESS } from "./types.js";
+import { PROGRESS_NO_DEADLINE_HORIZON_DAYS, PROGRESS_RECENTLY_ADDED_DAYS, PROGRESS_STATUS_MARGIN, PROGRESS_TARGET_READINESS } from "./types.js";
 import type { CourseProgress, ProgressDeadlineInput, ProgressInputError, ProgressNotion } from "./types.js";
+
+// The date review.projectRetrievability should project each card's
+// retrievability to, before computeProgress ever sees it (computeProgress
+// itself never knows FSRS exists — see "Why ProgressCardState" in
+// docs/modules/progress.md). With a deadline: the deadline's own date, not
+// today. Without: a rolling now + PROGRESS_NO_DEADLINE_HORIZON_DAYS window.
+export function readinessProjectionDate(deadline: ProgressDeadlineInput | null, now: Date): Date {
+  if (deadline !== null) return new Date(`${deadline.date}T00:00:00.000Z`);
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() + PROGRESS_NO_DEADLINE_HORIZON_DAYS);
+  return d;
+}
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);

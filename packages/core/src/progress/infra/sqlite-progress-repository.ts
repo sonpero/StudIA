@@ -37,4 +37,9 @@ export class SqliteProgressRepository implements ProgressRepository {
     this.db.delete(deadlinesTable).where(and(eq(deadlinesTable.userId, userId), eq(deadlinesTable.documentId, documentId))).run();
     return Promise.resolve();
   }
+
+  getDeadlinesForUser(userId: string): Promise<Deadline[]> {
+    const rows = this.db.select().from(deadlinesTable).where(eq(deadlinesTable.userId, userId)).all();
+    return Promise.resolve(rows.map(toDeadline));
+  }
 }
