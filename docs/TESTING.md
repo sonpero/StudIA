@@ -285,6 +285,17 @@ that rule in place:
 
 Both edits were reverted after observing the expected result.
 
+**A real false positive surfaced once this rule met real code (M6 step 3),
+fixed rather than worked around.** `workspace/infra/{claude,fixture}-todo-extractor.ts`
+legitimately import values from `shared/index.ts` (`createLanguageModel`,
+`err`, `ok`) — exactly what every other module's own LLM adapter does — and
+the rule as first written flagged both, because its `to.path` matched *any*
+other module's `index.ts`, `shared` included. `shared` and `jobs` are frozen
+kernels, not business modules with tables of their own, so the rule's `to`
+now excludes them by name (`(?!workspace/|shared/|jobs/)`). Re-ran the
+value-import/type-only-import check above after the fix: still fires on
+`content`'s table, still silent on a type-only reference.
+
 Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves
 a package through `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`,

@@ -241,19 +241,29 @@ UI copy is French, tutoiement, sentence case. Do not write English UI strings
 ```
 DATA_DIR/studia.db
 DATA_DIR/uploads/{userId}/{documentId}/{pageIndex}.{ext}
-DATA_DIR/uploads/{userId}/{jobId}/0.{ext}
+DATA_DIR/uploads/{userId}/{uploadId}/0.{ext}
 DATA_DIR/backups/studia-{ISO date}.db
 ```
 
 The second uploads path (M6, `docs/modules/workspace.md`) is a school-planner
 photo: a one-shot job input, not a course document — no page ordering, no
 SHA-256 dedup, no `documents` row. It reuses `ingestion.FileStore.put`
-completely unmodified (a `jobId` where that call normally takes a
-`documentId`, page index always `0`, one photo per job) rather than adding a
-second storage helper for a nicer-looking path — the originally sketched
-`todo-jobs/{jobId}/page.{ext}` would have needed one. A `jobId` and a
-`documentId` are both UUIDv7s drawn from the same generator, so collision
-between the two subtrees is not a real risk worth designing around.
+completely unmodified (an id where that call normally takes a `documentId`,
+page index always `0`, one photo per job) rather than adding a second
+storage helper for a nicer-looking path — the originally sketched
+`todo-jobs/{jobId}/page.{ext}` would have needed one.
+
+**`uploadId`, not `jobId`.** `JobQueue.enqueue` (`jobs/domain/ports.ts`, a
+frozen kernel) generates the job's id internally and only returns it once
+the row already exists — there is no way to know a job's id before
+enqueueing it, so the file cannot be named after it. `startTodoPhotoExtraction`
+generates its own id from the same `IdGenerator` for the upload's path,
+writes the file, and only then enqueues the job with that path in its
+payload; the job gets a separate id of its own from `enqueue()`. Both ids
+are UUIDv7s from the same generator, so collision between this subtree and
+`{documentId}`'s is not a real risk worth designing around, but the two
+values are never the same id by construction, only by coincidence-free
+convention.
 
 Uploaded files are NEVER served as static assets. They go through an
 authenticated route that verifies the document belongs to the requesting user.

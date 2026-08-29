@@ -64,6 +64,13 @@
       "when": 1788018455129,
       "tag": "0008_sweet_stephen_strange",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788029429908,
+      "tag": "0009_sudden_deathstrike",
+      "breakpoints": true
     }
   ]
 }

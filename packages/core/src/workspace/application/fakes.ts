@@ -1,17 +1,23 @@
-import type { Document, DocumentRepository } from "../../ingestion/index.js";
+import type { Document, DocumentRepository, FileStore } from "../../ingestion/index.js";
 import type { Notion, NotionRepository } from "../../content/index.js";
+import type { Job, JobQueue } from "../../jobs/index.js";
 import type { Deadline, ProgressRepository } from "../../progress/index.js";
 import type { CardSchedule, DueCard, ReviewRepository } from "../../review/index.js";
-import type { TodoRepository } from "../domain/ports.js";
-import type { Todo } from "../domain/types.js";
+import { ok, type Result } from "../../shared/index.js";
+import type { TodoExtractionError, TodoExtractionOutput, TodoExtractor, TodoRepository } from "../domain/ports.js";
+import type { Todo, TodoProposal } from "../domain/types.js";
 
 // In-memory test double for workspace's own port (CLAUDE.md rule 3), same
 // shape as progress/application/fakes.ts's fakeProgressRepository.
-export function fakeTodoRepository(seed: { todos?: Todo[] } = {}): TodoRepository & { todos: Todo[] } {
+export function fakeTodoRepository(
+  seed: { todos?: Todo[]; proposals?: TodoProposal[] } = {},
+): TodoRepository & { todos: Todo[]; proposals: TodoProposal[] } {
   const todos = [...(seed.todos ?? [])];
+  const proposals = [...(seed.proposals ?? [])];
 
   return {
     todos,
+    proposals,
     createTodo: (todo) => {
       todos.push(todo);
       return Promise.resolve();
@@ -28,6 +34,27 @@ export function fakeTodoRepository(seed: { todos?: Todo[] } = {}): TodoRepositor
       if (index === -1) return Promise.resolve(false);
       todos.splice(index, 1);
       return Promise.resolve(true);
+    },
+    replaceProposalsForJob: (userId, jobId, replacement) => {
+      for (let i = proposals.length - 1; i >= 0; i -= 1) {
+        if (proposals[i]!.jobId === jobId && proposals[i]!.userId === userId) proposals.splice(i, 1);
+      }
+      proposals.push(...replacement);
+      return Promise.resolve();
+    },
+    listProposals: (userId, jobId) => Promise.resolve(proposals.filter((p) => p.jobId === jobId && p.userId === userId)),
+    confirmProposals: (userId, jobId, newTodos) => {
+      todos.push(...newTodos);
+      for (let i = proposals.length - 1; i >= 0; i -= 1) {
+        if (proposals[i]!.jobId === jobId && proposals[i]!.userId === userId) proposals.splice(i, 1);
+      }
+      return Promise.resolve();
+    },
+    deleteProposals: (userId, jobId) => {
+      for (let i = proposals.length - 1; i >= 0; i -= 1) {
+        if (proposals[i]!.jobId === jobId && proposals[i]!.userId === userId) proposals.splice(i, 1);
+      }
+      return Promise.resolve();
     },
   };
 }
@@ -100,4 +127,63 @@ export function fakeProgressRepositoryForWorkspace(deadlines: Deadline[]): Progr
     deleteDeadline: n("deleteDeadline"),
     getDeadlinesForUser: (userId) => Promise.resolve(deadlines.filter((d) => d.userId === userId)),
   };
+}
+
+// Reused across the from-photo upload and job-handling paths, same shape as
+// ingestion/application/fakes.ts's own fakeFileStore — deleting a missing
+// key from a Map is naturally a no-op, matching LocalFileStore's real
+// idempotent delete (Node's rm with force: true).
+export function fakeFileStore(): FileStore & { files: Map<string, Buffer> } {
+  const files = new Map<string, Buffer>();
+  let counter = 0;
+  return {
+    files,
+    put: (userId, jobId, pageIndex, bytes, ext) => {
+      const path = `${userId}/${jobId}/${String(pageIndex)}-${String(counter++)}.${ext}`;
+      files.set(path, bytes);
+      return Promise.resolve(path);
+    },
+    read: (storedPath) => {
+      const bytes = files.get(storedPath);
+      if (!bytes) throw new Error(`fakeFileStore: no file at ${storedPath}`);
+      return Promise.resolve(bytes);
+    },
+    delete: (storedPath) => {
+      files.delete(storedPath);
+      return Promise.resolve();
+    },
+  };
+}
+
+// Same shape as ingestion/application/fakes.ts's own fakeJobQueueForIngestion.
+export function fakeJobQueueForWorkspace(seed: Job[] = []): JobQueue & { rows: Job[] } {
+  const rows = [...seed];
+  let counter = 0;
+  return {
+    rows,
+    enqueue: (userId, type, payload, now) => {
+      const id = `job-${String(counter++)}`;
+      const nowIso = now.toISOString();
+      rows.push({ id, userId, type, payload, status: "pending", attempts: 0, maxAttempts: 3, lastError: null, runAfter: nowIso, createdAt: nowIso, updatedAt: nowIso });
+      return Promise.resolve(id);
+    },
+    claimNext: () => Promise.resolve(null),
+    complete: () => Promise.resolve(),
+    fail: () => Promise.resolve(),
+    recoverStale: () => Promise.resolve(0),
+    listJobs: (userId, type, createdAfter) =>
+      Promise.resolve(
+        rows
+          .filter((row) => row.userId === userId && row.type === type && (!createdAfter || row.createdAt > createdAfter))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .map((row) => ({ id: row.id, status: row.status, payload: row.payload, lastError: row.lastError })),
+      ),
+  };
+}
+
+export function fakeTodoExtractor(
+  impl: (input: { bytes: Buffer; today: string }) => Promise<Result<TodoExtractionOutput, TodoExtractionError>> = () =>
+    Promise.resolve(ok({ todos: [{ label: "Rendre le devoir", dueDate: "2026-03-10", subject: "Maths" }], legible: true })),
+): TodoExtractor {
+  return { extract: (input) => impl(input) };
 }

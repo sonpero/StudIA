@@ -69,13 +69,13 @@ module.exports = {
     {
       name: "workspace-no-cross-module-sql",
       comment:
-        "workspace/infra/** (its own SQL repository) must never touch another module's tables directly (docs/modules/workspace.md: 'it reads through public interfaces only'). A plain to.path rule cannot forbid this: another module's schema tables are legitimately re-exported from its own index.ts for other modules' documented cross-module joins (e.g. review's), so the file-level edge from workspace/infra/** to that index.ts looks identical whether it's a join or an allowed type-only reference. dependencyTypesNot: type-only is what actually distinguishes them — importing a VALUE (a table, a class) from another module's index.ts is what this forbids; importing only its TYPES is not.",
+        "workspace/infra/** (its own SQL repository) must never touch another business module's tables directly (docs/modules/workspace.md: 'it reads through public interfaces only'). A plain to.path rule cannot forbid this: another module's schema tables are legitimately re-exported from its own index.ts for other modules' documented cross-module joins (e.g. review's), so the file-level edge from workspace/infra/** to that index.ts looks identical whether it's a join or an allowed type-only reference. dependencyTypesNot: type-only is what actually distinguishes them — importing a VALUE (a table, a class) from another module's index.ts is what this forbids; importing only its TYPES is not. shared/ and jobs/ are excluded from `to`: they are frozen kernels, not business modules with tables of their own, and every module (including workspace's infra layer, e.g. its LLM adapters' createLanguageModel, err/ok) legitimately imports values from them — found as a false positive the first time this rule ran for real, against workspace's own extractor adapters.",
       severity: "error",
       from: {
         path: "^packages/core/src/workspace/infra/",
       },
       to: {
-        path: "^packages/core/src/(?!workspace/)[^/]+/index\\.ts$",
+        path: "^packages/core/src/(?!workspace/|shared/|jobs/)[^/]+/index\\.ts$",
         dependencyTypesNot: ["type-only"],
       },
     },

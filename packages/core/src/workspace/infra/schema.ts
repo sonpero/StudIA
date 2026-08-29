@@ -24,3 +24,20 @@ export const todosTable = sqliteTable(
   },
   (table) => [index("idx_todos_user").on(table.userId, table.done, table.dueDate)],
 );
+
+// job_id/user_id have the same cross-module FK limitation as above.
+// Deliberately no ON DELETE CASCADE from jobs(id): jobs are never deleted
+// (docs/modules/jobs.md), so this never needs to react to that.
+export const todoProposalsTable = sqliteTable(
+  "todo_proposals",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id").notNull(),
+    userId: text("user_id").notNull(),
+    label: text("label").notNull(),
+    dueDate: text("due_date"),
+    subjectHint: text("subject_hint"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_proposals_job").on(table.jobId)],
+);

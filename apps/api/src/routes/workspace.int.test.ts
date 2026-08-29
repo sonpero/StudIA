@@ -1,12 +1,19 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Argon2PasswordHasher, createOrResetAccount, SqliteUserRepository, uuidV7Generator } from "@studia/core";
+import { Argon2PasswordHasher, createOrResetAccount, LocalFileStore, SqliteUserRepository, uuidV7Generator } from "@studia/core";
 import { sql } from "drizzle-orm";
+import FormData from "form-data";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import { openDatabase } from "../db/connection.js";
 import { runMigrations } from "../db/migrate.js";
+
+function buildMultipart(filename: string, contentType: string, bytes: Buffer): { buffer: Buffer; headers: Record<string, string> } {
+  const form = new FormData();
+  form.append("file", bytes, { filename, contentType });
+  return { buffer: form.getBuffer(), headers: form.getHeaders() };
+}
 
 function extractCookie(setCookieHeader: string | string[] | undefined): string {
   const raw = Array.isArray(setCookieHeader) ? setCookieHeader[0] : setCookieHeader;
@@ -240,6 +247,126 @@ describe("workspace routes", () => {
     it("requires authentication (401)", async () => {
       const res = await app.inject({ method: "GET", url: `/api/today?${query}` });
       expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe("POST /api/todos/from-photo", () => {
+    it("writes the photo and enqueues an extract-todos job (202)", async () => {
+      const { buffer, headers } = buildMultipart("photo.jpg", "image/jpeg", Buffer.from("fake-photo-bytes"));
+
+      const res = await app.inject({ method: "POST", url: "/api/todos/from-photo", headers: { cookie: aliceCookie, ...headers }, payload: buffer });
+
+      expect(res.statusCode).toBe(202);
+      const body = res.json<{ jobId: string }>();
+      expect(typeof body.jobId).toBe("string");
+
+      const seedDb = openDatabase(dbPath);
+      const jobRow = seedDb.all<{ payload_json: string; type: string }>(sql`SELECT type, payload_json FROM jobs WHERE id = ${body.jobId}`)[0];
+      expect(jobRow?.type).toBe("extract-todos");
+      const payload = JSON.parse(jobRow!.payload_json) as { storedPath: string };
+      expect(existsSync(path.join(dir, payload.storedPath))).toBe(true);
+    });
+
+    it("requires authentication (401)", async () => {
+      const { buffer, headers } = buildMultipart("photo.jpg", "image/jpeg", Buffer.from("x"));
+      const res = await app.inject({ method: "POST", url: "/api/todos/from-photo", headers, payload: buffer });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it("rejects a request with no file (400)", async () => {
+      const form = new FormData();
+      const res = await app.inject({ method: "POST", url: "/api/todos/from-photo", headers: { cookie: aliceCookie, ...form.getHeaders() }, payload: form.getBuffer() });
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe("proposals: GET, confirm, reject", () => {
+    function seedProposalsJob(jobId: string, userId: string, storedPath: string) {
+      openDatabase(dbPath).run(sql`INSERT INTO jobs (id, user_id, type, payload_json, status, run_after, created_at, updated_at)
+          VALUES (${jobId}, ${userId}, 'extract-todos', ${JSON.stringify({ storedPath })}, 'done', ${now.toISOString()}, ${now.toISOString()}, ${now.toISOString()})`);
+    }
+
+    function seedProposal(id: string, jobId: string, userId: string, label: string) {
+      openDatabase(dbPath).run(sql`INSERT INTO todo_proposals (id, job_id, user_id, label, due_date, subject_hint, created_at)
+          VALUES (${id}, ${jobId}, ${userId}, ${label}, '2026-03-10', 'Maths', ${now.toISOString()})`);
+    }
+
+    function userId(username: string): string {
+      return openDatabase(dbPath).all<{ id: string }>(sql`SELECT id FROM users WHERE username = ${username}`)[0]!.id;
+    }
+
+    it("GET returns the job's proposals", async () => {
+      const alice = userId("alice");
+      seedProposalsJob("job-1", alice, "u/job-1/0.jpg");
+      seedProposal("p1", "job-1", alice, "Rendre le devoir de maths");
+
+      const res = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual([{ id: "p1", jobId: "job-1", userId: alice, label: "Rendre le devoir de maths", dueDate: "2026-03-10", subjectHint: "Maths", createdAt: now.toISOString() }]);
+    });
+
+    it("GET rejects another user's job (403)", async () => {
+      seedProposalsJob("job-1", userId("bob"), "u/job-1/0.jpg");
+
+      const res = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toEqual({ error: "not-found" });
+    });
+
+    it("confirm (200): creates a todo for each accepted id, deletes the proposals and the file, distinct from a plain manual todo", async () => {
+      const alice = userId("alice");
+      const fileStore = new LocalFileStore(dir);
+      const storedPath = await fileStore.put(alice, "upload-1", 0, Buffer.from("photo"), "jpg");
+      seedProposalsJob("job-1", alice, storedPath);
+      seedProposal("p1", "job-1", alice, "Rendre le devoir de maths");
+      seedProposal("p2", "job-1", alice, "Non accepté");
+
+      const res = await app.inject({ method: "POST", url: "/api/todos/proposals/job-1/confirm", headers: { cookie: aliceCookie }, payload: { accepted: ["p1"] } });
+
+      expect(res.statusCode).toBe(200);
+      const todos = res.json<TodoBody[]>();
+      expect(todos).toHaveLength(1);
+      expect(todos[0]).toMatchObject({ label: "Rendre le devoir de maths", source: "photo" });
+
+      const getAfter = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+      expect(getAfter.json()).toEqual([]);
+      await expect(fileStore.read(storedPath)).rejects.toThrow();
+    });
+
+    it("reject (204): deletes the proposals and the file, creates no todos", async () => {
+      const alice = userId("alice");
+      const fileStore = new LocalFileStore(dir);
+      const storedPath = await fileStore.put(alice, "upload-1", 0, Buffer.from("photo"), "jpg");
+      seedProposalsJob("job-1", alice, storedPath);
+      seedProposal("p1", "job-1", alice, "Rendre le devoir de maths");
+
+      const res = await app.inject({ method: "POST", url: "/api/todos/proposals/job-1/reject", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(204);
+      const getAfter = await app.inject({ method: "GET", url: "/api/todos/proposals/job-1", headers: { cookie: aliceCookie } });
+      expect(getAfter.json()).toEqual([]);
+      await expect(fileStore.read(storedPath)).rejects.toThrow();
+
+      const todayRes = await app.inject({ method: "GET", url: "/api/today?today=2026-03-02&dayBoundary=2026-03-03T00%3A00%3A00.000Z", headers: { cookie: aliceCookie } });
+      expect(todayRes.json<{ todos: TodoBody[] }>().todos).toEqual([]);
+    });
+
+    it("confirm rejects another user's job (403)", async () => {
+      seedProposalsJob("job-1", userId("bob"), "u/job-1/0.jpg");
+
+      const res = await app.inject({ method: "POST", url: "/api/todos/proposals/job-1/confirm", headers: { cookie: aliceCookie }, payload: { accepted: [] } });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("reject rejects another user's job (403)", async () => {
+      seedProposalsJob("job-1", userId("bob"), "u/job-1/0.jpg");
+
+      const res = await app.inject({ method: "POST", url: "/api/todos/proposals/job-1/reject", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(403);
     });
   });
 });

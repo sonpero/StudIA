@@ -1,19 +1,28 @@
 import {
+  confirmProposals,
   createTodo,
   deleteTodo,
+  getProposals,
   getToday,
+  rejectProposals,
+  startTodoPhotoExtraction,
   updateTodo,
   type Clock,
   type DocumentRepository,
+  type FileStore,
   type IdGenerator,
+  type JobQueue,
   type NotionRepository,
   type ProgressRepository,
   type ReviewRepository,
+  type TodoExtractor,
   type TodoRepository,
 } from "@studia/core";
 import type { FastifyPluginCallback } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
+
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export interface WorkspaceRoutesOptions {
   repo: TodoRepository;
@@ -21,6 +30,9 @@ export interface WorkspaceRoutesOptions {
   notionRepo: NotionRepository;
   reviewRepo: ReviewRepository;
   progressRepo: ProgressRepository;
+  fileStore: FileStore;
+  jobQueue: JobQueue;
+  extractor: TodoExtractor;
   idGenerator: IdGenerator;
   clock: Clock;
 }
@@ -98,6 +110,45 @@ export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (a
   app.delete("/api/todos/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const result = await deleteTodo(deps, request.user!.id, id);
+    if (!result.ok) return reply.code(403).send({ error: "not-found" });
+    return reply.code(204).send();
+  });
+
+  const startExtractionDeps = { fileStore: opts.fileStore, jobQueue: opts.jobQueue, idGenerator: opts.idGenerator };
+  const proposalDeps = { repo: opts.repo, jobQueue: opts.jobQueue };
+  const confirmDeps = { repo: opts.repo, jobQueue: opts.jobQueue, fileStore: opts.fileStore, idGenerator: opts.idGenerator };
+  const rejectDeps = { repo: opts.repo, jobQueue: opts.jobQueue, fileStore: opts.fileStore };
+
+  app.post("/api/todos/from-photo", async (request, reply) => {
+    const file = await request.file({ limits: { fileSize: MAX_UPLOAD_BYTES + 1 } });
+    if (!file) return reply.code(400).send({ error: "missing_file" });
+
+    const bytes = await file.toBuffer();
+    const { jobId } = await startTodoPhotoExtraction(startExtractionDeps, request.user!.id, bytes, file.mimetype, opts.clock.now());
+    return reply.code(202).send({ jobId });
+  });
+
+  app.get("/api/todos/proposals/:jobId", async (request, reply) => {
+    const { jobId } = request.params as { jobId: string };
+    const result = await getProposals(proposalDeps, request.user!.id, jobId);
+    if (!result.ok) return reply.code(403).send({ error: "not-found" });
+    return result.value;
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().post(
+    "/api/todos/proposals/:jobId/confirm",
+    { schema: { body: z.object({ accepted: z.array(z.string()) }) } },
+    async (request, reply) => {
+      const { jobId } = request.params as { jobId: string };
+      const result = await confirmProposals(confirmDeps, request.user!.id, jobId, request.body.accepted, opts.clock.now());
+      if (!result.ok) return reply.code(403).send({ error: "not-found" });
+      return result.value;
+    },
+  );
+
+  app.post("/api/todos/proposals/:jobId/reject", async (request, reply) => {
+    const { jobId } = request.params as { jobId: string };
+    const result = await rejectProposals(rejectDeps, request.user!.id, jobId);
     if (!result.ok) return reply.code(403).send({ error: "not-found" });
     return reply.code(204).send();
   });

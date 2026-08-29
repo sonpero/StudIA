@@ -26,3 +26,16 @@ export type TodayView = {
   todos: Todo[];
   upcomingDeadlines: { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; daysAway: number }[];
 };
+
+// A photo-extraction job's output, never written directly to `todos`
+// (docs/modules/workspace.md): confirming copies accepted rows into
+// `todos` and deletes the whole set; rejecting just deletes it.
+export type TodoProposal = {
+  id: string;
+  jobId: string;
+  userId: string;
+  label: string;
+  dueDate: string | null;
+  subjectHint: string | null;
+  createdAt: string;
+};

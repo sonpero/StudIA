@@ -58,7 +58,7 @@ export function buildApp(opts: BuildAppOptions) {
   const generationDeps = buildGenerationDeps(db);
   const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const progressDeps = buildProgressDeps(db);
-  const workspaceDeps = buildWorkspaceDeps(db);
+  const workspaceDeps = buildWorkspaceDeps({ db, dataDir: opts.dataDir, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
 
   const app = Fastify({ logger: true });
 
@@ -122,6 +122,9 @@ export function buildApp(opts: BuildAppOptions) {
     notionRepo: contentDeps.repo,
     reviewRepo: reviewDeps.repo,
     progressRepo: progressDeps.repo,
+    fileStore: workspaceDeps.fileStore,
+    jobQueue,
+    extractor: workspaceDeps.extractor,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });

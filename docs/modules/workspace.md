@@ -323,14 +323,22 @@ is `{ documentId }`); a multi-hundred-KB photo does not belong there.
 answer: `FileStore`/`LocalFileStore` (`ingestion/index.ts`). `workspace`
 takes a `FileStore` dependency (the same shared instance `apps/api`/
 `apps/worker` already construct for `ingestion`) and writes the upload to
-`DATA_DIR/uploads/{userId}/{jobId}/0.{ext}` — reusing
+`DATA_DIR/uploads/{userId}/{uploadId}/0.{ext}` — reusing
 `FileStore.put(userId, documentId, pageIndex, bytes, ext)` completely
-unmodified, a `jobId` where it normally takes a `documentId` and page index
+unmodified, an id where it normally takes a `documentId` and page index
 always `0` (one photo per job). CLAUDE.md's Files section documents this
 exact path. `handleTodoPhotoJob`'s payload is then just `{ storedPath }`,
 not the bytes. No `documents` row is created — there is no course here, no
 page ordering, no SHA-256 dedup: a planner photo is a one-shot job input,
 not a document.
+
+**`uploadId`, not `jobId` — found while implementing, not in any earlier
+draft of this spec.** `JobQueue.enqueue` (a frozen kernel) generates the
+job's id internally and only returns it once the row already exists, so
+`startTodoPhotoExtraction` cannot know the job's id before the file is
+written and cannot name the path after it. It generates its own id from the
+same `IdGenerator` for the path, writes the file, then enqueues the job
+(which gets a separate id of its own) with that path in its payload.
 
 **No `documents` row means no lifecycle for this file by default** — unlike
 a course's pages, nothing's deletion carries this one away, and it would

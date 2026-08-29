@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/better-sqlite3";
 import type { TodoRepository } from "../domain/ports.js";
-import type { Todo } from "../domain/types.js";
-import { todosTable } from "./schema.js";
+import type { Todo, TodoProposal } from "../domain/types.js";
+import { todoProposalsTable, todosTable } from "./schema.js";
 
 export type WorkspaceDb = ReturnType<typeof drizzle>;
 
@@ -15,6 +15,18 @@ function toTodo(row: typeof todosTable.$inferSelect): Todo {
     documentId: row.documentId,
     done: row.done,
     source: row.source,
+    createdAt: row.createdAt,
+  };
+}
+
+function toProposal(row: typeof todoProposalsTable.$inferSelect): TodoProposal {
+  return {
+    id: row.id,
+    jobId: row.jobId,
+    userId: row.userId,
+    label: row.label,
+    dueDate: row.dueDate,
+    subjectHint: row.subjectHint,
     createdAt: row.createdAt,
   };
 }
@@ -59,5 +71,46 @@ export class SqliteTodoRepository implements TodoRepository {
 
     this.db.delete(todosTable).where(and(eq(todosTable.id, id), eq(todosTable.userId, userId))).run();
     return Promise.resolve(true);
+  }
+
+  // Delete-then-insert in one transaction: idempotence for a job retried
+  // after a worker crash (same discipline as content's
+  // replaceNotionsForDocument and ingestion's upsertExtraction).
+  replaceProposalsForJob(userId: string, jobId: string, proposals: TodoProposal[]): Promise<void> {
+    this.db.transaction((tx) => {
+      tx.delete(todoProposalsTable).where(and(eq(todoProposalsTable.jobId, jobId), eq(todoProposalsTable.userId, userId))).run();
+      for (const proposal of proposals) {
+        tx.insert(todoProposalsTable).values(proposal).run();
+      }
+    });
+    return Promise.resolve();
+  }
+
+  listProposals(userId: string, jobId: string): Promise<TodoProposal[]> {
+    const rows = this.db
+      .select()
+      .from(todoProposalsTable)
+      .where(and(eq(todoProposalsTable.jobId, jobId), eq(todoProposalsTable.userId, userId)))
+      .all();
+    return Promise.resolve(rows.map(toProposal));
+  }
+
+  // The central invariant (docs/modules/workspace.md): every accepted
+  // proposal becomes a Todo and every proposal for the job is deleted
+  // (accepted or not), together, in one transaction — never two separate
+  // calls that could leave one done without the other.
+  confirmProposals(userId: string, jobId: string, todos: Todo[]): Promise<void> {
+    this.db.transaction((tx) => {
+      for (const todo of todos) {
+        tx.insert(todosTable).values(todo).run();
+      }
+      tx.delete(todoProposalsTable).where(and(eq(todoProposalsTable.jobId, jobId), eq(todoProposalsTable.userId, userId))).run();
+    });
+    return Promise.resolve();
+  }
+
+  deleteProposals(userId: string, jobId: string): Promise<void> {
+    this.db.delete(todoProposalsTable).where(and(eq(todoProposalsTable.jobId, jobId), eq(todoProposalsTable.userId, userId))).run();
+    return Promise.resolve();
   }
 }

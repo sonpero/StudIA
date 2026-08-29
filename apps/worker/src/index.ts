@@ -3,21 +3,25 @@ import path from "node:path";
 import {
   ClaudeCardGenerator,
   ClaudeNotionSplitter,
+  ClaudeTodoExtractor,
   FixtureCardGenerator,
   FixtureDocumentExtractor,
   FixtureNotionSplitter,
+  FixtureTodoExtractor,
   LocalFileStore,
   OfficeParserExtractor,
   SqliteCardRepository,
   SqliteDocumentRepository,
   SqliteJobQueue,
   SqliteNotionRepository,
+  SqliteTodoRepository,
   VisionExtractor,
   cleanupAbandonedDocuments,
   createLanguageModel,
   handleExtractionJob,
   handleGenerationJob,
   handleSplitJob,
+  handleTodoPhotoJob,
   runWorkerLoop,
   scheduleAbandonedDocumentCleanup,
   systemClock,
@@ -26,10 +30,12 @@ import {
   type CleanupAbandonedDocumentsPayload,
   type DocumentExtractor,
   type ExtractDocumentPayload,
+  type ExtractTodoPhotoPayload,
   type GenerateCardsPayload,
   type JobHandler,
   type NotionSplitter,
   type SplitDocumentPayload,
+  type TodoExtractor,
   type WorkerLoopSignal,
 } from "@studia/core";
 import { z } from "zod";
@@ -47,6 +53,7 @@ const repo = new SqliteDocumentRepository(db);
 const fileStore = new LocalFileStore(dataDir);
 const notionRepo = new SqliteNotionRepository(db);
 const cardRepo = new SqliteCardRepository(db);
+const todoRepo = new SqliteTodoRepository(db);
 
 const llmAdapter = process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real";
 const extractors: DocumentExtractor[] =
@@ -63,6 +70,9 @@ const cardGenerator: CardGenerator =
   llmAdapter === "fixture"
     ? new FixtureCardGenerator("valid")
     : new ClaudeCardGenerator(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+
+const todoExtractor: TodoExtractor =
+  llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
 
 const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
   type: "extract-document",
@@ -88,11 +98,18 @@ const cleanupAbandonedDocumentsHandler: JobHandler<CleanupAbandonedDocumentsPayl
   handle: (payload, ctx) => cleanupAbandonedDocuments({ repo, fileStore, jobQueue }, payload, ctx),
 };
 
+const extractTodosHandler: JobHandler<ExtractTodoPhotoPayload> = {
+  type: "extract-todos",
+  payloadSchema: z.object({ storedPath: z.string() }),
+  handle: (payload, ctx) => handleTodoPhotoJob({ repo: todoRepo, fileStore, extractor: todoExtractor, idGenerator: uuidV7Generator }, payload, ctx),
+};
+
 const handlers = new Map<string, JobHandler>([
   [extractDocumentHandler.type, extractDocumentHandler],
   [splitNotionsHandler.type, splitNotionsHandler],
   [generateCardsHandler.type, generateCardsHandler],
   [cleanupAbandonedDocumentsHandler.type, cleanupAbandonedDocumentsHandler],
+  [extractTodosHandler.type, extractTodosHandler],
 ]);
 
 const signal: WorkerLoopSignal = { stopped: false };
