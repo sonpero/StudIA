@@ -22,6 +22,8 @@ import { meRoutes } from "./routes/me.js";
 import { notionsRoutes } from "./routes/notions.js";
 import { progressRoutes } from "./routes/progress.js";
 import { reviewRoutes } from "./routes/review.js";
+import { workspaceRoutes } from "./routes/workspace.js";
+import { buildWorkspaceDeps } from "./workspace-deps.js";
 
 export interface BuildAppOptions {
   databasePath: string;
@@ -56,6 +58,7 @@ export function buildApp(opts: BuildAppOptions) {
   const generationDeps = buildGenerationDeps(db);
   const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const progressDeps = buildProgressDeps(db);
+  const workspaceDeps = buildWorkspaceDeps(db);
 
   const app = Fastify({ logger: true });
 
@@ -110,6 +113,12 @@ export function buildApp(opts: BuildAppOptions) {
     documentRepo: ingestionDeps.repo,
     notionRepo: contentDeps.repo,
     reviewRepo: reviewDeps.repo,
+    idGenerator: uuidV7Generator,
+    clock: systemClock,
+  });
+  void app.register(workspaceRoutes, {
+    repo: workspaceDeps.repo,
+    documentRepo: ingestionDeps.repo,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });

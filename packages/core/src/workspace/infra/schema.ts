@@ -1,0 +1,26 @@
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+// user_id/document_id have no drizzle `.references()` object-reference
+// across module/package boundaries (same cross-module FK limitation as
+// every prior migration — see CLAUDE.md's SQLite specifics). REFERENCES
+// users(id)/documents(id) are added by hand in the generated migration
+// instead (see apps/api/drizzle/). document_id's ON DELETE SET NULL
+// (docs/modules/workspace.md) is likewise added by hand: drizzle-kit only
+// emits an ON DELETE clause alongside a `.references()` call.
+export const todosTable = sqliteTable(
+  "todos",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    label: text("label").notNull(),
+    dueDate: text("due_date"),
+    documentId: text("document_id"),
+    // SQLite has no boolean type; drizzle's "boolean" mode stores 0/1 and
+    // converts at the boundary, giving the TS side a real boolean without
+    // the repository doing that conversion itself.
+    done: integer("done", { mode: "boolean" }).notNull().default(false),
+    source: text("source", { enum: ["manual", "photo"] }).notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_todos_user").on(table.userId, table.done, table.dueDate)],
+);

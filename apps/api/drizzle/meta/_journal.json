@@ -57,6 +57,13 @@
       "when": 1788000446815,
       "tag": "0007_chubby_george_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788018455129,
+      "tag": "0008_sweet_stephen_strange",
+      "breakpoints": true
     }
   ]
 }
