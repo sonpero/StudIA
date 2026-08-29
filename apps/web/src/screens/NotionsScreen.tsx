@@ -44,12 +44,12 @@ export function NotionsScreen({
   documentId,
   onBack,
   onReview,
-  onOpenPlanning,
+  onOpenProgress,
 }: {
   documentId: string;
   onBack: () => void;
   onReview: (notionId?: string) => void;
-  onOpenPlanning: () => void;
+  onOpenProgress: () => void;
 }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
@@ -200,7 +200,7 @@ export function NotionsScreen({
           <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
             {generateLabel}
           </Button>
-          <Button variant="secondary" onClick={onOpenPlanning}>
+          <Button variant="secondary" onClick={onOpenProgress}>
             Planning
           </Button>
           <Button variant="accent" onClick={() => onReview()}>

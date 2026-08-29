@@ -27,11 +27,11 @@ module.exports = {
       },
     },
     {
-      name: "no-ai-in-planning",
-      comment: "planning/** must not import any AI package: scheduling is a pure, deterministic function (CLAUDE.md).",
+      name: "no-ai-in-progress",
+      comment: "progress/** must not import any AI package: scheduling is a pure, deterministic function (CLAUDE.md).",
       severity: "error",
       from: {
-        path: "^packages/core/src/planning/",
+        path: "^packages/core/src/progress/",
       },
       to: {
         // Not anchored to `^node_modules/`: pnpm resolves a package through
@@ -50,7 +50,7 @@ module.exports = {
         pathNot: "^packages/core/src/review/domain/scheduler\\.ts$",
       },
       to: {
-        // See no-ai-in-planning's comment: must match pnpm's nested
+        // See no-ai-in-progress's comment: must match pnpm's nested
         // `.pnpm/ts-fsrs@x/node_modules/ts-fsrs/...` resolution too, not
         // just a hypothetical top-level `node_modules/ts-fsrs`.
         path: "(^|/)node_modules/ts-fsrs(/|$)",

@@ -15,7 +15,7 @@ belongs to someone else. It reads through public interfaces only.
 type TodayView = {
   date: string;
   dueCards: { documentId: string; documentTitle: string; colour: string; count: number }[];
-  planEntries: PlanEntry[];       // from planning
+  planEntries: PlanEntry[];       // from progress
   todos: Todo[];                  // owned here
   upcomingDeadlines: { documentId: string; label: string; date: string; daysAway: number }[];
 };
@@ -73,7 +73,7 @@ post-processing, because the model sees the surrounding week layout and you do n
 ## Use cases
 
 - `getToday(userId, now)` — composes from `review.getDueCards`,
-  `planning.getToday`, and local todos. One call per module, no SQL against
+  `progress.getToday`, and local todos. One call per module, no SQL against
   another module's tables.
 - `createTodo`, `updateTodo`, `toggleTodo`, `deleteTodo`
 - `handleTodoPhotoJob(payload, ctx)` — extract todos from a planner photo,

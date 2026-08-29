@@ -141,8 +141,8 @@ recoverable instead of destructive.
 
 ## Out of scope
 
-Deciding what to generate. Building a plan, which belongs to `planning`, though
-planning reads this module's due counts through its `index.ts`.
+Deciding what to generate. Building a plan, which belongs to `progress`, though
+progress reads this module's due counts through its `index.ts`.
 
 ## Key tests
 

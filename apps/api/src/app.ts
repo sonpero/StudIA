@@ -12,7 +12,7 @@ import { buildIdentityDeps } from "./identity-deps.js";
 import { buildIngestionDeps } from "./ingestion-deps.js";
 import { authPlugin } from "./plugins/auth.js";
 import { dbPlugin } from "./plugins/db.js";
-import { buildPlanningDeps } from "./planning-deps.js";
+import { buildProgressDeps } from "./progress-deps.js";
 import { buildReviewDeps } from "./review-deps.js";
 import { authRoutes } from "./routes/auth.js";
 import { cardsRoutes } from "./routes/cards.js";
@@ -20,7 +20,7 @@ import { documentsRoutes } from "./routes/documents.js";
 import { healthRoutes } from "./routes/health.js";
 import { meRoutes } from "./routes/me.js";
 import { notionsRoutes } from "./routes/notions.js";
-import { planningRoutes } from "./routes/planning.js";
+import { progressRoutes } from "./routes/progress.js";
 import { reviewRoutes } from "./routes/review.js";
 
 export interface BuildAppOptions {
@@ -55,7 +55,7 @@ export function buildApp(opts: BuildAppOptions) {
   const contentDeps = buildContentDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const generationDeps = buildGenerationDeps(db);
   const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
-  const planningDeps = buildPlanningDeps(db);
+  const progressDeps = buildProgressDeps(db);
 
   const app = Fastify({ logger: true });
 
@@ -105,8 +105,8 @@ export function buildApp(opts: BuildAppOptions) {
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });
-  void app.register(planningRoutes, {
-    repo: planningDeps.repo,
+  void app.register(progressRoutes, {
+    repo: progressDeps.repo,
     documentRepo: ingestionDeps.repo,
     notionRepo: contentDeps.repo,
     reviewRepo: reviewDeps.repo,

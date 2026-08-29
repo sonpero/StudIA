@@ -214,7 +214,7 @@ rules from `docs/UI.md` honestly.
 |---|---|
 | `no-deep-module-import` | Importing anything but another module's `index.ts` |
 | `domain-is-pure` | `domain/**` importing `infra/**`, `application/**`, or any package doing I/O |
-| `no-ai-in-planning` | `planning/**` importing any AI package |
+| `no-ai-in-progress` | `progress/**` importing any AI package |
 | `no-fsrs-outside-review` | `ts-fsrs` imported outside `review/domain/scheduler.ts` |
 | `frozen-kernels` | `jobs/**` and `shared/**` importing any business module |
 
@@ -225,7 +225,7 @@ Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves
 a package through `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`,
 not a top-level `node_modules/<pkg>/...`, so an anchored pattern silently never
-matches (`no-fsrs-outside-review` and `no-ai-in-planning` both had this bug,
+matches (`no-fsrs-outside-review` and `no-ai-in-progress` both had this bug,
 unnoticed since M0, until M3's scratch-violation check caught it).
 
 ---

@@ -6,7 +6,7 @@ Turning extracted Markdown into **notions**: the atomic units of the course. A
 notion is one idea that can be learned, questioned and scheduled independently.
 
 Everything downstream counts notions: generation makes cards per notion, review
-schedules per card, planning distributes notions across days, and the progress
+schedules per card, progress distributes notions across days, and the progress
 ring on the course card is `mastered / total`. Get the granularity wrong here and
 every other module inherits the mistake.
 
@@ -37,7 +37,7 @@ type Notion = {
   granularity is too fine and the plan becomes unusable. Outside the range, the
   job fails with a message rather than writing garbage.
 
-`difficulty` is a **label**, not a schedule. It is an input to `planning`'s pure
+`difficulty` is a **label**, not a schedule. It is an input to `progress`'s pure
 function. Nothing in this module decides when anything is studied.
 
 ## Ports

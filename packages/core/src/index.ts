@@ -7,5 +7,5 @@ export * from "./ingestion/index.js";
 export * from "./content/index.js";
 export * from "./generation/index.js";
 export * from "./review/index.js";
-export * from "./planning/index.js";
+export * from "./progress/index.js";
 
