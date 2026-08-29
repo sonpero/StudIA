@@ -57,6 +57,16 @@ module.exports = {
       },
     },
     {
+      name: "no-circular-dependency",
+      comment:
+        "No import cycle, anywhere: two modules that must each load before the other can is exactly the coupling this repo's module-per-domain design (CLAUDE.md) rules out. The concrete case this exists to catch: review <-> progress, considered and rejected for M6 (docs/modules/progress.md's 'notionsBelowTarget' section).",
+      severity: "error",
+      from: {},
+      to: {
+        circular: true,
+      },
+    },
+    {
       name: "frozen-kernels",
       comment:
         "jobs/** and shared/** are frozen kernels: they must not import any business module (CLAUDE.md).",

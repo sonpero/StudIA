@@ -216,6 +216,7 @@ rules from `docs/UI.md` honestly.
 | `domain-is-pure` | `domain/**` importing `infra/**`, `application/**`, or any package doing I/O |
 | `no-ai-in-progress` | `progress/**` importing any AI package |
 | `no-fsrs-outside-review` | `ts-fsrs` imported outside `review/domain/scheduler.ts` |
+| `no-circular-dependency` | Any import cycle, anywhere in the cruised graph |
 | `frozen-kernels` | `jobs/**` and `shared/**` importing any business module |
 
 Each rule ships with a deliberate violation in a scratch branch to prove it fires.
@@ -230,6 +231,29 @@ expected failures before reverting:
 error no-fsrs-outside-review: packages/core/src/progress/domain/compute-progress.ts → node_modules/.pnpm/ts-fsrs@5.4.1/node_modules/ts-fsrs/dist/index.mjs
 error no-ai-in-progress: packages/core/src/progress/domain/compute-progress.ts → node_modules/.pnpm/ai@4.3.19_react@19.2.8_zod@3.25.76/node_modules/ai/dist/index.mjs
 ```
+
+`no-circular-dependency`'s non-vacuity (M6) was checked by temporarily adding
+`import { getDeadline } from "../../progress/index.js";` to
+`review/application/get-due-cards.ts` — closing the loop against `progress`'s
+existing, real import of `review` (`assemble-progress-notions.ts`'s
+`projectRetrievability`) — running `pnpm lint`, and reading the cycle it
+reported before reverting:
+
+```
+error no-circular-dependency: packages/core/src/progress/application/list-progress.ts →
+    packages/core/src/review/index.ts →
+    packages/core/src/review/application/get-due-cards.ts →
+    packages/core/src/progress/index.ts →
+    packages/core/src/progress/application/list-progress.ts
+```
+
+(Three more permutations of the same cycle through `get-course-progress.ts`
+and `assemble-progress-notions.ts` were reported alongside it — same loop,
+different entry point.) This rule was added ahead of M6 specifically because
+`docs/modules/progress.md`'s `notionsBelowTarget` design rejected a `review
+→ progress` edge that would have closed exactly this cycle; before this
+rule, nothing in `pnpm lint` would have caught a future agent doing it
+anyway.
 
 Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves
