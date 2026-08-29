@@ -221,6 +221,16 @@ rules from `docs/UI.md` honestly.
 Each rule ships with a deliberate violation in a scratch branch to prove it fires.
 A lint rule nobody has seen fail is a rule nobody knows works.
 
+`no-ai-in-progress` and `no-fsrs-outside-review`'s non-vacuity (M5) was checked
+by temporarily adding `import "ai";` and `import "ts-fsrs";` to
+`progress/domain/compute-progress.ts`, running `pnpm lint`, and reading both
+expected failures before reverting:
+
+```
+error no-fsrs-outside-review: packages/core/src/progress/domain/compute-progress.ts → node_modules/.pnpm/ts-fsrs@5.4.1/node_modules/ts-fsrs/dist/index.mjs
+error no-ai-in-progress: packages/core/src/progress/domain/compute-progress.ts → node_modules/.pnpm/ai@4.3.19_react@19.2.8_zod@3.25.76/node_modules/ai/dist/index.mjs
+```
+
 Any rule whose `to.path` targets a `node_modules` package must match
 `node_modules/.pnpm/**`, never an anchored `^node_modules/<pkg>`: pnpm resolves
 a package through `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`,

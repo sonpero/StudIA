@@ -44,10 +44,12 @@ export function NotionsScreen({
   documentId,
   onBack,
   onReview,
+  onOpenProgress,
 }: {
   documentId: string;
   onBack: () => void;
   onReview: (notionId?: string) => void;
+  onOpenProgress: () => void;
 }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
@@ -197,6 +199,9 @@ export function NotionsScreen({
           {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
           <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
             {generateLabel}
+          </Button>
+          <Button variant="secondary" onClick={onOpenProgress}>
+            Progression
           </Button>
           <Button variant="accent" onClick={() => onReview()}>
             Réviser

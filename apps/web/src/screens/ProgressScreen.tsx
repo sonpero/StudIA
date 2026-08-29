@@ -1,0 +1,234 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Confused } from "../components/mascot/Confused.js";
+import { Idle } from "../components/mascot/Idle.js";
+import { Button } from "../components/ui/button.js";
+import { Card } from "../components/ui/card.js";
+import { todayDateKey } from "../lib/day-boundary.js";
+import { deleteDeadline, listProgress, setDeadline, type ProgressListItem } from "../lib/progress-api.js";
+
+const QUERY_KEY = ["progress-list"];
+
+function daysUntil(dateKey: string, todayKey: string): number {
+  const a = new Date(`${todayKey}T00:00:00.000Z`).getTime();
+  const b = new Date(`${dateKey}T00:00:00.000Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+function percent(value: number): string {
+  return `${Math.round(value * 100)} %`;
+}
+
+// A neutral progress device (docs/UI.md's Progress section): a --primary
+// bar over --border, the real number always visible next to it — never a
+// bare bar, never the course's own subject colour. role="meter" carries
+// the value to 2 decimal places, not the whole-point precision of the
+// display text: a small genuine change (e.g. one card's worth of a
+// 60-notion course) can round to the same whole percent, and a test
+// reading aria-valuenow to detect a real rise needs enough resolution to
+// see it even then.
+function Gauge({ label, value }: { label: string; value: number }) {
+  const precise = Math.round(value * 10_000) / 100;
+  return (
+    <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-text-muted">{label}</span>
+        <span className="font-medium tabular-nums">{percent(value)}</span>
+      </div>
+      <div className="h-2 rounded-full bg-border">
+        <div className="h-2 rounded-full bg-primary" style={{ width: percent(value) }} />
+      </div>
+    </div>
+  );
+}
+
+function DeadlineForm({ initialDate, initialLabel, onSubmit, onCancel, pending }: { initialDate: string; initialLabel: string; onSubmit: (date: string, label: string) => void; onCancel: () => void; pending: boolean }) {
+  const [date, setDate] = useState(initialDate);
+  const [label, setLabel] = useState(initialLabel);
+
+  return (
+    <form
+      className="flex flex-col gap-2 rounded-[var(--radius-button)] bg-canvas p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(date, label);
+      }}
+    >
+      <label className="flex flex-col gap-1 text-sm text-text-muted">
+        Date
+        <input type="date" required className="rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-text-muted">
+        Intitulé (facultatif)
+        <input
+          type="text"
+          placeholder="Contrôle de maths"
+          className="rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+      </label>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={pending || !date}>
+          {pending ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Annuler
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function CourseProgressCard({ item }: { item: ProgressListItem }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+
+  const setDeadlineMutation = useMutation({
+    mutationFn: (input: { date: string; label: string }) => setDeadline(item.documentId, input.date, input.label.trim() || undefined),
+    onSuccess: () => {
+      setEditing(false);
+      refresh();
+    },
+  });
+  const deleteDeadlineMutation = useMutation({ mutationFn: () => deleteDeadline(item.documentId), onSuccess: refresh });
+
+  const todayKey = todayDateKey();
+  const isToday = item.kind === "ok" && item.deadlineDate === todayKey;
+  const dataStatus = item.kind === "error" ? "error" : isToday ? "today" : item.progress.status;
+
+  return (
+    <Card className="flex flex-col gap-3" data-testid="progress-card" data-status={dataStatus}>
+      <h3 className="font-[var(--font-display)] text-base font-extrabold">{item.title}</h3>
+
+      {item.kind === "error" ? (
+        <>
+          <p className="rounded-[var(--radius-button)] border border-warning bg-warning/10 p-3 text-sm text-text">
+            Cette échéance est passée. Mets-la à jour pour suivre ta progression.
+          </p>
+          {editing ? (
+            <DeadlineForm
+              initialDate=""
+              initialLabel={item.deadlineLabel ?? ""}
+              pending={setDeadlineMutation.isPending}
+              onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              Mettre à jour l'échéance
+            </Button>
+          )}
+        </>
+      ) : (
+        <>
+          <Gauge label="Couverture" value={item.progress.coverage} />
+          <Gauge label="Préparation" value={item.progress.readiness} />
+
+          {item.progress.recentlyAddedUnreviewed > 0 && (
+            <p className="text-sm text-text-muted">
+              {item.progress.recentlyAddedUnreviewed} fiche{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
+              {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
+            </p>
+          )}
+
+          {item.deadlineDate === null ? (
+            <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
+          ) : isToday ? (
+            <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
+          ) : (
+            <p className="text-sm">
+              Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
+              {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
+                <span className="ml-1 rounded-full border border-warning bg-warning/10 px-2 py-0.5 text-warning">
+                  {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
+                </span>
+              )}
+            </p>
+          )}
+
+          {editing ? (
+            <DeadlineForm
+              initialDate={item.deadlineDate ?? ""}
+              initialLabel={item.deadlineLabel ?? ""}
+              pending={setDeadlineMutation.isPending}
+              onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
+              </Button>
+              {item.deadlineDate !== null && (
+                <button type="button" className="text-sm text-text-muted underline" onClick={() => deleteDeadlineMutation.mutate()}>
+                  Supprimer l'échéance
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+export function ProgressScreen({ onBack }: { onBack: () => void }) {
+  const query = useQuery({ queryKey: QUERY_KEY, queryFn: listProgress });
+
+  if (query.status === "pending") {
+    return (
+      <main className="flex flex-col gap-4 p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+            Retour
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  if (query.status === "error") {
+    return (
+      <main className="flex flex-col items-center gap-4 p-8 text-center">
+        <Confused />
+        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+        <p>Impossible de charger ta progression. Vérifie ta connexion et réessaie.</p>
+        <Button onClick={() => void query.refetch()}>Réessayer</Button>
+      </main>
+    );
+  }
+
+  const items = query.data;
+
+  return (
+    <main className="flex flex-col gap-6 p-8">
+      <div className="flex items-center justify-between">
+        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+        <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+          Retour
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-12 text-center">
+          <Idle />
+          <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <CourseProgressCard key={item.documentId} item={item} />
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

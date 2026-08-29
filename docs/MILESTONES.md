@@ -156,22 +156,22 @@ person decides what to do with the numbers; this module only reports them.
 review a due card, see readiness rise.
 
 **Acceptance**
-- [ ] `computeProgress` is a pure function, property-tested: `coverage` and `readiness` always in `[0, 1]`, `readiness <= coverage` always, deterministic on repeated calls
-- [ ] With no deadline and no activity, `readiness` never increases as `now` advances (strictly decreases only once at least one card has been reviewed and a day boundary is crossed); with a deadline and no activity, `status` never improves as `now` advances within `[deadline.setAt, deadline.date]` (`ahead > on-track > behind`, non-increasing) — see `docs/modules/progress.md` for why these are two different fields, not one, and why both are stated weakly rather than strictly
-- [ ] `PROGRESS_TARGET_READINESS` (`0.9`, matching `review`'s own FSRS retention target) and `PROGRESS_NO_DEADLINE_HORIZON_DAYS` (`14`) are named, exported constants, not literals inlined in the formulas
-- [ ] On the deadline day itself, the screen never shows `status`-driven `--warning` styling or `behindByNotions` — `target` reaching its ceiling exactly that day would otherwise flip most courses to `'behind'` on the one morning nothing can still be done, the opposite of `docs/UI.md`'s "no urgency" rule
-- [ ] `ProgressListItem` and the single-document progress response both carry `title`, `deadlineDate`, and `deadlineLabel` — including on the `'error'` branch — so the mandatory status phrase renders without a second call in either case
-- [ ] A course with zero notions and no deadline is `'no-deadline'`, not `'on-track'` — deadline-nullity is checked before the zero-notions special case, never the reverse
-- [ ] `behindByNotions` counts notions whose projected `R` is below `target(now)` — deterministic, `0` outside `status === 'behind'`, at least `1` whenever it is `'behind'`, never a percentage or a time estimate
-- [ ] `recentlyAddedUnreviewed` explains a low coverage number statelessly (from `notion.createdAt` and `now` alone, no stored previous reading) rather than by detecting a drop
-- [ ] Malformed input (deadline in the past) returns a typed `ProgressInputError`; zero notions, no deadline, deadline today, and all-notions-never-seen are all defined, never `NaN`
-- [ ] No LLM and no `ts-fsrs` import inside `progress/**` (asserted by dependency-cruiser's `no-ai-in-progress` and `no-fsrs-outside-review`)
-- [ ] `GET /api/documents/:id/deadline` exists and round-trips what `POST` stored (fixes the M5-as-shipped debt below)
-- [ ] `setDeadline` preserves `createdAt` when updating an existing deadline's date or label — only a delete-then-set restarts the target trajectory
-- [ ] The migration dropping `availability` and `plan_history` leaves `deadlines`, its rows, and its `deadlines_document_unique` constraint untouched, and replays cleanly from empty and from a `0006`-era database
-- [ ] `coverage` and `readiness` are sourced from a single `getCardSchedulesForDocument` read, never two separate queries — covered by an integration test; this is the invariant that keeps `readiness <= coverage` from breaking intermittently
-- [ ] The screen respects `docs/UI.md`: `--warning` (never `--accent`) for `'behind'`, no urgency or blame in copy, and a stateless explanation (`recentlyAddedUnreviewed`) when recently-added notions explain a low coverage number
-- [ ] Playwright: set a deadline, verify coverage and readiness render, review a due card, verify readiness rises
+- [x] `computeProgress` is a pure function, property-tested: `coverage` and `readiness` always in `[0, 1]`, `readiness <= coverage` always, deterministic on repeated calls
+- [x] With no deadline and no activity, `readiness` never increases as `now` advances (strictly decreases only once at least one card has been reviewed and a day boundary is crossed); with a deadline and no activity, `status` never improves as `now` advances within `[deadline.setAt, deadline.date]` (`ahead > on-track > behind`, non-increasing) — see `docs/modules/progress.md` for why these are two different fields, not one, and why both are stated weakly rather than strictly
+- [x] `PROGRESS_TARGET_READINESS` (`0.9`, matching `review`'s own FSRS retention target) and `PROGRESS_NO_DEADLINE_HORIZON_DAYS` (`14`) are named, exported constants, not literals inlined in the formulas
+- [x] On the deadline day itself, the screen never shows `status`-driven `--warning` styling or `behindByNotions` — `target` reaching its ceiling exactly that day would otherwise flip most courses to `'behind'` on the one morning nothing can still be done, the opposite of `docs/UI.md`'s "no urgency" rule
+- [x] `ProgressListItem` and the single-document progress response both carry `title`, `deadlineDate`, and `deadlineLabel` — including on the `'error'` branch — so the mandatory status phrase renders without a second call in either case
+- [x] A course with zero notions and no deadline is `'no-deadline'`, not `'on-track'` — deadline-nullity is checked before the zero-notions special case, never the reverse
+- [x] `behindByNotions` counts notions whose projected `R` is below `target(now)` — deterministic, `0` outside `status === 'behind'`, at least `1` whenever it is `'behind'`, never a percentage or a time estimate
+- [x] `recentlyAddedUnreviewed` explains a low coverage number statelessly (from `notion.createdAt` and `now` alone, no stored previous reading) rather than by detecting a drop
+- [x] Malformed input (deadline in the past) returns a typed `ProgressInputError`; zero notions, no deadline, deadline today, and all-notions-never-seen are all defined, never `NaN`
+- [x] No LLM and no `ts-fsrs` import inside `progress/**` (asserted by dependency-cruiser's `no-ai-in-progress` and `no-fsrs-outside-review`)
+- [x] `GET /api/documents/:id/deadline` exists and round-trips what `POST` stored (fixes the M5-as-shipped debt below)
+- [x] `setDeadline` preserves `createdAt` when updating an existing deadline's date or label — only a delete-then-set restarts the target trajectory
+- [x] The migration dropping `availability` and `plan_history` leaves `deadlines`, its rows, and its `deadlines_document_unique` constraint untouched, and replays cleanly from empty and from a `0006`-era database
+- [x] `coverage` and `readiness` are sourced from a single `getCardSchedulesForDocument` read, never two separate queries — covered by an integration test; this is the invariant that keeps `readiness <= coverage` from breaking intermittently
+- [x] The screen respects `docs/UI.md`: `--warning` (never `--accent`) for `'behind'`, no urgency or blame in copy, and a stateless explanation (`recentlyAddedUnreviewed`) when recently-added notions explain a low coverage number
+- [x] Playwright: set a deadline, verify coverage and readiness render, review a due card, verify readiness rises
 
 **Process note.** The original `planning` scope this milestone shipped
 first (see below) recorded that `domain/build-plan.ts` and
