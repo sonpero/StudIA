@@ -23,6 +23,17 @@ export function fakeTodoRepository(
       return Promise.resolve();
     },
     listTodos: (userId) => Promise.resolve(todos.filter((t) => t.userId === userId)),
+    // Mirrors SqliteTodoRepository's own getTodosForUserInRange exactly
+    // (inclusive bounds, dueDate: null excluded, ordered by dueDate then
+    // createdAt) — a fake that behaved differently from the real
+    // implementation would make get-calendar's unit tests prove nothing
+    // about the real query.
+    getTodosForUserInRange: (userId, start, end) =>
+      Promise.resolve(
+        todos
+          .filter((t) => t.userId === userId && t.dueDate !== null && t.dueDate >= start && t.dueDate <= end)
+          .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!) || a.createdAt.localeCompare(b.createdAt)),
+      ),
     updateTodo: (userId, id, patch) => {
       const index = todos.findIndex((t) => t.id === id && t.userId === userId);
       if (index === -1) return Promise.resolve(null);

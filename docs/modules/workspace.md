@@ -135,6 +135,149 @@ is already `workspace`'s dependency for `notionsBelowTarget` grouping too, so
 this is one more use of an injection `workspace` already needs, not a new
 one.
 
+### Calendar — a new composed read
+
+**Built: the query, the pure filter, the composing function (each
+mutation-tested), the route, and the CalendarScreen it feeds.** This
+section is kept as the record of what was decided and why, same
+discipline as `notionsBelowTarget`'s own proposal
+(`docs/modules/progress.md`, search "PROPOSED, for M6"): written up before
+being implemented, kept here afterward as the record of what was decided
+and why, updated where the code ended up different from the first draft
+(the shape below did, twice — see "Grouped by day" below).
+
+```ts
+type CalendarEntry = {
+  kind: 'deadline' | 'todo';
+  id: string;                 // the deadline's or todo's own id
+  title: string;
+  documentId: string | null;  // null only for a todo with no linked course
+  colour: string | null;      // the course's subject colour; null for a course-less todo
+  done: boolean | null;       // todos only; null for a deadline — no such concept there
+};
+
+type CalendarDay = {
+  date: string;                // ISO date key, YYYY-MM-DD
+  entries: CalendarEntry[];    // every entry on this date, deadlines first, uncapped
+};
+
+type CalendarView = {
+  start: string;
+  end: string;
+  days: CalendarDay[];         // one per date with >=1 entry; a date with nothing is absent, not present empty
+};
+```
+
+**Grouped by day, not the flat array this section originally proposed.**
+The first draft argued for one flat `entries: CalendarEntry[]` on the
+grounds that `TodayView`'s separate per-kind arrays are exactly what made
+Aujourd'hui show the same course three times before its own reprise
+(`docs/UI.md`) merged them client-side — true, but beside the point once
+the actual requirement was named: the day-cell density rule
+(`docs/UI.md`'s Calendrier note — three dots, or two dots plus a count)
+has to apply to a day's entries with no regrouping or resorting on the
+screen side. A flat array would still make every consumer re-derive "which
+entries share this date" before it could apply that rule at all — the same
+mistake the flat-array argument was trying to avoid, just moved from
+"which course" to "which day." Grouping once, here, in `buildCalendarView`
+(`workspace/domain/calendar.ts`), is what actually avoids it: the screen
+looks up a date, gets its (already deadline-first, already complete)
+`entries`, and applies the density rule directly.
+
+**Order is a contract, not an accident: within a day, every deadline
+entry before every todo entry.** `buildCalendarView` folds every deadline
+in fully before folding in any todo, so this follows from iteration order
+alone — no sort step to get the key wrong. A day cell only has room for
+two dots before it must fall back to a count; it reads `day.entries[0]`
+and `day.entries[1]` for those two, and `day.entries.length` for the
+count, with nothing to reorder or regroup first. Moving that guarantee
+into the UI would make the same correctness depend on every future reader
+of `days` re-deriving it; put once, here, it can't drift. Named test in
+"Key tests" below.
+
+**Port.** One new method on this module's own `TodoRepository`
+(`workspace/domain/ports.ts`) — `progress`'s port does not change at all:
+
+```ts
+getTodosForUserInRange(userId: string, start: string, end: string): Promise<Todo[]>;
+```
+
+A real SQL range read (`WHERE user_id = ? AND due_date BETWEEN ? AND ?`,
+both bounds inclusive) — unlike the deadline side below. `todos` has no
+natural cap the way one-deadline-per-course does, and the table's own
+index (`idx_todos_user`, on `(user_id, done, due_date)`) already
+anticipates exactly this access pattern; nothing had used the `due_date`
+part of it before this.
+
+**A todo with `dueDate: null` is excluded from the range — a decision,
+not the operator's side effect.** SQL `BETWEEN` already drops `NULL` on
+its own (`NULL BETWEEN x AND y` evaluates to `NULL`, not true), which is
+exactly the risk: the right behaviour and an accident look identical until
+someone asks whether it was on purpose. It is: a todo with no date has
+nowhere on a grid to go. It is *not*, for that reason, dropped from the
+app anywhere else — `getToday`'s own `todoRepo.listTodos(userId)` is a
+separate, already-existing, unfiltered read, and a date-less todo keeps
+showing on Aujourd'hui exactly as it does today. This read simply never
+claims it for a day. "Key tests" below names the test that makes this
+explicit rather than incidental.
+
+**Filter.** `filterDeadlinesInRange(deadlines, start, end)` —
+`workspace/domain/calendar.ts`, pure, no I/O — must use the exact same
+inclusive bounds as the todos query above. Two different boundary
+conventions in the same view would shift a deadline by a day relative to
+a todo, invisible except exactly on a boundary. Deadlines have no
+null-date analogue to the todos query's fifth case (`deadlines.date` is
+`NOT NULL`): the fifth test here is selective filtering across more than
+one deadline instead — not exercised by any single boundary case alone,
+and the actual thing that would go wrong if this were, say, an
+accidental `.filter(() => true)`.
+
+**`getDeadlinesForUser` stays unmodified — reading every deadline the
+user has and filtering in memory here is the right amount of
+engineering, not a shortcut.** The table this reads from holds at most
+one row per course (`deadlines_document_unique`); a genuinely small table
+does not need a second SQL query shape just to look consistent with the
+todos side, which has no such cap.
+
+**Application.** `getCalendar(deps, userId, start, end)`, in
+`workspace/application/get-calendar.ts` — same shape as `getToday`, three
+reads, then the pure filter and grouping:
+
+- `todoRepo.getTodosForUserInRange(userId, start, end)` (new, above).
+- `progressRepo.getDeadlinesForUser(userId)` (existing, unmodified),
+  passed through `filterDeadlinesInRange`.
+- `documentRepo.listDocuments(userId)` (existing, unmodified) — course
+  titles and colours, the same read `getToday` already makes for the same
+  reason.
+- `buildCalendarView(deadlinesInRange, todos, courses, start, end)`
+  assembles the result.
+
+**Bounds are inclusive on both ends, and that is exactly where this gets
+wrong if untested.** `start`/`end` are ISO date keys, client-computed (the
+displayed month's first and last day) the same way `today`/`dayBoundary`
+already are — the server never guesses a month. "Key tests" below is
+explicit about the boundary cases this needs, not just "a range works."
+
+**Route.** `GET /api/calendar?start=...&end=...`, not a
+widened `GET /api/today`. `TodayView`'s whole contract is "today, plus
+deadlines not yet past" — a fixed point, no month-to-month navigation
+shape at all. Bending it to also carry an arbitrary browsed range would
+make one type answer two unrelated questions ("what do I do now" vs.
+"what's on this calendar page"), the same category error `docs/UI.md`'s
+Aujourd'hui note already refuses between course cards and the course
+catalogue.
+
+**Regime.** `getTodosForUserInRange` and `filterDeadlinesInRange` both
+carry a real invariant (correct bounds, correct user scoping) —
+reinforced mutation testing, same bucket `notionsBelowTargetForDocument`
+is already in (`CLAUDE.md`'s mutation-testing regime split). Within
+`buildCalendarView`, the deadline-before-todo ordering and the
+course-less-todo colour rule carry an invariant too and are mutation-tested
+the same way; the rest of it (grouping, echoing `start`/`end`) is
+ordinary composition. `getCalendar` itself, the route, and the screen
+stay normal regime — same reasoning `getToday` was never mutation-tested
+itself even though pieces it calls are.
+
 ## Ports
 
 ```ts
@@ -413,6 +556,7 @@ was not quite true once the screen exists to dismiss them from.
 | Route | Purpose |
 |---|---|
 | `GET /api/today` | The composed view |
+| `GET /api/calendar?start=...&end=...` | The composed calendar view (Calendar section above) |
 | `POST /api/todos` · `PATCH /api/todos/:id` · `DELETE /api/todos/:id` | CRUD |
 | `POST /api/todos/from-photo` | Multipart, writes the photo via `FileStore`, enqueues extraction |
 | `GET /api/todos/proposals/:jobId` | `{ status, lastError, proposals }` — see below |
@@ -485,9 +629,14 @@ above):
 
 ## Out of scope
 
-Notifications and reminders, which need push infrastructure. Calendar sync.
-Anything that generates content. Pomodoro and Spotify (M7, see Scope note
-above).
+Notifications and reminders, which need push infrastructure. **Calendar
+sync** — pushing StudIA's dates out to Google Calendar, iCal, or any other
+external calendar, still excluded, still needs its own integration and
+its own consent flow. The in-app, read-only Calendrier screen (the
+Calendar section above) is a different thing entirely — nothing leaves
+this app — and was never what this line meant to exclude; restated so it
+isn't cited to reopen a settled question. Anything that generates content.
+Pomodoro and Spotify (M7, see Scope note above).
 
 ## Key tests
 
@@ -521,6 +670,76 @@ above).
 - Playwright (`e2e/todo-photo.spec.ts`): photo of a planner to a confirmed,
   ticked todo, checked twice — that the unaccepted proposal never becomes a
   todo, and that the tick survives a reload (persisted, not local state)
+
+**Calendar.** Data-layer boundaries named individually, not "a range
+works," each proven by a targeted mutation run and reverted
+(`sqlite-todo-repository.int.test.ts`, `workspace/domain/calendar.unit.test.ts`):
+- `getTodosForUserInRange`: a todo dated exactly `start` is included; a
+  todo dated exactly `end` is included; a todo dated one day before
+  `start` is excluded; a todo dated one day after `end` is excluded; a
+  todo with `dueDate: null` is excluded — named separately from the four
+  boundary cases so it reads as a decision, not a fifth boundary; and a
+  todo dated the same day as two others sorts by `dueDate` then
+  `createdAt` (this last one caught a real bug in its own first draft: it
+  used identical `createdAt` values across all three seeded rows and
+  passed by id-order coincidence, not by exercising the sort at all —
+  rewritten with distinct timestamps and ids chosen to *not* match either
+  alphabetical or insertion order before it was trusted)
+- `filterDeadlinesInRange`: the same four boundary cases, against a
+  deadline's `date` instead of a todo's `dueDate` — same failure shape,
+  different table, both need their own proof. **No fifth, null-shaped
+  case: `deadlines.date` is `NOT NULL`, so there is nothing here for that
+  case to be about.** Its place is taken by a genuinely different
+  property — of several deadlines, only the ones inside the range survive
+  — which none of the four boundary cases alone exercises (an accidental
+  `.filter(() => true)` passes all four of those and fails only this one)
+- Unit: `getTodosForUserInRange`'s own scoping (another user's todo in
+  the same range never appears) and `filterDeadlinesInRange`'s equivalent
+  are proven at their own layer; `getCalendar`'s unit tests re-prove the
+  composition — another user's deadline *and* todo, dated inside the same
+  range, both absent from the result — without re-testing the boundary
+  logic those layers already own
+- Unit: `buildCalendarView` — a day carrying one deadline and three todos
+  lists the deadline first, the exact case a busy day breaks a calendar
+  grid with; a course-less todo (`documentId: null`) produces a
+  `CalendarEntry` with `colour: null`, never a guessed or default colour;
+  a course-linked todo keeps its own label as `title`, never the course's
+  title; a date with nothing is absent from `days` entirely, never
+  present with an empty `entries` array
+- Unit: `getCalendar` excludes a deadline outside the browsed range even
+  though `getDeadlinesForUser` itself returns every deadline the user has
+  ever set — the property that makes `filterDeadlinesInRange` load-bearing
+  rather than decorative
+
+**`CalendarScreen` (`apps/web/src/screens/CalendarScreen.unit.test.tsx`,
+17 tests, normal regime — no mutation ritual for screen code):**
+- A day cell's colour never changes based on how far away it is or
+  whether its date has passed — no assertion is skipped here just
+  because it is a "the app does nothing" test; the whole point of the
+  colour rule is what it forbids
+- A day with 4 entries renders 2 dots and "+2", not 4 dots and not "+4";
+  a day with exactly 3 entries renders 3 dots, no badge — the boundary
+  the overflow rule turns on
+- A course-less dot is named "Todo sans cours"; a course-linked dot is
+  named after the course, resolved from `listDocuments` (the same read
+  `TodayScreen`'s own add-form already makes) — not the todo's own label,
+  which has nowhere to print at dot size (`docs/UI.md`'s Calendrier note)
+- Today's cell carries `aria-current="date"`, and only today's
+- Leading/trailing filler days from adjacent months render (so every row
+  is a complete week) but are not buttons — not fetched for, so making
+  them clickable would show a selection that always reads as empty
+  regardless of what that day actually holds
+- "Mois suivant"/"Mois précédent" fetch the **displayed** month's bounds,
+  proven by asserting on the actual request URLs across multiple clicks,
+  not just the resulting heading text — including a case that crosses a
+  year boundary (January → December of the previous year)
+- No day selected shows a neutral prompt; selecting an empty day shows
+  "Rien ce jour-là" — neither is a blank panel
+- Selecting a busy day shows every entry uncapped, deadline order first;
+  a deadline's "Voir le cours" calls back with its `documentId`; a todo
+  has nothing to click and a done one renders struck through
+- No `role="dialog"` at any point in this flow (`docs/UI.md`'s Forbidden
+  list: no modals here)
 
 ## Open questions
 
@@ -563,12 +782,28 @@ correctly — fixed before the screen was built on top of it, not after.
   and `listTodos` the same way) — assumed fine at "a handful of users,"
   stated so it is not copied unexamined into the next module that wants to
   read a job back (see "Where the photo itself goes, and when it leaves").
-- **No manual todo-creation or edit *form* was built in the UI this
-  milestone**, only the backend CRUD (step 1) and the checkbox this step
-  added. `docs/MILESTONES.md`'s M6 acceptance boxes and its own demo
-  ("photograph a school planner page, get todo items, tick them off") do
-  not require one, and none was built beyond what they require — CLAUDE.md's
-  "build only what the current milestone requires."
+- ~~No manual todo-creation or edit form was built in the UI this
+  milestone, only the backend CRUD (step 1) and the checkbox this step
+  added.~~ **Resolved outside this milestone's own scope**, during
+  Aujourd'hui's later visual reprise (`docs/UI.md`): `TodayScreen`'s
+  add-todo form now uses the CRUD this step already exposed. Left here,
+  struck rather than deleted, since this doc predates that work and a
+  reader diffing it should see why the claim changed, not wonder if it
+  was ever true.
 - Pomodoro and Spotify: not designed, not built, not routed — M7 in full,
   per this module's own header and `docs/MILESTONES.md`. Nothing in this
   milestone's implementation forecloses either.
+- **A day cell from an adjacent month (Calendar section above) is inert —
+  not a design decision on its own, just where "never claim a day is
+  empty when it was never fetched for" left it.** Two ways to resolve
+  this, neither chosen: **(a)** clicking it switches the browsed month to
+  that neighbour with the day pre-selected, so the click still does
+  something; or **(b)** leave it unclickable, but make that visually
+  unambiguous (no hover state at all, greyed further) so it reads as
+  inert rather than as a button that silently does nothing. Whichever is
+  picked needs its own `docs/UI.md` note before it's built.
+- **No "Aujourd'hui" shortcut back to the current month from one browsed
+  far away** — only "Mois précédent"/"Mois suivant", one month at a time.
+  Not evaluated as a requirement when the screen was built, not something
+  a user has asked for; named here so it isn't mistaken for an oversight
+  if someone goes looking for it.

@@ -168,10 +168,9 @@ user chip on the right.
 
 **Tablet** — Sidebar collapses to 72px, icons only, labels as tooltips.
 
-**Mobile** — Sidebar becomes a bottom tab bar with four items. Search moves into
-the header. The user chip moves into the header. Multi-column card grids become a
-single column; the calendar becomes a scrollable week strip, never a squeezed
-month grid.
+**Mobile** — Sidebar becomes a bottom tab bar. Search moves into the header.
+The user chip moves into the header. Multi-column card grids become a
+single column.
 
 **Not yet built, disclosed rather than silently skipped:**
 - **Icons.** "Icon-plus-label" and the tablet 72px icon-only collapse both
@@ -182,13 +181,14 @@ month grid.
   becomes the mobile bottom bar below 768px.
 - **Search and notifications.** Neither exists yet. The content area's top
   row currently holds only the user chip (greeting and sign-out).
-- **A fourth mobile tab and the secondary group.** Tuteur, Mes notes and
-  Réglages have no screen at all yet (no module built past its own spec in
-  `docs/modules/`). The persistent nav — sidebar and bottom bar alike —
-  renders only the three real destinations below (Aujourd'hui, Mes cours,
-  Progression); there is no divider, no secondary group, and no
-  placeholder standing in for what isn't built. The mobile bar has three
-  tabs, not four, until that changes.
+- **The secondary group.** Mes notes and Réglages have no screen at all
+  yet (no module built past its own spec in `docs/modules/`). The
+  persistent nav — sidebar and bottom bar alike — renders only the four
+  real destinations below (Aujourd'hui, Mes cours, Progression,
+  Calendrier); there is no divider, no secondary group, and no
+  placeholder standing in for what isn't built. Tuteur is the one primary
+  item still missing a screen — five destinations is the target, four is
+  what exists.
 
 ### Navigation
 
@@ -197,6 +197,7 @@ Primary (bottom bar on mobile, top group in the sidebar):
 - **Aujourd'hui** — home
 - **Mes cours** — documents, notions, upload
 - **Progression** — deadlines, coverage and readiness per course
+- **Calendrier** — this month's deadlines and dated todos, at a glance
 - **Tuteur** — AI chat scoped to a course
 
 Secondary (sidebar only, below a divider; behind the user chip on mobile):
@@ -391,6 +392,66 @@ word plus the notion count (never a percentage-point deficit, never a time
 estimate), in `--warning`, never `--accent`, and never a comment on why or
 since when. No streak, no "tu n'as pas ouvert ce cours depuis 5 jours", no
 red.
+
+**Calendrier** (`workspace` module — see `docs/modules/workspace.md`'s
+Calendar section) — A month grid: seven weekday columns, a row per week,
+"‹ Mois précédent" / "Mois suivant ›" navigation either side of the current
+month's name ("Mars 2026"), both real `--secondary` buttons with their own
+accessible label, never a bare arrow glyph. Every day is clickable,
+including an empty one; selecting a day highlights its cell (`--primary-soft`,
+the same selected-state token used elsewhere) and reveals its contents in a
+panel below the grid, never a modal — a day can hold several entries, and
+the Forbidden list below reserves modals for something shorter than that.
+
+**A day cell holds at most three tokens, always: up to three dots, or two
+dots plus a count.** Three entries or fewer — a deadline and two todos,
+say — render as one dot each, in full. Four or more — a deadline and
+three todos, the case that actually breaks a calendar grid — render as
+two dots (the deadline, then the first todo, in the order
+`docs/modules/workspace.md`'s Calendar section guarantees: every
+deadline before every todo) plus a "+N" badge counting the rest (here,
+"+2"). The cell's width never depends on how many things happened that
+day; only which of the two shapes it's showing does.
+
+A deadline's or a course-linked todo's dot is that course's subject
+colour; **a todo with no linked course gets a neutral dot
+(`--text-muted`), never a colour it doesn't have.** Each dot's accessible
+name is the course title (or "Todo sans cours" for the neutral one) even
+though there is no room to print it inline at that size — colour is never
+the dot's only carrier of meaning, the same rule as everywhere else in this
+document, satisfied here through an accessible name instead of adjacent
+visible text. The "+N" badge is exactly that: a number, never a colour of
+its own — it stands for entries of several different courses at once, so
+no single subject colour could represent it without lying.
+
+**This is the one screen where the reference's own layout inspiration
+stops applying, on purpose:** colour marks subject, never time. No dot
+brightens, reddens, or otherwise escalates as its date approaches — a
+deadline three days out and one three months out use the identical dot. A
+past date renders exactly like a future one; the grid's own left-to-right,
+top-to-bottom order already says which day is past, and nothing needs to
+say it again. The one exception, and it is wayfinding, not severity:
+today's cell gets a `--primary` ring, the same token that already marks
+"active" everywhere else in the nav — a place marker, not a warning.
+
+**The day panel is where "+N" actually gets answered: it lists every
+entry for that day, uncapped** — the cell's three-token limit is a cell
+constraint, not a data limit, so clicking a busy day is the whole point,
+not a dead end. Same order as the cell truncates from, deadlines first:
+a deadline gets its dot, its title, and a "Voir le cours" action (same
+idiom as everywhere else a deadline links out); a todo gets its dot, its
+title, and nothing to click — read-only, no checkbox, no delete, managing
+todos stays on Aujourd'hui, this screen only says what is due when. A
+done todo appears struck through, matching Aujourd'hui's own treatment of
+one.
+
+Four states: **loading** is a skeleton grid, the same shape as the real one
+(placeholder cells, no numbers, per the Required states rule); **error** is
+the `confused` mascot and a retry; **ready** is the grid, with or without
+dots — **a month with nothing in it is still ready, not empty.** The grid
+itself is the useful surface even at zero events (you can still page to
+another month), unlike a list screen where zero rows really is nothing to
+show. No mascot for a quiet month.
 
 **Tuteur** — Standard chat, scoped to one selected course, streamed answers with
 citations back to notions. Fiche in `thinking` while it streams, and gone once the

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/better-sqlite3";
 import type { TodoRepository } from "../domain/ports.js";
 import type { Todo, TodoProposal } from "../domain/types.js";
@@ -41,6 +41,22 @@ export class SqliteTodoRepository implements TodoRepository {
 
   listTodos(userId: string): Promise<Todo[]> {
     const rows = this.db.select().from(todosTable).where(eq(todosTable.userId, userId)).orderBy(todosTable.createdAt).all();
+    return Promise.resolve(rows.map(toTodo));
+  }
+
+  // Both bounds inclusive. gte/lte against a NULL dueDate each evaluate to
+  // NULL, not true, so a date-less todo is excluded without a separate
+  // IS NOT NULL check — see docs/modules/workspace.md's Calendar section
+  // for why that exclusion is a decision, not just this operator's
+  // behaviour, and the int test that pins it down independently of SQL's
+  // own NULL semantics.
+  getTodosForUserInRange(userId: string, start: string, end: string): Promise<Todo[]> {
+    const rows = this.db
+      .select()
+      .from(todosTable)
+      .where(and(eq(todosTable.userId, userId), gte(todosTable.dueDate, start), lte(todosTable.dueDate, end)))
+      .orderBy(asc(todosTable.dueDate), asc(todosTable.createdAt))
+      .all();
     return Promise.resolve(rows.map(toTodo));
   }
 

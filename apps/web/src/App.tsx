@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
+import { CalendarScreen } from "./screens/CalendarScreen.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
 import { ProgressScreen } from "./screens/ProgressScreen.js";
@@ -30,6 +31,7 @@ type View =
   | { name: "review"; documentId: string; notionId?: string }
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
+  | { name: "calendar" }
   | { name: "proposals"; jobId: string };
 
 function AppShell() {
@@ -60,6 +62,7 @@ function AppShell() {
     { key: "today", label: "Aujourd'hui", active: view.name === "today", onClick: () => setView({ name: "today" }) },
     { key: "documents", label: "Mes cours", active: view.name === "documents" || view.name === "notions", onClick: () => setView({ name: "documents" }) },
     { key: "progress", label: "Progression", active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
+    { key: "calendar", label: "Calendrier", active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
   ];
 
   return (
@@ -101,6 +104,7 @@ function AppShell() {
               onReviewCourse={(documentId) => setView({ name: "review", documentId })}
             />
           )}
+          {view.name === "calendar" && <CalendarScreen onOpenCourse={(documentId) => setView({ name: "notions", documentId })} />}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
         </div>
       </div>

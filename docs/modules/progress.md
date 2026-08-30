@@ -845,6 +845,15 @@ Required behaviour, all traceable to `docs/UI.md`:
 Everything the old `planning.md` excluded, plus everything `availability`
 made possible: no ordering of what to review next, no daily dose, no minute
 estimates, no calendar, no reminders, no todos (`workspace`), no generation.
+**"No calendar" means the dated, day-by-day planning grid `planning`/
+`availability` used to draw — deleted whole in this M5 rewrite, not
+rebuilt in any shape here — not a ban on any calendar-shaped UI anywhere in
+the app.** `workspace`'s own read-only Calendrier screen
+(`docs/modules/workspace.md`'s Calendar section, `docs/UI.md`) reads this
+module's `getDeadlinesForUser` the same way `getToday` already does; it is
+a `workspace` composition, same as `getToday`, not a `progress` feature,
+and this module still recommends and schedules nothing. Restated here so
+the line above isn't cited to reopen a settled question.
 `review.getDueCards` remains the only source of "what's due right now";
 `progress` never recommends or sequences anything — including through
 `notionsBelowTarget`/`notionsBelowTargetForDocument` above: an unordered set

@@ -2,6 +2,7 @@ import {
   confirmProposals,
   createTodo,
   deleteTodo,
+  getCalendar,
   getProposals,
   getToday,
   rejectProposals,
@@ -69,6 +70,18 @@ export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (a
     if (!dayBoundary || Number.isNaN(new Date(dayBoundary).getTime())) return reply.code(400).send({ error: "day-boundary-required" });
 
     return getToday(getTodayDeps, request.user!.id, new Date(`${today}T00:00:00.000Z`), new Date(dayBoundary));
+  });
+
+  // Client-computed month bounds, same rule as today/dayBoundary above —
+  // the server never guesses which month is displayed. Both inclusive
+  // (docs/modules/workspace.md's Calendar section).
+  const getCalendarDeps = { todoRepo: opts.repo, documentRepo: opts.documentRepo, progressRepo: opts.progressRepo };
+  app.get("/api/calendar", async (request, reply) => {
+    const { start, end } = request.query as { start?: string; end?: string };
+    if (!start || !DATE_KEY_PATTERN.test(start)) return reply.code(400).send({ error: "start-required" });
+    if (!end || !DATE_KEY_PATTERN.test(end)) return reply.code(400).send({ error: "end-required" });
+
+    return getCalendar(getCalendarDeps, request.user!.id, start, end);
   });
 
   // documentId is a secondary, optional field on the todo body, not the

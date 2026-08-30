@@ -23,6 +23,16 @@ export interface TodoExtractor {
 export interface TodoRepository {
   createTodo(todo: Todo): Promise<void>;
   listTodos(userId: string): Promise<Todo[]>;
+  // Calendar (docs/modules/workspace.md's Calendar section). Both
+  // bounds inclusive, ISO date keys (YYYY-MM-DD), compared against
+  // dueDate. A todo with dueDate: null is excluded — SQL BETWEEN already
+  // drops NULL on its own, but this is a decision, not that operator's
+  // side effect (see the spec for why it stays excluded from the
+  // calendar while remaining visible on Aujourd'hui via listTodos).
+  // Ordered by dueDate then createdAt, both ascending: the order the
+  // Calendar's entries contract (same doc) relies on to truncate a busy
+  // day's todos deterministically.
+  getTodosForUserInRange(userId: string, start: string, end: string): Promise<Todo[]>;
   // Returns the updated row, or null if no todo with this id belongs to
   // this user (does not distinguish "does not exist" from "belongs to
   // someone else" — same convention as every other module's ownership

@@ -201,4 +201,68 @@ describe("SqliteTodoRepository", () => {
     expect(await repo.listProposals("u1", "job-1")).toEqual([]);
     expect(await repo.listTodos("u1")).toEqual([]);
   });
+
+  // Calendar (docs/modules/workspace.md's PROPOSED Calendar section).
+  // Both bounds inclusive; the four boundary cases and the null-date
+  // decision are named individually, not folded into one "a range works"
+  // test, per that spec's own Key tests list.
+  describe("getTodosForUserInRange", () => {
+    it("includes a todo dated exactly the range's start", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ dueDate: "2026-03-01" }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([aTodo({ dueDate: "2026-03-01" })]);
+    });
+
+    it("includes a todo dated exactly the range's end", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ dueDate: "2026-03-31" }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([aTodo({ dueDate: "2026-03-31" })]);
+    });
+
+    it("excludes a todo dated the day before the range's start", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ dueDate: "2026-02-28" }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([]);
+    });
+
+    it("excludes a todo dated the day after the range's end", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ dueDate: "2026-04-01" }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([]);
+    });
+
+    it("excludes a todo with no due date — a decision, not BETWEEN's own NULL handling", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ dueDate: null }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([]);
+    });
+
+    it("scopes to the caller — another user's todo dated inside the same range never appears", async () => {
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ userId: "u2", dueDate: "2026-03-15" }));
+
+      expect(await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31")).toEqual([]);
+    });
+
+    it("orders by due date, then creation order, so a busy day truncates deterministically", async () => {
+      // Ids and insertion order are both deliberately misleading (neither
+      // alphabetical nor insertion order matches the expected result) so
+      // this can only pass by actually sorting on dueDate then createdAt —
+      // a version with identical createdAt values across all three rows
+      // passed by id-order coincidence the first time this was written.
+      const { repo } = setup();
+      await repo.createTodo(aTodo({ id: "t-b", label: "Le 20", dueDate: "2026-03-20", createdAt: "2026-01-01T00:00:00.000Z" }));
+      await repo.createTodo(aTodo({ id: "t-c", label: "Second le 10", dueDate: "2026-03-10", createdAt: "2026-01-01T00:00:02.000Z" }));
+      await repo.createTodo(aTodo({ id: "t-a", label: "Premier le 10", dueDate: "2026-03-10", createdAt: "2026-01-01T00:00:01.000Z" }));
+
+      const result = await repo.getTodosForUserInRange("u1", "2026-03-01", "2026-03-31");
+
+      expect(result.map((t) => t.id)).toEqual(["t-a", "t-c", "t-b"]);
+    });
+  });
 });

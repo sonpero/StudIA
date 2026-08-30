@@ -1,4 +1,4 @@
-export type { Todo, TodayView, TodoProposal } from "./domain/types.js";
+export type { Todo, TodayView, TodoProposal, CalendarEntry, CalendarDay, CalendarView } from "./domain/types.js";
 export type { TodoRepository, TodoExtractor, ExtractedTodo, TodoExtractionOutput, TodoExtractionError } from "./domain/ports.js";
 export { daysAway } from "./domain/days-away.js";
 
@@ -6,6 +6,7 @@ export { createTodo, type CreateTodoDeps, type CreateTodoInput } from "./applica
 export { updateTodo, type UpdateTodoDeps, type UpdateTodoPatch } from "./application/update-todo.js";
 export { deleteTodo, type DeleteTodoDeps } from "./application/delete-todo.js";
 export { getToday, type GetTodayDeps } from "./application/get-today.js";
+export { getCalendar, type GetCalendarDeps } from "./application/get-calendar.js";
 export { startTodoPhotoExtraction, type StartTodoPhotoExtractionDeps } from "./application/start-todo-photo-extraction.js";
 export { handleTodoPhotoJob, type HandleTodoPhotoJobDeps, type ExtractTodoPhotoPayload } from "./application/handle-todo-photo-job.js";
 export { getProposals, type GetProposalsDeps } from "./application/get-proposals.js";

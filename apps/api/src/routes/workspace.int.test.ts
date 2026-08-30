@@ -250,6 +250,84 @@ describe("workspace routes", () => {
     });
   });
 
+  describe("GET /api/calendar", () => {
+    const query = "start=2026-03-01&end=2026-03-31";
+
+    it("composes a deadline and a todo dated the same day into one CalendarDay (200)", async () => {
+      const deadlineRes = await app.inject({ method: "POST", url: "/api/documents/doc-1/deadline", headers: { cookie: aliceCookie }, payload: { date: "2026-03-10" } });
+      expect(deadlineRes.statusCode).toBe(204);
+      await createAliceTodo({ label: "Réviser", dueDate: "2026-03-10" });
+
+      const res = await app.inject({ method: "GET", url: `/api/calendar?${query}`, headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{
+        start: string;
+        end: string;
+        days: { date: string; entries: { kind: string; id: string; title: string; documentId: string | null; colour: string | null; done: boolean | null }[] }[];
+      }>();
+      expect(body.start).toBe("2026-03-01");
+      expect(body.end).toBe("2026-03-31");
+      expect(body.days).toEqual([
+        {
+          date: "2026-03-10",
+          entries: [
+            { kind: "deadline", id: expect.any(String) as string, title: "Cours", documentId: "doc-1", colour: "#F87171", done: null },
+            { kind: "todo", id: expect.any(String) as string, title: "Réviser", documentId: null, colour: null, done: false },
+          ],
+        },
+      ]);
+    });
+
+    it("is empty (no days) for a user with nothing at all", async () => {
+      const res = await app.inject({ method: "GET", url: `/api/calendar?${query}`, headers: { cookie: bobCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ start: "2026-03-01", end: "2026-03-31", days: [] });
+    });
+
+    it("excludes a deadline dated outside the range, even though it belongs to the caller", async () => {
+      const deadlineRes = await app.inject({ method: "POST", url: "/api/documents/doc-1/deadline", headers: { cookie: aliceCookie }, payload: { date: "2026-06-01" } });
+      expect(deadlineRes.statusCode).toBe(204);
+
+      const res = await app.inject({ method: "GET", url: `/api/calendar?${query}`, headers: { cookie: aliceCookie } });
+
+      expect(res.json<{ days: unknown[] }>().days).toEqual([]);
+    });
+
+    it("scopes to the caller: bob's deadline and todo never appear in alice's calendar", async () => {
+      const deadlineRes = await app.inject({ method: "POST", url: "/api/documents/doc-bob/deadline", headers: { cookie: bobCookie }, payload: { date: "2026-03-10" } });
+      expect(deadlineRes.statusCode).toBe(204);
+      const bobTodoRes = await app.inject({ method: "POST", url: "/api/todos", headers: { cookie: bobCookie }, payload: { label: "Todo de Bob", dueDate: "2026-03-10" } });
+      expect(bobTodoRes.statusCode).toBe(201);
+
+      const res = await app.inject({ method: "GET", url: `/api/calendar?${query}`, headers: { cookie: aliceCookie } });
+
+      expect(res.json<{ days: unknown[] }>().days).toEqual([]);
+    });
+
+    it("rejects a missing or invalid start (400)", async () => {
+      const missing = await app.inject({ method: "GET", url: "/api/calendar?end=2026-03-31", headers: { cookie: aliceCookie } });
+      expect(missing.statusCode).toBe(400);
+
+      const invalid = await app.inject({ method: "GET", url: "/api/calendar?start=not-a-date&end=2026-03-31", headers: { cookie: aliceCookie } });
+      expect(invalid.statusCode).toBe(400);
+    });
+
+    it("rejects a missing or invalid end (400)", async () => {
+      const missing = await app.inject({ method: "GET", url: "/api/calendar?start=2026-03-01", headers: { cookie: aliceCookie } });
+      expect(missing.statusCode).toBe(400);
+
+      const invalid = await app.inject({ method: "GET", url: "/api/calendar?start=2026-03-01&end=not-a-date", headers: { cookie: aliceCookie } });
+      expect(invalid.statusCode).toBe(400);
+    });
+
+    it("requires authentication (401)", async () => {
+      const res = await app.inject({ method: "GET", url: `/api/calendar?${query}` });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   describe("POST /api/todos/from-photo", () => {
     it("writes the photo and enqueues an extract-todos job (202)", async () => {
       const { buffer, headers } = buildMultipart("photo.jpg", "image/jpeg", Buffer.from("fake-photo-bytes"));
