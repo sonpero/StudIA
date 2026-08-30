@@ -132,6 +132,33 @@ describe("TodayScreen", () => {
     expect(onReviewCourse).toHaveBeenCalledWith("doc-1");
   });
 
+  it("ready: course cards lay out in a compact, responsive grid, not a single stacked column (docs/UI.md)", async () => {
+    // No accessible role or label distinguishes a grid from a stack
+    // (docs/TESTING.md's exception for genuinely inaccessible structure):
+    // this is the one place in this file that asserts on a class name.
+    stubFetch({
+      ...emptyView,
+      dueCards: [
+        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
+        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
+      ],
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const grid = screen.getByTestId("course-cards-grid");
+    expect(grid.className).toMatch(/\bgrid\b/);
+    expect(grid.className).not.toMatch(/flex-col/);
+  });
+
+  it("ready: the todo block (list, add form, photo picker) is capped to a reasonable width, never stretched across the bounded column (docs/UI.md)", async () => {
+    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
+    renderScreen();
+    await screen.findByText("x");
+
+    expect(screen.getByTestId("todos-section").className).toMatch(/max-w-/);
+  });
+
   it("never shows 'Retour': this is the destination the header's own links lead to, not a place left and returned to", async () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 1 }] });
     renderScreen();

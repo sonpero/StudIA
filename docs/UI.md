@@ -90,6 +90,14 @@ everything bold.
   on hover for interactive cards. Never more than these two.
 - Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48. Be generous. The reference layout
   breathes, and cramming content is the fastest way to lose the look.
+- **A single-column form or list never stretches to the bounded column's
+  full width.** Cap it at a reasonable width (448px, Tailwind's `max-w-md`)
+  instead — a native `<input type="date">` or `<select>` blown up to fill a
+  wide column reads as an unstyled browser control even with the right
+  border, radius and colour tokens applied, because its native chrome (the
+  calendar icon, the dropdown arrow) scales with the box. Multi-column
+  layouts (card grids) are unaffected: they already use the full bounded
+  width by design.
 
 ### Motion
 
@@ -238,7 +246,10 @@ something to say today, never split into separate lists by kind. A course
 with nothing due, nothing below its exam target, and no deadline gets no card
 here at all: this screen answers "what do I do now", not "what are all my
 courses" — that catalogue is `Mes cours`. When every course is like that, or
-there are no courses yet, the screen falls to its empty state below.
+there are no courses yet, the screen falls to its empty state below. Cards
+lay out in the same compact, responsive grid as `Mes cours`' own card grid,
+not a single stacked column — one course rarely needs the bounded column's
+full width to say "3 fiches à revoir".
 
 A course's card states, together, whichever of these apply to it — never
 across separate cards, so the same course never appears twice:
@@ -270,7 +281,9 @@ rien fait aujourd'hui".
 
 Below the cards, the todo list: a checkbox per todo, a minimal add form
 (label, required; date and course, both optional — nothing else, no
-priority, no tags, no recurrence), and the planner-photo upload.
+priority, no tags, no recurrence), and the planner-photo upload. All three
+are a single-column block, capped at a reasonable width per the rule in
+"Shape and depth" above — they never stretch across the bounded column.
 
 This screen has no "Retour": it is the destination the sidebar/header's
 "Aujourd'hui" link leads to from anywhere, not a place one arrives at from

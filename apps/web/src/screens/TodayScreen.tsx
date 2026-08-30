@@ -136,17 +136,28 @@ function AddTodoForm({ documents, pending, onSubmit }: { documents: DocumentSumm
           required
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          className="rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text"
+          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           placeholder="Réviser le chapitre 3"
         />
       </label>
       <label htmlFor={dateId} className="flex flex-col gap-1 text-sm text-text-muted">
         Date (facultatif)
-        <input id={dateId} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text" />
+        <input
+          id={dateId}
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        />
       </label>
       <label htmlFor={courseId} className="flex flex-col gap-1 text-sm text-text-muted">
         Cours (facultatif)
-        <select id={courseId} value={documentId} onChange={(e) => setDocumentId(e.target.value)} className="rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text">
+        <select
+          id={courseId}
+          value={documentId}
+          onChange={(e) => setDocumentId(e.target.value)}
+          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
           <option value="">Aucun</option>
           {documents.map((d) => (
             <option key={d.id} value={d.id}>
@@ -266,7 +277,7 @@ export function TodayScreen({
         </div>
       ) : (
         courseCards.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="course-cards-grid">
             {courseCards.map((card) => (
               <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
             ))}
@@ -274,7 +285,7 @@ export function TodayScreen({
         )
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className="flex max-w-md flex-col gap-3" data-testid="todos-section">
         <h2 className="text-sm font-medium text-text-muted">Todos</h2>
         {view.todos.length > 0 && (
           <Card>
