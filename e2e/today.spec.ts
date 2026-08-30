@@ -73,7 +73,7 @@ test.describe("today", () => {
     await expect(page.getByRole("checkbox", { name: "Réviser demain" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("checkbox", { name: "Réviser demain" })).not.toBeChecked();
 
-    await page.getByRole("button", { name: "Mes cours" }).click();
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Mes cours" })).toBeVisible();
   });
 });

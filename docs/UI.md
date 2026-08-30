@@ -142,8 +142,10 @@ work at 375px wide.
 
 **Desktop** — Permanent left sidebar, 240px, white, with the wordmark at top,
 icon-plus-label items, the active item in `--primary`. Content area on `--canvas`
-with 32px padding. Top row of the content area holds search on the left, and
-notifications plus the user chip on the right.
+with 32px padding, its content capped at a max-width of 1152px and centred —
+cards, forms and text never stretch to the edge of a wide viewport. Top row
+of the content area holds search on the left, and notifications plus the
+user chip on the right.
 
 **Tablet** — Sidebar collapses to 72px, icons only, labels as tooltips.
 
@@ -151,6 +153,23 @@ notifications plus the user chip on the right.
 the header. The user chip moves into the header. Multi-column card grids become a
 single column; the calendar becomes a scrollable week strip, never a squeezed
 month grid.
+
+**Not yet built, disclosed rather than silently skipped:**
+- **Icons.** "Icon-plus-label" and the tablet 72px icon-only collapse both
+  depend on an icon set this app doesn't have; adding one is a real
+  dependency needing its own justification (CLAUDE.md), not a layout
+  choice. Nav items are text-only for now, and the sidebar keeps its full
+  240px width through the tablet breakpoint instead of collapsing — it only
+  becomes the mobile bottom bar below 768px.
+- **Search and notifications.** Neither exists yet. The content area's top
+  row currently holds only the user chip (greeting and sign-out).
+- **A fourth mobile tab and the secondary group.** Tuteur, Mes notes and
+  Réglages have no screen at all yet (no module built past its own spec in
+  `docs/modules/`). The persistent nav — sidebar and bottom bar alike —
+  renders only the three real destinations below (Aujourd'hui, Mes cours,
+  Progression); there is no divider, no secondary group, and no
+  placeholder standing in for what isn't built. The mobile bar has three
+  tabs, not four, until that changes.
 
 ### Navigation
 
@@ -163,6 +182,13 @@ Primary (bottom bar on mobile, top group in the sidebar):
 
 Secondary (sidebar only, below a divider; behind the user chip on mobile):
 **Mes notes**, **Réglages**.
+
+This is the target set (see "Not yet built" above for what the nav actually
+renders today). **Progression is reachable directly from the nav now, not
+only from within a course** — when entered that way there is no originating
+course to return to, so its own screen's "Retour" goes to `Mes cours`
+instead of a specific course's notion list. The screen's own content is
+unaffected either way: it always shows every course (`docs/modules/progress.md`).
 
 Touch targets are 44px minimum everywhere.
 

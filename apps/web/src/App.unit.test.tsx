@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
 import { apiFetch } from "./lib/api-client.js";
+
+function stubAuthenticatedFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    }),
+  );
+}
 
 describe("App", () => {
   afterEach(() => {
@@ -47,20 +58,29 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the header offers both homes, Aujourd'hui and Mes cours, from anywhere", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (typeof url === "string" && url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-      }),
-    );
+  it("authenticated: the nav offers all three homes, Aujourd'hui, Mes cours and Progression, from anywhere", async () => {
+    stubAuthenticatedFetch();
 
     render(<App />);
 
     await screen.findByText(/alex/i);
     expect(screen.getByRole("button", { name: "Aujourd'hui" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mes cours" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Progression" })).toBeInTheDocument();
+  });
+
+  it("Progression is reachable directly from the nav, and its own 'Retour' returns to Mes cours when there is no originating course", async () => {
+    stubAuthenticatedFetch();
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    await user.click(screen.getByRole("button", { name: "Progression" }));
+    await screen.findByRole("heading", { name: "Progression" });
+
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Mes cours" });
   });
 
   it("a 401 on any protected call bounces an authenticated session back to the login screen", async () => {

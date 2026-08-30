@@ -201,7 +201,7 @@ export function NotionsScreen({
             {generateLabel}
           </Button>
           <Button variant="secondary" onClick={onOpenProgress}>
-            Progression
+            Voir la progression
           </Button>
           <Button variant="accent" onClick={() => onReview()}>
             Réviser

@@ -46,7 +46,7 @@ test.describe("progress", () => {
       )
       .toBe(notionCount);
 
-    await page.getByRole("button", { name: "Progression" }).click();
+    await page.getByRole("button", { name: "Voir la progression" }).click();
     await expect(page.getByRole("heading", { name: "Progression" })).toBeVisible();
 
     const progressCard = page.getByTestId("progress-card").filter({ hasText: "Cours à suivre" });
@@ -84,7 +84,7 @@ test.describe("progress", () => {
 
     await page.getByRole("button", { name: "Quitter" }).click();
     await expect(notionCards.first()).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Progression" }).click();
+    await page.getByRole("button", { name: "Voir la progression" }).click();
     await expect(page.getByRole("heading", { name: "Progression" })).toBeVisible();
 
     // Readiness has risen off its floor now that a card has been
