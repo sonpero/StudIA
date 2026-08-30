@@ -1,6 +1,6 @@
 import type { DocumentSummary } from "@studia/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
@@ -25,6 +25,21 @@ const FIELD_CLASS =
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
+
+// A todo's due date is a plain dated fact, formatted the same way whether
+// it's still to come or already past (docs/UI.md — no countdown, no
+// --warning colour marking it overdue). dueDate is a bare "YYYY-MM-DD" key
+// (workspace's own shape, same as the calendar's day keys): parsed through
+// local-time Date components, never `new Date(dueDate)` directly, so the
+// displayed day never shifts by one under a non-UTC timezone.
+const TODO_DUE_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+function formatTodoDueDate(dueDate: string): string {
+  const year = Number(dueDate.slice(0, 4));
+  const month = Number(dueDate.slice(5, 7));
+  const day = Number(dueDate.slice(8, 10));
+  return TODO_DUE_DATE_FORMATTER.format(new Date(year, month - 1, day));
+}
 
 // One card per course, never split by kind (docs/UI.md's Aujourd'hui note):
 // TodayView still carries dueCards/notionsBelowTarget/upcomingDeadlines as
@@ -73,6 +88,7 @@ function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number
     <li className="flex items-center gap-2" data-testid="todo-row">
       <input type="checkbox" checked={todo.done} onChange={(e) => onToggle(e.target.checked)} aria-label={todo.label} />
       <span className={todo.done ? "flex-1 line-through text-text-muted" : "flex-1 text-text"}>{todo.label}</span>
+      {todo.dueDate && <span className="text-xs text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
       {/* Same idiom as UploadCard's own staged-file removal: an accessible
           label naming the item, not a bare icon (docs/UI.md's Forbidden
           list). No confirmation — a todo is low stakes and trivially re-added. */}
@@ -107,7 +123,7 @@ function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void 
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={inputId} className="text-sm font-medium">
-        Ajouter des todos depuis une photo de l'agenda
+        Photo de l'agenda
       </label>
       <input
         id={inputId}
@@ -126,43 +142,82 @@ function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void 
   );
 }
 
+type TodoDraft = { label: string; dueDate: string; documentId: string };
+const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
+
 // Strictly what the CRUD already exposes server-side: a label, an optional
 // date, an optional course — no priority, no tags, no recurrence.
-function AddTodoForm({ documents, pending, onSubmit }: { documents: DocumentSummary[]; pending: boolean; onSubmit: (input: { label: string; dueDate: string | null; documentId: string | null }) => void }) {
-  const [label, setLabel] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [documentId, setDocumentId] = useState("");
+//
+// The draft lives in the parent (TodosCard), not as local state here:
+// this form unmounts on close (it's a sibling of its own "Ajouter un todo"
+// trigger, not CSS-hidden — docs/UI.md), so an unsaved draft only survives
+// Escape because it was never inside the component that just disappeared.
+function AddTodoForm({
+  documents,
+  pending,
+  draft,
+  onDraftChange,
+  onSubmit,
+  onClose,
+}: {
+  documents: DocumentSummary[];
+  pending: boolean;
+  draft: TodoDraft;
+  onDraftChange: (draft: TodoDraft) => void;
+  onSubmit: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
+  onClose: () => void;
+}) {
+  const labelRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const dateId = useId();
   const courseId = useId();
 
+  // Runs once per mount, i.e. once per open (docs/UI.md: opening the form
+  // puts focus on the label field).
+  useEffect(() => {
+    labelRef.current?.focus();
+  }, []);
+
   return (
     <form
       className="flex flex-col gap-2 rounded-[var(--radius-button)] bg-canvas p-3"
+      onKeyDown={(e) => {
+        // Whether there's a draft to keep or not, Escape only ever closes
+        // — it never clears `draft`, so a non-empty label survives to the
+        // next open on its own; an empty one has nothing to survive.
+        if (e.key === "Escape") onClose();
+      }}
       onSubmit={(e) => {
         e.preventDefault();
-        const trimmed = label.trim();
+        const trimmed = draft.label.trim();
         if (!trimmed) return;
-        onSubmit({ label: trimmed, dueDate: dueDate || null, documentId: documentId || null });
-        setLabel("");
-        setDueDate("");
-        setDocumentId("");
+        onSubmit({ label: trimmed, dueDate: draft.dueDate || null, documentId: draft.documentId || null });
+        onDraftChange(EMPTY_TODO_DRAFT);
+        onClose();
       }}
     >
       <label htmlFor={labelId} className="flex flex-col gap-1 text-sm text-text-muted">
         Nouveau todo
-        <input id={labelId} required value={label} onChange={(e) => setLabel(e.target.value)} className={FIELD_CLASS} placeholder="Réviser le chapitre 3" />
+        <input
+          id={labelId}
+          ref={labelRef}
+          required
+          value={draft.label}
+          onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
+          className={FIELD_CLASS}
+          placeholder="Réviser le chapitre 3"
+        />
       </label>
       <label htmlFor={dateId} className="flex flex-col gap-1 text-sm text-text-muted">
         Date (facultatif)
-        <input id={dateId} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD_CLASS} />
+        <input id={dateId} type="date" value={draft.dueDate} onChange={(e) => onDraftChange({ ...draft, dueDate: e.target.value })} className={FIELD_CLASS} />
       </label>
       <label htmlFor={courseId} className="flex flex-col gap-1 text-sm text-text-muted">
         Cours (facultatif)
         <select
           id={courseId}
-          value={documentId}
-          onChange={(e) => setDocumentId(e.target.value)}
+          value={draft.documentId}
+          onChange={(e) => onDraftChange({ ...draft, documentId: e.target.value })}
           className={`${FIELD_CLASS} bg-no-repeat pr-9`}
           style={{ backgroundImage: SELECT_CHEVRON, backgroundPosition: "right 0.6rem center", backgroundSize: "1rem" }}
         >
@@ -174,7 +229,7 @@ function AddTodoForm({ documents, pending, onSubmit }: { documents: DocumentSumm
           ))}
         </select>
       </label>
-      <Button type="submit" variant="secondary" disabled={pending || !label.trim()} className="self-start">
+      <Button type="submit" variant="secondary" disabled={pending || !draft.label.trim()} className="self-start">
         {pending ? "Ajout…" : "Ajouter"}
       </Button>
     </form>
@@ -242,6 +297,10 @@ function TodosCard({
   onCreate: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
   onPhotoUploaded: (jobId: string) => void;
 }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
+  const [photoOpen, setPhotoOpen] = useState(false);
+
   return (
     <Card className="flex flex-col gap-3" data-testid="todos-card">
       <h2 className="text-sm font-medium text-text-muted">Todos</h2>
@@ -252,8 +311,31 @@ function TodosCard({
           ))}
         </ul>
       )}
-      <AddTodoForm documents={documents} pending={createPending} onSubmit={onCreate} />
-      <PhotoUploadInput onUploaded={onPhotoUploaded} />
+
+      {/* Collapsed by default (docs/UI.md): a permanently open form was, on
+          its own, wider and taller than the list it sat below. */}
+      {addOpen ? (
+        <AddTodoForm
+          documents={documents}
+          pending={createPending}
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={onCreate}
+          onClose={() => setAddOpen(false)}
+        />
+      ) : (
+        <Button type="button" variant="secondary" onClick={() => setAddOpen(true)} className="self-start">
+          Ajouter un todo
+        </Button>
+      )}
+
+      {photoOpen ? (
+        <PhotoUploadInput onUploaded={onPhotoUploaded} />
+      ) : (
+        <Button type="button" variant="secondary" onClick={() => setPhotoOpen(true)} className="self-start">
+          Ajouter des todos depuis une photo de l'agenda
+        </Button>
+      )}
     </Card>
   );
 }

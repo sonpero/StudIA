@@ -15,6 +15,8 @@ test.describe("todo photo extraction", () => {
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
     await expect(page.getByRole("heading", { name: "Aujourd'hui" })).toBeVisible();
 
+    // Collapsed by default behind its own trigger (docs/UI.md).
+    await page.getByRole("button", { name: /ajouter des todos depuis une photo/i }).click();
     await page.getByLabel(/photo de l'agenda/i).setInputFiles({ name: "agenda.jpg", mimeType: "image/jpeg", buffer: Buffer.from("fake-agenda-photo") });
 
     await expect(page.getByRole("heading", { name: "Propositions" })).toBeVisible({ timeout: 10_000 });

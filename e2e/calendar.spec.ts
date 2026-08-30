@@ -39,6 +39,9 @@ test.describe("calendar", () => {
     // A course-less todo dated inside the same month, same flow
     // e2e/today.spec.ts uses.
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
+    // Collapsed by default behind its own trigger (docs/UI.md), same as
+    // e2e/today.spec.ts's manual-add flow.
+    await page.getByRole("button", { name: "Ajouter un todo" }).click();
     await page.getByLabel("Nouveau todo").fill("Réviser le chapitre 3");
     await page.getByLabel("Date (facultatif)").fill("2026-03-15");
     await page.getByRole("button", { name: "Ajouter", exact: true }).click();

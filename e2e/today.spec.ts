@@ -68,6 +68,10 @@ test.describe("today", () => {
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
     await expect(page.getByText("Retour", { exact: true })).toHaveCount(0);
 
+    // The add-todo form is collapsed by default behind its own trigger
+    // (docs/UI.md) — a permanently open form was, on its own, wider and
+    // taller than the list it sat below.
+    await page.getByRole("button", { name: "Ajouter un todo" }).click();
     await page.getByLabel("Nouveau todo").fill("Réviser demain");
     await page.getByRole("button", { name: "Ajouter", exact: true }).click();
     await expect(page.getByRole("checkbox", { name: "Réviser demain" })).toBeVisible({ timeout: 10_000 });

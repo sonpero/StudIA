@@ -311,6 +311,24 @@ staged-file removal on `Mes cours`' own upload card, not a bare icon
 without one) alongside its checkbox. No confirmation modal: a todo is low
 stakes and trivially re-added.
 
+**A todo's due date, when it has one, is shown on its row** — discreet,
+right-aligned, before the delete action. No date set means nothing shown
+there: never a dash, never "sans date". The same rule as everywhere else
+in this document applies to how it reads: a plain dated fact, never a
+countdown, and a date already past renders exactly like one still to
+come — no `--warning`, no colour of any kind marking it overdue.
+
+**The add form and the photo picker are both collapsed by default**,
+behind their own discreet `--secondary` action ("Ajouter un todo" /
+"Ajouter des todos depuis une photo de l'agenda") — a permanently open
+input for either was, by itself, wider and taller than the list it sat
+below. Opening the add form puts focus on the label field. Escape closes
+it again without discarding what was already typed — reopening shows the
+same draft, not a blank form — except when there was nothing to lose, in
+which case closing is simply closing. A successful submission collapses
+the form on its own and the new todo appears in the list below; nothing
+else about the checklist or the photo path changes.
+
 Native form controls still get the design-system border, radius and colour
 tokens (`<select>`'s own arrow replaced with a token-coloured chevron,
 `appearance-none` on both); what a browser's own chrome renders and CSS

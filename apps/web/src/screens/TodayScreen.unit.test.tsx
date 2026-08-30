@@ -39,6 +39,18 @@ function stubFetch(view: TodayView | (() => Response)) {
 
 const emptyView: TodayView = { date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [] };
 
+// Both the add-todo form and the photo picker are collapsed by default,
+// behind their own discreet trigger (docs/UI.md's Aujourd'hui note) — every
+// test below that needs the form or the file input open must click its
+// trigger first, the way a real user would.
+async function openAddTodoForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+}
+
+async function openPhotoPicker(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /ajouter des todos depuis une photo/i }));
+}
+
 describe("TodayScreen", () => {
   afterEach(() => {
     cleanup();
@@ -156,21 +168,23 @@ describe("TodayScreen", () => {
     expect(grid).toContainElement(todosCard);
   });
 
-  it("ready: the checklist, the add-todo form and the photo picker live in one todos card, not three separate pieces (docs/UI.md)", async () => {
+  it("ready: the checklist, the add-todo trigger and the photo trigger live in one todos card, not three separate pieces (docs/UI.md)", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     renderScreen();
     await screen.findByText("Réviser le chapitre 3");
 
     const todosCard = screen.getByTestId("todos-card");
     expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
-    expect(within(todosCard).getByLabelText(/nouveau todo/i)).toBeInTheDocument();
-    expect(within(todosCard).getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
+    expect(within(todosCard).getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+    expect(within(todosCard).getByRole("button", { name: /ajouter des todos depuis une photo/i })).toBeInTheDocument();
   });
 
   it("ready: the date and course fields get design-system styling, not the raw native control (docs/UI.md)", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
+    const user = userEvent.setup();
     renderScreen();
     await screen.findByText("x");
+    await openAddTodoForm(user);
 
     expect(screen.getByLabelText(/date/i).className).toMatch(/appearance-none/);
     expect(screen.getByLabelText(/^cours/i).className).toMatch(/appearance-none/);
@@ -255,10 +269,16 @@ describe("TodayScreen", () => {
     expect(calls).toEqual([{ url: "/api/todos/t1", body: { done: true } }]);
   });
 
-  it("offers a way to add todos from a planner photo", async () => {
+  it("offers a way to add todos from a planner photo, revealed behind a discreet trigger rather than a permanently open input", async () => {
     stubFetch(emptyView);
+    const user = userEvent.setup();
     renderScreen();
     await screen.findByText(/rien de prévu/i);
+
+    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
+
+    await openPhotoPicker(user);
+
     expect(screen.getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
   });
 
@@ -277,6 +297,7 @@ describe("TodayScreen", () => {
     const user = userEvent.setup();
     renderScreen({ onOpenProposals });
     await screen.findByText(/rien de prévu/i);
+    await openPhotoPicker(user);
 
     const input = screen.getByLabelText(/photo de l'agenda/i);
     const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
@@ -309,8 +330,10 @@ describe("TodayScreen", () => {
 
   it("ready: offers a minimal form to add a todo by hand — label required, date and course optional, nothing else", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
+    const user = userEvent.setup();
     renderScreen();
     await screen.findByText("x");
+    await openAddTodoForm(user);
 
     const labelInput = screen.getByLabelText(/nouveau todo/i);
     expect(labelInput).toBeRequired();
@@ -318,7 +341,7 @@ describe("TodayScreen", () => {
     expect(screen.getByLabelText(/^cours/i)).not.toBeRequired();
   });
 
-  it("adding a todo by hand posts its label and refreshes the list", async () => {
+  it("adding a todo by hand posts its label, refreshes the list and collapses the form", async () => {
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal(
       "fetch",
@@ -334,10 +357,93 @@ describe("TodayScreen", () => {
     const user = userEvent.setup();
     renderScreen();
     await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
 
     await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser le chapitre 3");
     await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
     expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser le chapitre 3", dueDate: null, documentId: null } }]);
+    // Collapsed back behind its trigger, and the label field is gone with it.
+    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+  });
+
+  it("opening the add-todo form moves focus to the label field", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    await openAddTodoForm(user);
+
+    expect(screen.getByLabelText(/nouveau todo/i)).toHaveFocus();
+  });
+
+  it("Escape closes the add-todo form without discarding a non-empty draft — reopening it shows the same values", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
+
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+
+    await openAddTodoForm(user);
+    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("Brouillon");
+  });
+
+  it("Escape closes the add-todo form directly when the label is empty — nothing to preserve", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+
+    await openAddTodoForm(user);
+    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("");
+  });
+
+  it("ready: a todo's due date shows on its row, discreet and placed right before the delete button — and nothing shows when it has none", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [
+        { id: "t1", label: "Avec échéance", dueDate: "2026-03-20", documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
+        { id: "t2", label: "Sans échéance", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
+      ],
+    });
+    renderScreen();
+    await screen.findByText("Avec échéance");
+
+    const datedRow = screen.getByText("Avec échéance").closest('[data-testid="todo-row"]') as HTMLElement;
+    const dateText = within(datedRow).getByText(/20 mars 2026/);
+    const deleteButton = within(datedRow).getByRole("button", { name: /supprimer/i });
+    const rowChildren = Array.from(datedRow.children);
+    expect(rowChildren.indexOf(dateText)).toBe(rowChildren.indexOf(deleteButton) - 1);
+
+    const undatedRow = screen.getByText("Sans échéance").closest('[data-testid="todo-row"]') as HTMLElement;
+    expect(within(undatedRow).queryByText(/\d/)).not.toBeInTheDocument();
+    expect(within(undatedRow).queryByText("-")).not.toBeInTheDocument();
+    expect(within(undatedRow).queryByText(/sans date/i)).not.toBeInTheDocument();
+  });
+
+  it("ready: a past due date renders exactly like any other date — a plain fact, no warning colour (docs/UI.md)", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [{ id: "t1", label: "En retard", dueDate: "2020-01-05", documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
+    });
+    renderScreen();
+    await screen.findByText("En retard");
+
+    const dateText = screen.getByText(/5 janvier 2020/);
+    expect(dateText.className).not.toMatch(/warning/);
   });
 });
