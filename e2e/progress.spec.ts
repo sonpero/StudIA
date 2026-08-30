@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 // product decision — the server never guesses it, docs/modules/progress.md).
 test.describe("progress", () => {
   test("set a deadline, see coverage and readiness, review a due card, see readiness rise", async ({ page }) => {
-    test.setTimeout(90_000); // extra room for the split/generation polls under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the split/generation polls
     const mockedNow = new Date(2026, 2, 2, 9, 0, 0); // Monday 2026-03-02, 09:00 local
     await page.clock.install({ time: mockedNow });
 
@@ -19,13 +19,7 @@ test.describe("progress", () => {
     await page.getByRole("button", { name: "Confirmer" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours à suivre" });
-    // Generous: the worker process is shared with every other e2e spec's
-    // jobs, and under full-suite parallel load this one can sit in the
-    // queue behind extraction/split/generation jobs from other specs
-    // (same contention e2e/today.spec.ts's and e2e/todo-photo.spec.ts's
-    // own generous timeouts already accommodate — e2e/calendar.spec.ts
-    // now adds a sixth document-creation-heavy spec to that same load).
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 45_000 });
+    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
     await documentCard.getByRole("button", { name: "Voir les notions" }).click();
 
     // content splits notions automatically after extraction

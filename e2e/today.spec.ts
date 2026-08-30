@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 // M6 step 1) is actually reachable from the UI.
 test.describe("today", () => {
   test("a course with due cards gets one actionable card, review and course navigation both work, and a todo can be added by hand", async ({ page }) => {
-    test.setTimeout(90_000); // extra room: extraction, splitting, generation and a review session, all under shared-worker contention
+    test.setTimeout(60_000); // extra room: extraction, splitting, generation and a review session
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -15,12 +15,7 @@ test.describe("today", () => {
     await page.getByRole("button", { name: "Confirmer" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours du jour" });
-    // Generous: the worker process is shared with every other e2e spec's
-    // jobs, and under full-suite parallel load this one can sit in the
-    // queue behind extraction/split/generation jobs from other specs
-    // (same contention e2e/progress.spec.ts's and e2e/todo-photo.spec.ts's
-    // own generous timeouts already accommodate).
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 45_000 });
+    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
     await documentCard.getByRole("button", { name: "Voir les notions" }).click();
 
     const notionCards = page.getByTestId("notion-card");

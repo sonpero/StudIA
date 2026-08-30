@@ -250,6 +250,39 @@ rules from `docs/UI.md` honestly.
 - Test the failure paths, not just the happy ones: a failed extraction shows a
   retry, and the retry works.
 
+**The suite runs on one Playwright worker (`playwright.config.ts`'s `workers:
+1`), deliberately, not for lack of CPU headroom.** Every spec that creates a
+document or a todo-photo pushes an extraction job into the same `jobs` queue,
+and exactly one worker process (`apps/worker`) drains it — parallel Playwright
+workers don't parallelize anything CPU- or IO-bound here, they only compete for
+that single queue. Symptom that motivated this: adding `calendar.spec.ts` as a
+sixth document-creation-heavy spec pushed shared-worker contention past what
+per-step timeouts could absorb — 3 of 4 consecutive full-suite runs under the
+default ~5-way parallelism had at least one failure, never on the same step
+twice, never on the new spec itself (full numbers in the commit that measured
+it, `9bd3b5a`). Raising the failing step's timeout each time did not fix this:
+it only bought the specific step that failed last time more room, while every
+other spec's wait in the same queue got proportionally less generous the next
+time a spec was added. Switched to one worker and confirmed: 3 consecutive
+full serial runs, 13/13 green each time (~1m42s–1m48s per run), against a
+baseline of one ~56s run at the prior 5-worker default — serial costs roughly
+80–90% more wall time in exchange for removing the queue entirely rather than
+enduring it. The per-step timeouts that had been raised specifically to
+survive that contention (`today.spec.ts`, `todo-photo.spec.ts`,
+`progress.spec.ts`) were lowered back afterward and reconfirmed green on the
+same three serial runs.
+
+**Before raising an e2e timeout, check whether it's contention, not slowness.**
+With one worker there is no longer a shared job queue to sit behind — a
+timeout that still fails here is failing for its own reason (a genuinely slow
+step, a real regression), and inflating it again would silently mask that
+rather than fix it. If the suite's growing run time becomes a problem before
+the queue does again, the option not taken here was running only the
+job-queue-dependent specs serially (a separate, single-worker Playwright
+project) while leaving the rest — `login.spec.ts`,
+`authenticated-session.spec.ts` — on parallel workers; not needed yet, since
+the current serial run time is still well under what would make it painful.
+
 ---
 
 ## Architecture tests

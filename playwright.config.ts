@@ -4,6 +4,13 @@ import { BASE_URL, E2E_DATA_DIR, E2E_PORT, SESSION_SECRET, STORAGE_STATE_PATH } 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // One worker, deliberately (docs/TESTING.md's End-to-end section): every
+  // spec that creates a document pushes an extraction job into the same
+  // queue, and only one worker process drains it. Parallel Playwright
+  // workers compete for that queue, not for anything CPU- or IO-bound they
+  // could actually parallelize, so more Playwright workers only lengthens
+  // everyone's wait rather than shortening the suite.
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: "html",

@@ -20,12 +20,7 @@ test.describe("todo photo extraction", () => {
     await page.getByLabel(/photo de l'agenda/i).setInputFiles({ name: "agenda.jpg", mimeType: "image/jpeg", buffer: Buffer.from("fake-agenda-photo") });
 
     await expect(page.getByRole("heading", { name: "Propositions" })).toBeVisible({ timeout: 10_000 });
-    // Generous: the worker process is shared with every other e2e spec's
-    // jobs, and under full-suite parallel load this one can sit in the
-    // queue behind extraction/split/generation jobs from other specs
-    // (same contention e2e/progress.spec.ts's own generous timeouts
-    // already accommodate).
-    await expect(page.getByText("Rendre le devoir de maths")).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText("Rendre le devoir de maths")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Réviser le contrôle d'histoire")).toBeVisible();
 
     // Both checked by default; uncheck the one this test will reject.
