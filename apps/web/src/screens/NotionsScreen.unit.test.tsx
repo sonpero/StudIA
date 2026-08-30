@@ -68,6 +68,24 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("2 / 5 notions maîtrisées")).toBeInTheDocument();
   });
 
+  it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has three peer actions, not one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const reviewButton = screen.getByRole("button", { name: "Réviser" });
+    expect(reviewButton.className).not.toMatch(/bg-accent/);
+    expect(reviewButton.className).toMatch(/border-border/);
+  });
+
   it("ready state: offers a way back to the courses list (not just the empty/error states)", async () => {
     vi.stubGlobal(
       "fetch",
@@ -141,6 +159,31 @@ describe("NotionsScreen", () => {
     await user.click(screen.getByText("Voir le contenu"));
 
     expect(screen.getByText("La plante capte la lumière.")).toBeInTheDocument();
+  });
+
+  it("ready state: the notion's body renders as formatted markdown, not raw text — bold and a numbered list included (notion.body is markdown, same as the reader's own content)", async () => {
+    const richNotion = { ...aNotion, body: "Il y a **deux** phases :\n\n1. Phase claire\n2. Cycle de Calvin" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([richNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    await user.click(screen.getByText("Voir le contenu"));
+
+    const strong = await screen.findByText("deux");
+    expect(strong.tagName).toBe("STRONG");
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((li) => li.textContent)).toEqual(["Phase claire", "Cycle de Calvin"]);
+    // Raw markdown syntax must not leak through as literal characters.
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^1\./)).not.toBeInTheDocument();
   });
 
   it("clicking 'Réviser cette notion' starts a review scoped to that notion", async () => {

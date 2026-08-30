@@ -219,10 +219,14 @@ adapter).
 than as its own milestone because it needs nothing M8 (Tutor) or any later
 milestone would introduce first, and there is no other natural home for it. A
 screen that renders a document's extracted markdown as an actual formatted
-page (headings, lists, emphasis) — the two places that currently show that
-same markdown do so as raw preformatted text (`DocumentsScreen`'s "Voir le
-texte", `NotionsScreen`'s "Voir le contenu"), neither meant for continuous
-reading. Reads the source extraction, not notions strung together: a notion's
+page (headings, lists, emphasis) — at the time this was added, the two
+places that showed that same markdown did so as raw preformatted text
+(`DocumentsScreen`'s "Voir le texte", `NotionsScreen`'s "Voir le contenu"),
+neither meant for continuous reading. This screen replaced the first;
+`NotionsScreen`'s own "Voir le contenu" got the same rendering fix in a
+later, separate correction (it stayed — different content, a notion's own
+body, not the source — only its raw-text rendering was the bug). Reads the
+source extraction, not notions strung together: a notion's
 `body` is deliberately self-contained for out-of-order review
 (`docs/modules/content.md`), so concatenating notions end to end produces a
 repetitive, choppy sequence, not a readable course — the source markdown is

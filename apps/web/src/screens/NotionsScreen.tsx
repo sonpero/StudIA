@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
@@ -39,6 +40,21 @@ function notionProgressLabel(progress: NotionProgress | undefined): string {
 // "genuinely produced nothing", so an unbounded poll would never stop for a
 // document whose split job actually failed.
 const POLL_GIVE_UP_MS = 120_000;
+
+// Same token classes as the reader's own markdown mapping (docs/UI.md's
+// Lecteur note), but deliberately tighter: this content sits inline in a
+// list of notion cards, not on a dedicated reading page, and the reader's
+// generous margins would inflate every row. No heading overrides — a
+// notion's body is self-contained prose (docs/modules/content.md), not
+// expected to carry its own heading structure.
+const NOTION_BODY_COMPONENTS: Components = {
+  p: (props) => <p className="mt-1 text-sm text-text first:mt-0" {...props} />,
+  ul: (props) => <ul className="mt-1 list-disc pl-5 text-sm text-text" {...props} />,
+  ol: (props) => <ol className="mt-1 list-decimal pl-5 text-sm text-text" {...props} />,
+  li: (props) => <li {...props} />,
+  strong: (props) => <strong className="font-semibold text-text" {...props} />,
+  code: (props) => <code className="rounded bg-canvas px-1 text-sm" {...props} />,
+};
 
 export function NotionsScreen({
   documentId,
@@ -203,7 +219,7 @@ export function NotionsScreen({
           <Button variant="secondary" onClick={onOpenProgress}>
             Voir la progression
           </Button>
-          <Button variant="accent" onClick={() => onReview()}>
+          <Button variant="secondary" onClick={() => onReview()}>
             Réviser
           </Button>
         </div>
@@ -245,7 +261,7 @@ export function NotionsScreen({
               >
                 {expanded ? "Masquer le contenu" : "Voir le contenu"}
               </button>
-              {expanded && <p className="text-sm text-text">{notion.body}</p>}
+              {expanded && <Markdown components={NOTION_BODY_COMPONENTS}>{notion.body}</Markdown>}
             </Card>
           );
         })}
