@@ -215,13 +215,39 @@ adapter).
 
 **Scope** — Pomodoro timer tied to a session, Spotify playlist embed.
 
-**Demo** — Start a pomodoro on today's task, finish it, see the session recorded.
+**Addition — course reader.** Not part of the original scope; added here rather
+than as its own milestone because it needs nothing M8 (Tutor) or any later
+milestone would introduce first, and there is no other natural home for it. A
+screen that renders a document's extracted markdown as an actual formatted
+page (headings, lists, emphasis) — the two places that currently show that
+same markdown do so as raw preformatted text (`DocumentsScreen`'s "Voir le
+texte", `NotionsScreen`'s "Voir le contenu"), neither meant for continuous
+reading. Reads the source extraction, not notions strung together: a notion's
+`body` is deliberately self-contained for out-of-order review
+(`docs/modules/content.md`), so concatenating notions end to end produces a
+repetitive, choppy sequence, not a readable course — the source markdown is
+the actual document as written. See `docs/UI.md`'s Lecteur note for the full
+spec — no new backend module: it reads `ingestion`'s existing extraction,
+already exposed by `GET /api/documents/:id`.
+
+**Demo** — Start a pomodoro on today's task, finish it, see the session
+recorded. Open a course, read it as formatted text on mobile.
 
 **Acceptance**
 - [ ] Timer state survives a page reload
 - [ ] Spotify is an embedded playlist, no OAuth, no Premium requirement
+- [ ] A course's extracted markdown renders as formatted text (not raw
+      preformatted), replacing `DocumentsScreen`'s "Voir le texte"
 
-**Out of scope** — Web Playback SDK. Revisit only if the embed proves inadequate.
+**Out of scope** — Web Playback SDK. Revisit only if the embed proves
+inadequate. Reading notions instead of the source (see above). Progressive
+or paginated loading from the server — measured, not assumed: rendering a
+full document client-side stays well under a second even at sizes past
+what this app's own documents are likely to reach (see `docs/UI.md`'s
+Lecteur note). A paginated, swipe-to-continue reading mode was also set
+aside, for a different reason: it answers a reading-comfort preference
+nobody asked for, not a performance problem — the measurement above is
+why it wasn't treated as one.
 
 ---
 

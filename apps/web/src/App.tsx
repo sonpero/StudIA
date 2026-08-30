@@ -8,6 +8,7 @@ import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
 import { ProgressScreen } from "./screens/ProgressScreen.js";
 import { ProposalsScreen } from "./screens/ProposalsScreen.js";
+import { ReaderScreen } from "./screens/ReaderScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
 import { TodayScreen } from "./screens/TodayScreen.js";
 
@@ -32,6 +33,7 @@ type View =
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
   | { name: "calendar" }
+  | { name: "reader"; documentId: string }
   | { name: "proposals"; jobId: string };
 
 function AppShell() {
@@ -60,7 +62,12 @@ function AppShell() {
 
   const navItems: AppNavItem[] = [
     { key: "today", label: "Aujourd'hui", active: view.name === "today", onClick: () => setView({ name: "today" }) },
-    { key: "documents", label: "Mes cours", active: view.name === "documents" || view.name === "notions", onClick: () => setView({ name: "documents" }) },
+    {
+      key: "documents",
+      label: "Mes cours",
+      active: view.name === "documents" || view.name === "notions" || view.name === "reader",
+      onClick: () => setView({ name: "documents" }),
+    },
     { key: "progress", label: "Progression", active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
     { key: "calendar", label: "Calendrier", active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
   ];
@@ -77,7 +84,10 @@ function AppShell() {
         </div>
         <div className="mx-auto max-w-6xl">
           {view.name === "documents" && (
-            <DocumentsScreen onOpenNotions={(documentId) => setView({ name: "notions", documentId })} />
+            <DocumentsScreen
+              onOpenNotions={(documentId) => setView({ name: "notions", documentId })}
+              onOpenReader={(documentId) => setView({ name: "reader", documentId })}
+            />
           )}
           {view.name === "notions" && (
             <NotionsScreen
@@ -108,6 +118,7 @@ function AppShell() {
             />
           )}
           {view.name === "calendar" && <CalendarScreen onOpenCourse={(documentId) => setView({ name: "notions", documentId })} />}
+          {view.name === "reader" && <ReaderScreen documentId={view.documentId} onBack={() => setView({ name: "documents" })} />}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
         </div>
       </div>

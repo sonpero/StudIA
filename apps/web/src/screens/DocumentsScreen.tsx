@@ -1,12 +1,12 @@
 import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Card } from "../components/ui/card.js";
 import { Button } from "../components/ui/button.js";
 import { UploadCard } from "../components/UploadCard.js";
-import { deleteDocument, getDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
+import { deleteDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
 
 const STATUS_LABEL: Record<ExtractionStatus, string> = {
   pending: "En attente",
@@ -23,24 +23,13 @@ function DocumentCard({
   document,
   onChanged,
   onOpenNotions,
+  onOpenReader,
 }: {
   document: DocumentSummary;
   onChanged: () => void;
   onOpenNotions: (documentId: string) => void;
+  onOpenReader: (documentId: string) => void;
 }) {
-  const [markdown, setMarkdown] = useState<string | null>(null);
-  const [showingText, setShowingText] = useState(false);
-
-  async function toggleText() {
-    if (showingText) {
-      setShowingText(false);
-      return;
-    }
-    const detail = await getDocument(document.id);
-    setMarkdown(detail.markdown);
-    setShowingText(true);
-  }
-
   return (
     <Card className="flex flex-col gap-2" data-testid="document-card">
       <div className="flex items-center gap-2">
@@ -60,15 +49,14 @@ function DocumentCard({
       )}
       {document.status === "done" && (
         <>
-          <button type="button" className="self-start text-sm text-primary underline" onClick={() => void toggleText()}>
-            {showingText ? "Masquer le texte" : "Voir le texte"}
-          </button>
+          <Button variant="secondary" onClick={() => onOpenReader(document.id)}>
+            Lire le cours
+          </Button>
           <Button variant="secondary" onClick={() => onOpenNotions(document.id)}>
             Voir les notions
           </Button>
         </>
       )}
-      {showingText && <p className="whitespace-pre-wrap rounded-[var(--radius-button)] bg-canvas p-3 text-sm">{markdown}</p>}
       <button
         type="button"
         className="self-start text-sm text-text-muted underline"
@@ -80,7 +68,13 @@ function DocumentCard({
   );
 }
 
-export function DocumentsScreen({ onOpenNotions }: { onOpenNotions: (documentId: string) => void }) {
+export function DocumentsScreen({
+  onOpenNotions,
+  onOpenReader,
+}: {
+  onOpenNotions: (documentId: string) => void;
+  onOpenReader: (documentId: string) => void;
+}) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
 
@@ -145,7 +139,7 @@ export function DocumentsScreen({ onOpenNotions }: { onOpenNotions: (documentId:
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <UploadCard onCreated={refresh} />
           {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onChanged={refresh} onOpenNotions={onOpenNotions} />
+            <DocumentCard key={document.id} document={document} onChanged={refresh} onOpenNotions={onOpenNotions} onOpenReader={onOpenReader} />
           ))}
         </div>
       )}

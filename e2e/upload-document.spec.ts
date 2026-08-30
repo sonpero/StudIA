@@ -34,10 +34,18 @@ test.describe("upload and extraction", () => {
     await expect(card.getByText("3 pages")).toBeVisible();
     await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
 
-    await card.getByRole("button", { name: "Voir le texte" }).click();
+    await card.getByRole("button", { name: "Lire le cours" }).click();
     // FixtureDocumentExtractor's "valid" case (docs/TESTING.md's required
-    // fixture cases): real, readable extracted Markdown, not a placeholder.
-    await expect(card.getByText("Contenu extrait.")).toBeVisible();
+    // fixture cases): real, readable extracted Markdown, rendered as
+    // formatted text on the reader screen (e2e/reader.spec.ts covers that
+    // screen's own states in full).
+    // Three pages, each the fixture's own "# Titre" section, concatenated
+    // by ingestion (docs/modules/ingestion.md) — three headings, not one.
+    await expect(page.getByRole("heading", { name: "Titre" })).toHaveCount(3);
+    await expect(page.getByText("Contenu extrait.").first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Retour à mes cours" }).click();
+    await expect(page.getByRole("heading", { name: "Mes cours" })).toBeVisible();
   });
 
   test("a failed extraction shows a retry, and the retry works", async ({ page }) => {

@@ -6,11 +6,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentsScreen } from "./DocumentsScreen.js";
 
-function renderScreen(onOpenNotions: (documentId: string) => void = () => undefined) {
+function renderScreen(overrides: Partial<{ onOpenNotions: (documentId: string) => void; onOpenReader: (documentId: string) => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <DocumentsScreen onOpenNotions={onOpenNotions} />
+      <DocumentsScreen onOpenNotions={overrides.onOpenNotions ?? (() => undefined)} onOpenReader={overrides.onOpenReader ?? (() => undefined)} />
     </QueryClientProvider>,
   );
 }
@@ -69,46 +69,28 @@ describe("DocumentsScreen", () => {
     expect(screen.getByText("Terminé")).toBeInTheDocument();
   });
 
-  it("a done document can reveal its extracted text on demand", async () => {
+  it("a done document offers to open the reader, calling back with its id — replacing the old inline 'Voir le texte' toggle", async () => {
     const user = userEvent.setup();
+    const onOpenReader = vi.fn();
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (/\/api\/documents\/d1$/.test(url)) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                id: "d1",
-                title: "Chapitre 3",
-                sourceType: "photo",
-                status: "done",
-                pageCount: 1,
-                colour: "#F87171",
-                createdAt: "2026-01-01T00:00:00Z",
-                lastError: null,
-                markdown: "# La photosynthèse\n\nContenu extrait.",
-              }),
-              { status: 200 },
-            ),
-          );
-        }
-        return Promise.resolve(
-          new Response(
-            JSON.stringify([
-              { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-            ]),
-            { status: 200 },
-          ),
-        );
-      }),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+          ]),
+          { status: 200 },
+        ),
+      ),
     );
 
-    renderScreen();
+    renderScreen({ onOpenReader });
     await screen.findByText("Chapitre 3");
 
-    await user.click(screen.getByRole("button", { name: /voir le texte/i }));
+    await user.click(screen.getByRole("button", { name: /lire le cours/i }));
 
-    expect(await screen.findByText(/la photosynthèse/i)).toBeInTheDocument();
+    expect(onOpenReader).toHaveBeenCalledWith("d1");
+    expect(screen.queryByRole("button", { name: /voir le texte/i })).not.toBeInTheDocument();
   });
 
   it("shows a retry action only for a failed document, with its last error implied by the failed status", async () => {
@@ -146,7 +128,7 @@ describe("DocumentsScreen", () => {
       ),
     );
 
-    renderScreen(onOpenNotions);
+    renderScreen({ onOpenNotions });
     await screen.findByText("Chapitre 3");
 
     await user.click(screen.getByRole("button", { name: /voir les notions/i }));

@@ -473,6 +473,63 @@ itself is the useful surface even at zero events (you can still page to
 another month), unlike a list screen where zero rows really is nothing to
 show. No mascot for a quiet month.
 
+**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached from a course's
+card on Mes cours ("Lire le cours", replacing the old "Voir le texte" toggle,
+same `status === "done"` gate that button already had), never from the nav:
+this is a drill-down from a specific course, the same shape as Notions du
+cours, not a top-level home, so it keeps its own "‹ Retour à mes cours" rather
+than relying on the nav's generic "Mes cours" the way Aujourd'hui and
+Calendrier do.
+
+**Renders the course's extracted markdown, never its notions strung
+together, and this is a deliberate distinction, not an oversight.** A
+notion's `body` is self-contained by design so it reads out of order during
+review (`docs/modules/content.md`) — concatenating 5 to 60 of them produces a
+repetitive, choppy sequence, each restating context the one before it just
+gave, not a readable course. The extraction markdown is the actual document
+as written or photographed; that is what "read the course" means here.
+`react-markdown` renders it through this app's own token classes (headings,
+lists, emphasis), not `@tailwindcss/typography`, which would bring its own
+spacing and colour scale to reconcile against `tokens.css` for a job this app
+already does by hand on every other screen. The reading column caps at
+`max-w-2xl`, narrower than the rest of the app's 1152px content width — a
+deliberately shorter line length for continuous prose, the same "cap it
+instead of stretching it" principle as Shape and depth's form-width rule.
+
+**No progressive loading, no infinite scroll, one normal scrolling page.**
+Measured, not assumed: `react-markdown`'s own render pipeline, timed via
+`react-dom/server`, renders a synthetic 60-"page" document (251 KB of
+markdown, well past what this app's own documents are likely to reach) in
+63 ms, and a deliberately extreme 250-"page" one (1 MB) in 254 ms — both a
+one-time cost on opening the screen, not a per-frame one. A paginated,
+swipe-to-continue reading mode was also considered and set aside — not
+because it is a bad idea, but because it answers a reading-comfort
+preference nobody asked for, and the measurement above is exactly why it
+was left as a preference rather than escalated into a technical
+requirement: there is no slowness here for pagination to fix.
+
+Four states: **loading** is a skeleton (short animated bars in the reading
+column, no mascot — no screen in this app puts a mascot on a plain network
+fetch); **error** is `confused` and a retry, same wording pattern as every
+other screen; **ready** is the rendered markdown, no mascot (data-dense,
+docs/UI.md's one-mascot rule already excludes it). Within ready, the
+document's own extraction status branches further, since this screen is
+reachable by more than its one gated button — a stale button render, a
+future entry point, anything that skips the check must still land somewhere
+defined:
+- still extracting (`pending`/`running`): `reading`, "Ce cours est encore en
+  cours de lecture. Reviens dans un instant.", polling on the same
+  30-second-backoff schedule Mes cours already uses for exactly this,
+  so the screen resolves itself if left open rather than needing a manual
+  reload
+- `failed`: `confused`, "La lecture de ce cours a échoué. Mets-la à jour
+  depuis Mes cours." — no retry button here; that mutation already lives on
+  Mes cours and this screen does not duplicate it
+- `done` with nothing readable (markdown null or blank): `idle`, "Ce cours
+  ne contient pas encore de texte lisible."
+- `done` with real content: the actual reader — course title and subject
+  colour dot, then the rendered markdown
+
 **Tuteur** — Standard chat, scoped to one selected course, streamed answers with
 citations back to notions. Fiche in `thinking` while it streams, and gone once the
 answer starts.
