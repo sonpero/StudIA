@@ -6,6 +6,52 @@ database and the clock are handled, and what is deliberately not tested.
 
 ---
 
+## Mutation testing regime
+
+Applied uniformly since M5. It has caught real defects in the domain and in
+the architecture rules, but applied to the UI it costs more than it returns:
+a broken screen is visible in three seconds, so review is a sufficient proof.
+A wrong weighted average never shows up on its own — that is what mutation
+testing is for.
+
+Test-first (a red test, observed failing, before the code exists) is
+mandatory everywhere below, no exception. What differs is whether a property
+also needs a targeted mutation proving it fails when the property is broken,
+not just a test that happens to pass.
+
+**Reinforced regime — mutation testing required, one mutation per property:**
+
+- pure domain functions (the `.unit.test.ts` layer)
+- migrations and anything touching persisted state (the `.int.test.ts` layer,
+  the [Database](#database) rules below)
+- `dependency-cruiser` rules (the [Architecture tests](#architecture-tests)
+  section below is the worked template: add the violation, run `pnpm lint`,
+  read the failure, revert)
+- cross-module invariants and the queries that carry them (e.g. the
+  `coverage`/`readiness` single-read invariant from `docs/MILESTONES.md`'s M5
+  acceptance)
+
+**Normal regime — test-first only, mutation testing forbidden unless the
+prompt explicitly asks for it:**
+
+- React components and anything rendered on screen ([Front-end
+  tests](#front-end-tests))
+- routes, where integration coverage is sufficient ([API tests](#api-tests))
+- adapters with no logic of their own (a fixture adapter that only returns a
+  recorded value; an LLM adapter that only calls the port — the logic worth
+  mutating lives in the domain function or query it feeds, not in the adapter)
+
+Do not add mutation testing here by default, even though six commits since M5
+show it applied uniformly everywhere — that precedent predates this split and
+is exactly the habit this rule exists to stop.
+
+This does not change milestone acceptance: every acceptance box still needs
+its own named test regardless of regime — see the M5 and M6 boxes in
+`docs/MILESTONES.md` for the standing example. It also does not authorize
+removing any existing test, including ones written before this split existed.
+
+---
+
 ## Layout and naming
 
 ```

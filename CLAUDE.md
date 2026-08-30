@@ -156,8 +156,35 @@ Every bug fix starts with a regression test that reproduces the bug.
 and a global setup makes `fetch` throw so a misconfigured fixture adapter fails
 loudly instead of silently calling a real model.
 
+### Mutation testing regime
+
+Test-first is mandatory everywhere, without exception. Mutation testing —
+proving each property with a targeted mutation that makes it fail alone, not
+merely a test that happens to pass — is required only where a defect would
+otherwise go unnoticed by both review and normal use:
+
+- pure domain functions
+- migrations and anything touching persisted state
+- `dependency-cruiser` rules, whose non-vacuity is checked by a deliberate
+  violation, then a revert
+- cross-module invariants and the queries that carry them
+
+Everywhere else — React components and anything rendered on screen, routes
+(integration coverage is sufficient), adapters with no logic of their own —
+test-first still applies, but **do not add mutation testing unless the prompt
+explicitly asks for it.**
+
+Why: mutation testing exists for defects that no review and no usage surfaces.
+A wrong screen is visible in three seconds; a wrong weighted average never
+shows up on its own.
+
+This does not relax milestone acceptance: every acceptance box still needs its
+own named test, regardless of regime. Never remove a test written under either
+regime, including ones predating this split.
+
 **`docs/TESTING.md` is binding**: file naming, the database helper, builders,
-fixture recording, the four required UI states, and the architecture rules.
+fixture recording, the four required UI states, the architecture rules, and
+the mutation testing regime above.
 
 ---
 
