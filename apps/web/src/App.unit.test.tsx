@@ -47,6 +47,22 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
+  it("authenticated: the header offers both homes, Aujourd'hui and Mes cours, from anywhere", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }),
+    );
+
+    render(<App />);
+
+    await screen.findByText(/alex/i);
+    expect(screen.getByRole("button", { name: "Aujourd'hui" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mes cours" })).toBeInTheDocument();
+  });
+
   it("a 401 on any protected call bounces an authenticated session back to the login screen", async () => {
     vi.stubGlobal(
       "fetch",

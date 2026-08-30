@@ -17,8 +17,9 @@ import { TodayScreen } from "./screens/TodayScreen.js";
 // from whichever course's NotionsScreen the student was on; fromDocumentId
 // is only so "back" returns to that same course, not a scoping parameter
 // for the progress screen itself. "today" (M6, docs/modules/workspace.md)
-// is reachable from anywhere via the header, not scoped to a document —
-// "back" always returns to the documents list, the app's other home.
+// is reachable from anywhere via the header, not scoped to a document, and
+// has no "back" of its own (docs/UI.md): it is one of the app's two homes,
+// "documents" the other, both reachable from this same header at all times.
 type View =
   | { name: "documents" }
   | { name: "notions"; documentId: string }
@@ -59,6 +60,9 @@ function AppShell() {
           <button type="button" className="underline" onClick={() => setView({ name: "today" })}>
             Aujourd'hui
           </button>
+          <button type="button" className="underline" onClick={() => setView({ name: "documents" })}>
+            Mes cours
+          </button>
           <p>Bonjour, {auth.user?.username}.</p>
           <button type="button" onClick={() => void auth.logout()}>
             Se déconnecter
@@ -85,7 +89,11 @@ function AppShell() {
       )}
       {view.name === "progress" && <ProgressScreen onBack={() => setView({ name: "notions", documentId: view.fromDocumentId })} />}
       {view.name === "today" && (
-        <TodayScreen onBack={() => setView({ name: "documents" })} onOpenProposals={(jobId) => setView({ name: "proposals", jobId })} />
+        <TodayScreen
+          onOpenProposals={(jobId) => setView({ name: "proposals", jobId })}
+          onOpenCourse={(documentId) => setView({ name: "notions", documentId })}
+          onReviewCourse={(documentId) => setView({ name: "review", documentId })}
+        />
       )}
       {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
     </div>

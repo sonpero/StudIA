@@ -29,3 +29,9 @@ export async function toggleTodo(id: string, done: boolean): Promise<void> {
   const res = await apiFetch(`/api/todos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) });
   if (!res.ok) throw new Error("Impossible de mettre à jour ce todo.");
 }
+
+export async function createTodo(input: { label: string; dueDate: string | null; documentId: string | null }): Promise<Todo> {
+  const res = await apiFetch("/api/todos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  if (!res.ok) throw new Error("Impossible d'ajouter ce todo.");
+  return res.json() as Promise<Todo>;
+}

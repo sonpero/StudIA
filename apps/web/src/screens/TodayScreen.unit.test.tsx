@@ -1,17 +1,27 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TodayScreen } from "./TodayScreen.js";
 import type { TodayView } from "../lib/today-api.js";
 
-function renderScreen(onOpenProposals: (jobId: string) => void = () => undefined) {
+function renderScreen(
+  overrides: Partial<{
+    onOpenProposals: (jobId: string) => void;
+    onOpenCourse: (documentId: string) => void;
+    onReviewCourse: (documentId: string) => void;
+  }> = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <TodayScreen onBack={() => undefined} onOpenProposals={onOpenProposals} />
+      <TodayScreen
+        onOpenProposals={overrides.onOpenProposals ?? (() => undefined)}
+        onOpenCourse={overrides.onOpenCourse ?? (() => undefined)}
+        onReviewCourse={overrides.onReviewCourse ?? (() => undefined)}
+      />
     </QueryClientProvider>,
   );
 }
@@ -19,7 +29,8 @@ function renderScreen(onOpenProposals: (jobId: string) => void = () => undefined
 function stubFetch(view: TodayView | (() => Response)) {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockImplementation(() => {
+    vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
       if (typeof view === "function") return Promise.resolve(view());
       return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
     }),
@@ -76,6 +87,58 @@ describe("TodayScreen", () => {
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
   });
 
+  it("ready: a course due today and a course below target before its deadline render as one card each, not one per signal, and the two counts are worded differently", async () => {
+    stubFetch({
+      ...emptyView,
+      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 25 }],
+      notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 7 }],
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    expect(screen.getAllByText("Maths")).toHaveLength(1);
+    expect(screen.getByText(/25 fiches à revoir aujourd'hui/)).toBeInTheDocument();
+    expect(screen.getByText(/7 notions à consolider avant l'échéance/)).toBeInTheDocument();
+  });
+
+  it("ready: a course card offers 'Voir le cours', which opens that course", async () => {
+    const onOpenCourse = vi.fn();
+    stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
+    const user = userEvent.setup();
+    renderScreen({ onOpenCourse });
+    await screen.findByText("Histoire");
+
+    await user.click(screen.getByRole("button", { name: "Voir le cours" }));
+
+    expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("ready: a course card offers 'Réviser' only when something is due today", async () => {
+    const onReviewCourse = vi.fn();
+    stubFetch({
+      ...emptyView,
+      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
+      notionsBelowTarget: [{ documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }],
+    });
+    const user = userEvent.setup();
+    renderScreen({ onReviewCourse });
+    const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="course-today-card"]') as HTMLElement;
+    const histoireCard = screen.getByText("Histoire").closest('[data-testid="course-today-card"]') as HTMLElement;
+
+    expect(within(mathsCard).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
+    expect(within(histoireCard).queryByRole("button", { name: "Réviser" })).not.toBeInTheDocument();
+
+    await user.click(within(mathsCard).getByRole("button", { name: "Réviser" }));
+    expect(onReviewCourse).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("never shows 'Retour': this is the destination the header's own links lead to, not a place left and returned to", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 1 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+    expect(screen.queryByText(/retour/i)).not.toBeInTheDocument();
+  });
+
   it("ready: each todo has a checkbox reflecting its done state", async () => {
     stubFetch({
       ...emptyView,
@@ -91,6 +154,7 @@ describe("TodayScreen", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (init?.method === "PATCH") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(null, { status: 200 }));
@@ -130,11 +194,12 @@ describe("TodayScreen", () => {
         if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
           return Promise.resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
         }
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
       }),
     );
     const user = userEvent.setup();
-    renderScreen(onOpenProposals);
+    renderScreen({ onOpenProposals });
     await screen.findByText(/rien de prévu/i);
 
     const input = screen.getByLabelText(/photo de l'agenda/i);
@@ -164,5 +229,39 @@ describe("TodayScreen", () => {
     renderScreen();
     await screen.findByText("x");
     expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+  });
+
+  it("ready: offers a minimal form to add a todo by hand — label required, date and course optional, nothing else", async () => {
+    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
+    renderScreen();
+    await screen.findByText("x");
+
+    const labelInput = screen.getByLabelText(/nouveau todo/i);
+    expect(labelInput).toBeRequired();
+    expect(screen.getByLabelText(/date/i)).not.toBeRequired();
+    expect(screen.getByLabelText(/^cours/i)).not.toBeRequired();
+  });
+
+  it("adding a todo by hand posts its label and refreshes the list", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (init?.method === "POST" && typeof url === "string" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser le chapitre 3");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser le chapitre 3", dueDate: null, documentId: null } }]);
   });
 });

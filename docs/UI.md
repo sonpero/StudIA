@@ -207,14 +207,49 @@ incomplete, and its Playwright scenario must cover all four.
 
 ## Screen notes
 
-**Aujourd'hui** — Large greeting title, then today's activities as cards in the
-`--primary-soft` style of the reference, each carrying its subject colour. On
-desktop, a month calendar sits to the right with subject-coloured chips; on
-mobile it becomes a week strip. Below, the course grid. One `--accent` button on
-the screen, no more.
+**Aujourd'hui** — Large greeting title, then **one card per course** that has
+something to say today, never split into separate lists by kind. A course
+with nothing due, nothing below its exam target, and no deadline gets no card
+here at all: this screen answers "what do I do now", not "what are all my
+courses" — that catalogue is `Mes cours`. When every course is like that, or
+there are no courses yet, the screen falls to its empty state below.
 
-If nothing is due: the `sleeping` mascot, a plain statement, and one useful
-suggestion. Never a guilt message, never "tu n'as rien fait aujourd'hui".
+A course's card states, together, whichever of these apply to it — never
+across separate cards, so the same course never appears twice:
+
+- **Due today** — "X fiche(s) à revoir aujourd'hui", the FSRS-due count.
+- **Below target** — "X notion(s) à consolider avant l'échéance", the exact
+  phrase `Progression` already uses for the same fact
+  (`docs/modules/progress.md`'s `notionsBelowTargetForDocument`), reused
+  verbatim so the same number reads the same way on both screens.
+- **Deadline**, as a plain fact ("Contrôle le 12 juin, dans 9 jours"), never a
+  countdown.
+
+A due count and a below-target count for the same course can both be
+non-zero at once. That is not a contradiction — they measure different
+things — and the wording carries that distinction on its own, without naming
+FSRS or the scheduling model to the student.
+
+Every card is a path to action, not just a number, through two explicit
+buttons — same idiom as the per-item actions on `Mes cours`' own course
+page, never a click hidden on the title: "Voir le cours" always opens that
+course's page, and, only when the due count is above zero, "Réviser" starts
+a review session for that course directly. Both `--secondary`, never
+`--accent` — several cards on one screen would otherwise mean several accent
+elements, which the Forbidden list bans.
+
+If nothing needs attention anywhere: the `sleeping` mascot, a plain
+statement, and one useful suggestion. Never a guilt message, never "tu n'as
+rien fait aujourd'hui".
+
+Below the cards, the todo list: a checkbox per todo, a minimal add form
+(label, required; date and course, both optional — nothing else, no
+priority, no tags, no recurrence), and the planner-photo upload.
+
+This screen has no "Retour": it is the destination the sidebar/header's
+"Aujourd'hui" link leads to from anywhere, not a place one arrives at from
+elsewhere and backs out of. The same header carries a symmetric "Mes cours"
+link, so both homes stay reachable from any screen.
 
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.

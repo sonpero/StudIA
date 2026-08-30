@@ -59,9 +59,10 @@ colour escalation as it shrinks. Rendered in `--warning` at most, per
 day-count phrase.
 
 **Empty is a legitimate state, not a failure.** Nothing due today renders the
-`idle` mascot (`docs/UI.md`'s poses — this spec's original `sleeping` pose does
-not exist among them), a plain statement and one useful suggestion. No guilt
-copy, no "tu n'as rien fait".
+`sleeping` mascot (`docs/UI.md`'s poses — this spec's original note said
+`idle` because `sleeping` did not exist yet as a component; it does now, and
+the Aujourd'hui reprise (`docs/UI.md`) switched the screen to it), a plain
+statement and one useful suggestion. No guilt copy, no "tu n'as rien fait".
 
 ### Why `workspace` composes, not `review`
 
