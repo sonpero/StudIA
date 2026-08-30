@@ -140,7 +140,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
       <div className="mx-auto w-full max-w-2xl">
         <div className="flex items-center gap-2">
           <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-          <h2 className="font-[var(--font-display)] text-xl font-extrabold">{document.title}</h2>
+          <h2 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{document.title}</h2>
         </div>
         <Markdown components={READER_COMPONENTS}>{document.markdown}</Markdown>
       </div>

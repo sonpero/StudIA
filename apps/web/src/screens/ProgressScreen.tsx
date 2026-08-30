@@ -41,10 +41,11 @@ function Gauge({ label, value }: { label: string; value: number }) {
   const precise = Math.round(value * 10_000) / 100;
   return (
     <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-text-muted">{label}</span>
-        <span className="font-medium tabular-nums">{percent(value)}</span>
-      </div>
+      {/* The percentage is the useful fact here (docs/UI.md's Type note):
+          dominant on its own line, the label small and muted above it,
+          not sharing a row at the same size as before. */}
+      <span className="text-[var(--text-label)] text-text-muted">{label}</span>
+      <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{percent(value)}</span>
       <div className="h-2 rounded-full bg-border">
         <div data-testid="gauge-fill" className="h-2 rounded-full bg-primary" style={{ width: widthPercent(value) }} />
       </div>
@@ -110,7 +111,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
 
   return (
     <Card className="flex flex-col gap-3" data-testid="progress-card" data-status={dataStatus}>
-      <h3 className="font-[var(--font-display)] text-base font-extrabold">{item.title}</h3>
+      <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{item.title}</h3>
 
       {item.kind === "error" ? (
         <>

@@ -211,8 +211,9 @@ export function NotionsScreen({
             not belong at the same visual level as three routine actions. */}
         <div className="flex items-center gap-3" data-testid="notions-toolbar">
           {progress && (
-            <p className="text-sm text-text-muted">
-              {progress.mastered} / {progress.total} notions maîtrisées
+            <p>
+              <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
+              <span className="text-[var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
             </p>
           )}
           <Button variant="secondary" onClick={onOpenReader}>
@@ -229,7 +230,7 @@ export function NotionsScreen({
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
-          <legend className="mb-1 text-sm text-text-muted">Types de fiches à créer</legend>
+          <legend className="mb-1 text-[var(--text-label)] text-text-muted">Types de fiches à créer</legend>
           {ALL_CARD_TYPES.map((type) => (
             <label key={type} className="flex items-center gap-2">
               <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
@@ -256,7 +257,7 @@ export function NotionsScreen({
             <Card key={notion.id} className="flex flex-col gap-3" data-testid="notion-card">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-[var(--font-display)] text-base font-extrabold">{notion.title}</h3>
+                  <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{notion.title}</h3>
                   <p className="text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
                 </div>
                 <div className="flex items-center gap-3">

@@ -71,7 +71,48 @@ describe("NotionsScreen", () => {
 
     expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
     expect(screen.getByText("Moyen")).toBeInTheDocument();
-    expect(await screen.findByText("2 / 5 notions maîtrisées")).toBeInTheDocument();
+    // The mastered count and its qualifier are now separate elements
+    // (docs/UI.md's Type note: the number dominates), so each is asserted
+    // on its own rather than as one text run.
+    expect(await screen.findByText("2")).toBeInTheDocument();
+    expect(screen.getByText("/ 5 notions maîtrisées")).toBeInTheDocument();
+  });
+
+  it("ready state: the mastered-notions count is the dominant number on its line, --text-display, its qualifier small and muted; a notion's own title is --text-title (docs/UI.md's Type note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const count = screen.getByText("2");
+    expect(count.className).toContain("text-[var(--text-display)]");
+    const qualifier = screen.getByText("/ 5 notions maîtrisées");
+    expect(qualifier.className).toContain("text-[var(--text-label)]");
+    const title = screen.getByText("Photosynthèse");
+    expect(title.className).toContain("text-[var(--text-title)]");
+  });
+
+  it("ready state: 'Types de fiches à créer' is a section label, --text-label, not body text (docs/UI.md's Type note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    expect(screen.getByText("Types de fiches à créer").className).toContain("text-[var(--text-label)]");
   });
 
   it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has several peer actions, not one", async () => {

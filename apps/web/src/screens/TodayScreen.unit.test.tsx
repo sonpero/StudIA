@@ -89,7 +89,27 @@ describe("TodayScreen", () => {
     stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
     renderScreen();
     await screen.findByText("Histoire");
-    expect(screen.getByText(/2 notions?/)).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText(/notions? à consolider avant l'échéance/)).toBeInTheDocument();
+  });
+
+  it("ready: a course card's due count is the dominant number on its line — --text-display and bold, its qualifier small and muted beside it, never the same size (docs/UI.md's Type note)", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 25 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const digit = screen.getByText("25");
+    expect(digit.className).toContain("text-[var(--text-display)]");
+    const qualifier = screen.getByText(/fiches à revoir aujourd'hui/);
+    expect(qualifier.className).toContain("text-[var(--text-label)]");
+    expect(qualifier.className).not.toContain("text-[var(--text-display)]");
+  });
+
+  it("ready: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    const title = await screen.findByText("Maths");
+    expect(title.className).toContain("text-[var(--text-title)]");
   });
 
   it("ready: shows upcoming deadlines as a plain fact, never a countdown widget", async () => {
@@ -109,8 +129,13 @@ describe("TodayScreen", () => {
     await screen.findByText("Maths");
 
     expect(screen.getAllByText("Maths")).toHaveLength(1);
-    expect(screen.getByText(/25 fiches à revoir aujourd'hui/)).toBeInTheDocument();
-    expect(screen.getByText(/7 notions à consolider avant l'échéance/)).toBeInTheDocument();
+    // The digit and its qualifier are now separate elements (docs/UI.md's
+    // Type note: the number dominates, the qualifier stays small beside
+    // it), so each is asserted on its own rather than as one text run.
+    expect(screen.getByText("25")).toBeInTheDocument();
+    expect(screen.getByText(/fiches à revoir aujourd'hui/)).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText(/notions à consolider avant l'échéance/)).toBeInTheDocument();
   });
 
   it("ready: a course card offers 'Voir le cours', which opens that course", async () => {
@@ -177,6 +202,14 @@ describe("TodayScreen", () => {
     expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
     expect(within(todosCard).getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
     expect(within(todosCard).getByRole("button", { name: /ajouter des todos depuis une photo/i })).toBeInTheDocument();
+  });
+
+  it("ready: 'Todos' is a section label, --text-label, not body text — a label, not a title (docs/UI.md's Type note)", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    expect(screen.getByText("Todos").className).toContain("text-[var(--text-label)]");
   });
 
   it("ready: the date and course fields get design-system styling, not the raw native control (docs/UI.md)", async () => {

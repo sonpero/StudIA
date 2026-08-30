@@ -77,10 +77,27 @@ The number is always visible. A ring without a number is forbidden.
 Numbers use `font-variant-numeric: tabular-nums` so counters and timers do not
 jitter.
 
-Scale: 12 / 14 / 16 / 20 / 24 / 32 / 44. The screen title is 32 on mobile, 44 on
-desktop, and it is genuinely large. That contrast between one very bold title and
-otherwise calm text is the personality of the design; do not dilute it by making
-everything bold.
+**Four explicit size tokens** (`tokens.css`'s `--text-*`), each with exactly one
+job — replacing the flat `text-sm` every card, title and number sat at
+regardless of role before this pass:
+
+| Token | Size | Role |
+|---|---|---|
+| `--text-label` | 12px | Small muted labels: a section header ("Todos"), a gauge's own label ("Couverture"), a fieldset legend. Never the loudest thing on its card. |
+| `--text-body` | 14px | The default — everything not a label, a title, or a display number. Already every screen's baseline (Tailwind's own `text-sm`); named here for completeness, not a new class to apply anywhere. |
+| `--text-title` | 20px | Card and course titles — Aujourd'hui's course cards, Progression's, a notion's own, the reader's course heading. One step up from the 16px they shared with plain body text before. |
+| `--text-display` | 32px | The one dominant number on its line: a due count, a gauge percentage, a mastered-notions count. Display face (Plus Jakarta Sans, 800, `tabular-nums`), its unit and qualifier beside it in `--text-label` and `--text-muted` — never the reverse, and never both the same size. |
+
+Four of the seven steps the original 12/14/16/20/24/32/44 scale listed, each
+now named for its job instead of left as a bare number. 16, 24 and 44 stay
+exactly as they were — Tailwind's own `text-base` (unused after this pass),
+every screen's own `<h1>` (`text-2xl`, 24px, untouched), and the responsive
+32-on-mobile/44-on-desktop title size this document once described but no
+screen has ever implemented (still true after this pass; not this task).
+One consequence worth naming rather than leaving surprising: a card's own
+`--text-display` number (32px) can end up larger than the page's `<h1>`
+above it (24px) — correct, not a bug. Dominance here is relative to the
+number's own line and card, not a competition with the screen chrome.
 
 ### Shape and depth
 

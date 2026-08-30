@@ -34,7 +34,7 @@ function DocumentCard({
     <Card className="flex flex-col gap-2" data-testid="document-card">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-        <h3 className="font-[var(--font-display)] text-base font-extrabold">{document.title}</h3>
+        <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{document.title}</h3>
       </div>
       <p className="text-sm text-text-muted">
         {document.pageCount} page{document.pageCount > 1 ? "s" : ""}

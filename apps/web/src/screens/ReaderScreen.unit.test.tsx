@@ -120,6 +120,14 @@ describe("ReaderScreen", () => {
     expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
   });
 
+  it("ready: the course title uses --text-title, the same token every other course-title instance uses (docs/UI.md's Type note)", async () => {
+    stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
+    renderScreen();
+
+    const title = await screen.findByRole("heading", { name: "La photosynthèse" });
+    expect(title.className).toContain("text-[var(--text-title)]");
+  });
+
   it("ready: the reading surface is --surface (white), not --canvas — a page of prose reads as a page, not bare canvas with text floating on it (docs/UI.md's Lecteur note)", async () => {
     stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
     renderScreen();

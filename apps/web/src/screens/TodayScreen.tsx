@@ -241,22 +241,31 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
     <Card className="flex flex-col gap-3" data-testid="course-today-card">
       <div className="flex items-center gap-2">
         {card.colour && <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: card.colour }} />}
-        <h3 className="font-[var(--font-display)] text-base font-extrabold">{card.documentTitle}</h3>
+        <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{card.documentTitle}</h3>
       </div>
 
-      <div className="flex flex-col gap-1 text-sm text-text-muted">
+      <div className="flex flex-col gap-1">
+        {/* The due/below-target counts are the most useful fact on this
+            card (docs/UI.md's Type note): the digit dominates its line,
+            its qualifier stays small and muted beside it. */}
         {card.dueCount > 0 && (
           <p>
-            {card.dueCount} fiche{card.dueCount > 1 ? "s" : ""} à revoir aujourd'hui
+            <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{card.dueCount}</span>{" "}
+            <span className="text-[var(--text-label)] text-text-muted">
+              fiche{card.dueCount > 1 ? "s" : ""} à revoir aujourd'hui
+            </span>
           </p>
         )}
         {card.belowTargetCount > 0 && (
           <p>
-            {card.belowTargetCount} notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
+            <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{card.belowTargetCount}</span>{" "}
+            <span className="text-[var(--text-label)] text-text-muted">
+              notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
+            </span>
           </p>
         )}
         {card.deadline && (
-          <p>
+          <p className="text-sm text-text-muted">
             {card.deadline.label ? `${card.deadline.label}, ` : ""}
             dans {card.deadline.daysAway} jour{card.deadline.daysAway > 1 ? "s" : ""}
           </p>
@@ -303,7 +312,7 @@ function TodosCard({
 
   return (
     <Card className="flex flex-col gap-3" data-testid="todos-card">
-      <h2 className="text-sm font-medium text-text-muted">Todos</h2>
+      <h2 className="text-[var(--text-label)] font-medium text-text-muted">Todos</h2>
       {todos.length > 0 && (
         <ul className="flex flex-col gap-2">
           {todos.map((todo) => (

@@ -69,6 +69,25 @@ describe("DocumentsScreen", () => {
     expect(screen.getByText("Terminé")).toBeInTheDocument();
   });
 
+  it("ready state: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass (docs/UI.md's Type note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+          ]),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    renderScreen();
+
+    const title = await screen.findByText("Chapitre 3");
+    expect(title.className).toContain("text-[var(--text-title)]");
+  });
+
   it("a done document offers to open the reader, calling back with its id — replacing the old inline 'Voir le texte' toggle", async () => {
     const user = userEvent.setup();
     const onOpenReader = vi.fn();

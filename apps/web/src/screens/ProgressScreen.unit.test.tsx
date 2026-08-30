@@ -72,6 +72,29 @@ describe("ProgressScreen", () => {
     expect(screen.getByText(/30\s?%/)).toBeInTheDocument();
   });
 
+  it("ready state: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass (docs/UI.md's Type note)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    const title = await screen.findByText("Maths");
+    expect(title.className).toContain("text-[var(--text-title)]");
+  });
+
+  it("ready state: a gauge's percentage is the dominant number on its line, --text-display, its label small and muted (docs/UI.md's Type note)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const percentValue = screen.getByText(/54\s?%/);
+    expect(percentValue.className).toContain("text-[var(--text-display)]");
+    const label = screen.getByText("Couverture");
+    expect(label.className).toContain("text-[var(--text-label)]");
+    expect(label.className).not.toContain("text-[var(--text-display)]");
+  });
+
   it("exposes coverage and readiness as accessible meters carrying the exact value, not just rounded display text", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },

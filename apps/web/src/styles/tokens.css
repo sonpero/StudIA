@@ -19,6 +19,17 @@
 
   --radius-button: 8px;
   --radius-card: 12px;
+
+  /* docs/UI.md Type section: four explicit roles, not a bare numeric
+     scale -- text-body (14px) is the existing baseline, named here for
+     completeness rather than a class to newly apply anywhere. Referenced
+     via var(), e.g. text-[var(--text-title)], the same arbitrary-value
+     convention already used for the font and radius tokens above, rather
+     than relying on the auto-generated theme utilities. */
+  --text-label: 0.75rem;
+  --text-body: 0.875rem;
+  --text-title: 1.25rem;
+  --text-display: 2rem;
 }
 
 body {
