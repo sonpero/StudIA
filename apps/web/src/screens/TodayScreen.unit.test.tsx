@@ -132,31 +132,80 @@ describe("TodayScreen", () => {
     expect(onReviewCourse).toHaveBeenCalledWith("doc-1");
   });
 
-  it("ready: course cards lay out in a compact, responsive grid, not a single stacked column (docs/UI.md)", async () => {
-    // No accessible role or label distinguishes a grid from a stack
-    // (docs/TESTING.md's exception for genuinely inaccessible structure):
-    // this is the one place in this file that asserts on a class name.
+  it("ready: course cards and the todos card share one grid — two columns wide, one item's height never stretching another's (docs/UI.md)", async () => {
+    // No accessible role or label distinguishes a grid from a stack, or
+    // items-start from the grid default (docs/TESTING.md's exception for
+    // genuinely inaccessible structure): the one place in this file that
+    // asserts on a class name.
     stubFetch({
       ...emptyView,
-      dueCards: [
-        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
-        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
-      ],
+      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
+      todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
     });
     renderScreen();
     await screen.findByText("Maths");
 
-    const grid = screen.getByTestId("course-cards-grid");
+    const grid = screen.getByTestId("content-grid");
     expect(grid.className).toMatch(/\bgrid\b/);
+    expect(grid.className).toMatch(/items-start/);
     expect(grid.className).not.toMatch(/flex-col/);
+
+    const courseCard = screen.getByTestId("course-today-card");
+    const todosCard = screen.getByTestId("todos-card");
+    expect(grid).toContainElement(courseCard);
+    expect(grid).toContainElement(todosCard);
   });
 
-  it("ready: the todo block (list, add form, photo picker) is capped to a reasonable width, never stretched across the bounded column (docs/UI.md)", async () => {
+  it("ready: the checklist, the add-todo form and the photo picker live in one todos card, not three separate pieces (docs/UI.md)", async () => {
+    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
+    renderScreen();
+    await screen.findByText("Réviser le chapitre 3");
+
+    const todosCard = screen.getByTestId("todos-card");
+    expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
+    expect(within(todosCard).getByLabelText(/nouveau todo/i)).toBeInTheDocument();
+    expect(within(todosCard).getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
+  });
+
+  it("ready: the date and course fields get design-system styling, not the raw native control (docs/UI.md)", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     renderScreen();
     await screen.findByText("x");
 
-    expect(screen.getByTestId("todos-section").className).toMatch(/max-w-/);
+    expect(screen.getByLabelText(/date/i).className).toMatch(/appearance-none/);
+    expect(screen.getByLabelText(/^cours/i).className).toMatch(/appearance-none/);
+  });
+
+  it("each todo offers a discreet delete action, wired to DELETE, no confirmation dialog", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (init?.method === "DELETE") {
+          calls.push({ url, method: init.method });
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...emptyView,
+              todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
+            }),
+            { status: 200 },
+          ),
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText("Réviser le chapitre 3");
+
+    await user.click(screen.getByRole("button", { name: /supprimer.*réviser le chapitre 3/i }));
+
+    expect(calls).toEqual([{ url: "/api/todos/t1", method: "DELETE" }]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("never shows 'Retour': this is the destination the header's own links lead to, not a place left and returned to", async () => {

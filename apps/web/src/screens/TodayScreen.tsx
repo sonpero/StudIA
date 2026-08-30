@@ -7,7 +7,21 @@ import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
-import { createTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
+import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
+
+// A design-system chevron replacing <select>'s native arrow (--color-text-muted,
+// #667085, matched by hand — tokens.css's @theme values aren't reachable from
+// a plain string literal). appearance-none removes the browser's own arrow;
+// this is its token-coloured replacement, not a decoration on top of it.
+const SELECT_CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23667085'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")";
+
+// Shared by every field in AddTodoForm. appearance-none plus the two
+// [&::-webkit-calendar-picker-indicator] rules are what actually stop the
+// date field from reading as an unstyled native control (docs/UI.md's
+// Shape and depth) — width alone, tried in the previous pass, did not.
+const FIELD_CLASS =
+  "w-full appearance-none rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
@@ -54,11 +68,17 @@ function buildCourseCards(view: TodayView): CourseCard[] {
   return [...byId.values()];
 }
 
-function TodoRow({ todo, onToggle }: { todo: TodayView["todos"][number]; onToggle: (done: boolean) => void }) {
+function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number]; onToggle: (done: boolean) => void; onDelete: () => void }) {
   return (
     <li className="flex items-center gap-2" data-testid="todo-row">
       <input type="checkbox" checked={todo.done} onChange={(e) => onToggle(e.target.checked)} aria-label={todo.label} />
-      <span className={todo.done ? "line-through text-text-muted" : "text-text"}>{todo.label}</span>
+      <span className={todo.done ? "flex-1 line-through text-text-muted" : "flex-1 text-text"}>{todo.label}</span>
+      {/* Same idiom as UploadCard's own staged-file removal: an accessible
+          label naming the item, not a bare icon (docs/UI.md's Forbidden
+          list). No confirmation — a todo is low stakes and trivially re-added. */}
+      <button type="button" aria-label={`Supprimer « ${todo.label} »`} onClick={onDelete} className="text-text-muted hover:text-text">
+        ✕
+      </button>
     </li>
   );
 }
@@ -131,24 +151,11 @@ function AddTodoForm({ documents, pending, onSubmit }: { documents: DocumentSumm
     >
       <label htmlFor={labelId} className="flex flex-col gap-1 text-sm text-text-muted">
         Nouveau todo
-        <input
-          id={labelId}
-          required
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          placeholder="Réviser le chapitre 3"
-        />
+        <input id={labelId} required value={label} onChange={(e) => setLabel(e.target.value)} className={FIELD_CLASS} placeholder="Réviser le chapitre 3" />
       </label>
       <label htmlFor={dateId} className="flex flex-col gap-1 text-sm text-text-muted">
         Date (facultatif)
-        <input
-          id={dateId}
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        />
+        <input id={dateId} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD_CLASS} />
       </label>
       <label htmlFor={courseId} className="flex flex-col gap-1 text-sm text-text-muted">
         Cours (facultatif)
@@ -156,7 +163,8 @@ function AddTodoForm({ documents, pending, onSubmit }: { documents: DocumentSumm
           id={courseId}
           value={documentId}
           onChange={(e) => setDocumentId(e.target.value)}
-          className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className={`${FIELD_CLASS} bg-no-repeat pr-9`}
+          style={{ backgroundImage: SELECT_CHEVRON, backgroundPosition: "right 0.6rem center", backgroundSize: "1rem" }}
         >
           <option value="">Aucun</option>
           {documents.map((d) => (
@@ -214,6 +222,42 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
   );
 }
 
+// One Card, not three loose pieces (docs/UI.md): the checklist, the add
+// form and the photo picker are one unit for layout purposes, so the grid
+// above lays out one item here, not three independently-sized ones.
+function TodosCard({
+  todos,
+  documents,
+  createPending,
+  onToggle,
+  onDelete,
+  onCreate,
+  onPhotoUploaded,
+}: {
+  todos: TodayView["todos"];
+  documents: DocumentSummary[];
+  createPending: boolean;
+  onToggle: (id: string, done: boolean) => void;
+  onDelete: (id: string) => void;
+  onCreate: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
+  onPhotoUploaded: (jobId: string) => void;
+}) {
+  return (
+    <Card className="flex flex-col gap-3" data-testid="todos-card">
+      <h2 className="text-sm font-medium text-text-muted">Todos</h2>
+      {todos.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {todos.map((todo) => (
+            <TodoRow key={todo.id} todo={todo} onToggle={(done) => onToggle(todo.id, done)} onDelete={() => onDelete(todo.id)} />
+          ))}
+        </ul>
+      )}
+      <AddTodoForm documents={documents} pending={createPending} onSubmit={onCreate} />
+      <PhotoUploadInput onUploaded={onPhotoUploaded} />
+    </Card>
+  );
+}
+
 export function TodayScreen({
   onOpenProposals,
   onOpenCourse,
@@ -235,6 +279,10 @@ export function TodayScreen({
   });
   const createTodoMutation = useMutation({
     mutationFn: createTodo,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+  const deleteTodoMutation = useMutation({
+    mutationFn: deleteTodo,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 
@@ -270,35 +318,33 @@ export function TodayScreen({
     <main className="flex flex-col gap-6 p-8">
       <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
 
-      {nothingAtAll ? (
+      {nothingAtAll && (
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <Sleeping />
           <p>Rien de prévu pour l'instant. Profites-en pour prendre un cours en photo.</p>
         </div>
-      ) : (
-        courseCards.length > 0 && (
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="course-cards-grid">
-            {courseCards.map((card) => (
-              <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
-            ))}
-          </section>
-        )
       )}
 
-      <section className="flex max-w-md flex-col gap-3" data-testid="todos-section">
-        <h2 className="text-sm font-medium text-text-muted">Todos</h2>
-        {view.todos.length > 0 && (
-          <Card>
-            <ul className="flex flex-col gap-2">
-              {view.todos.map((todo) => (
-                <TodoRow key={todo.id} todo={todo} onToggle={(done) => toggleMutation.mutate({ id: todo.id, done })} />
-              ))}
-            </ul>
-          </Card>
-        )}
-        <AddTodoForm documents={documentsQuery.data ?? []} pending={createTodoMutation.isPending} onSubmit={(input) => createTodoMutation.mutate(input)} />
-        <PhotoUploadInput onUploaded={onOpenProposals} />
-      </section>
+      {/* One grid, not two (docs/UI.md): course cards and the todos card
+          are items in the same grid, sharing its gutters — items-start so
+          a short card is never stretched to match a taller neighbour.
+          Always rendered, even when nothingAtAll: the todos card (add form,
+          photo picker) is still how the empty state's "one useful
+          suggestion" is actually acted on, not just illustrated. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2" data-testid="content-grid">
+        {courseCards.map((card) => (
+          <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
+        ))}
+        <TodosCard
+          todos={view.todos}
+          documents={documentsQuery.data ?? []}
+          createPending={createTodoMutation.isPending}
+          onToggle={(id, done) => toggleMutation.mutate({ id, done })}
+          onDelete={(id) => deleteTodoMutation.mutate(id)}
+          onCreate={(input) => createTodoMutation.mutate(input)}
+          onPhotoUploaded={onOpenProposals}
+        />
+      </div>
     </main>
   );
 }

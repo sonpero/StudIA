@@ -35,3 +35,8 @@ export async function createTodo(input: { label: string; dueDate: string | null;
   if (!res.ok) throw new Error("Impossible d'ajouter ce todo.");
   return res.json() as Promise<Todo>;
 }
+
+export async function deleteTodo(id: string): Promise<void> {
+  const res = await apiFetch(`/api/todos/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Impossible de supprimer ce todo.");
+}

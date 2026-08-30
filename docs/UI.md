@@ -90,14 +90,25 @@ everything bold.
   on hover for interactive cards. Never more than these two.
 - Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48. Be generous. The reference layout
   breathes, and cramming content is the fastest way to lose the look.
-- **A single-column form or list never stretches to the bounded column's
-  full width.** Cap it at a reasonable width (448px, Tailwind's `max-w-md`)
-  instead — a native `<input type="date">` or `<select>` blown up to fill a
-  wide column reads as an unstyled browser control even with the right
-  border, radius and colour tokens applied, because its native chrome (the
-  calendar icon, the dropdown arrow) scales with the box. Multi-column
-  layouts (card grids) are unaffected: they already use the full bounded
-  width by design.
+- **A form or list that is not already sized by a card or a grid column
+  never stretches to the bounded column's full width.** Cap it at a
+  reasonable width instead (448px, Tailwind's `max-w-md`, is the default
+  absent a better reason). When it *is* a grid item or lives inside a card,
+  the card/column already gives it a sane width — no separate cap needed,
+  and stacking one on top of the other (a cap inside a card already capped
+  by its grid column) only makes it narrower than its neighbours for no
+  reason.
+- **Native form controls need `appearance-none` plus a token-coloured
+  replacement, not just width discipline, to stop reading as an unstyled
+  browser control.** A native `<select>`'s dropdown arrow and an
+  `<input type="date">`'s calendar icon are drawn by the browser regardless
+  of the box's width; only removing that native paint (`appearance-none`)
+  and substituting a token-coloured one (a background-image chevron for
+  `<select>`) actually reads as designed. What CSS alone cannot reach at
+  all — the calendar icon's exact shape, the locale placeholder ("jj/mm/aaaa")
+  an empty date field shows — stays native; replacing those needs a custom
+  date-picker component, which is a new interaction pattern (see "For
+  agents" below) this document does not currently ask for.
 
 ### Motion
 
@@ -246,10 +257,18 @@ something to say today, never split into separate lists by kind. A course
 with nothing due, nothing below its exam target, and no deadline gets no card
 here at all: this screen answers "what do I do now", not "what are all my
 courses" — that catalogue is `Mes cours`. When every course is like that, or
-there are no courses yet, the screen falls to its empty state below. Cards
-lay out in the same compact, responsive grid as `Mes cours`' own card grid,
-not a single stacked column — one course rarely needs the bounded column's
-full width to say "3 fiches à revoir".
+there are no courses yet, the screen falls to its empty state below.
+
+**One grid, not two.** Course cards and the todos card (below) are items in
+the *same* grid — one column below the tablet breakpoint, two on desktop —
+so their edges share the same gutters instead of the todos block landing in
+its own, differently-sized column underneath. Grid items keep their own
+height (`items-start`, never the grid's default stretch): a short card next
+to a taller one is never stretched to match it, which would leave dead
+space under its buttons. Course cards fill the grid left to right, top to
+bottom, in whatever order `TodayView` returns them; the todos card is simply
+the next item after the last course card, wherever that lands — not pinned
+to a fixed side.
 
 A course's card states, together, whichever of these apply to it — never
 across separate cards, so the same course never appears twice:
@@ -279,11 +298,25 @@ If nothing needs attention anywhere: the `sleeping` mascot, a plain
 statement, and one useful suggestion. Never a guilt message, never "tu n'as
 rien fait aujourd'hui".
 
-Below the cards, the todo list: a checkbox per todo, a minimal add form
-(label, required; date and course, both optional — nothing else, no
-priority, no tags, no recurrence), and the planner-photo upload. All three
-are a single-column block, capped at a reasonable width per the rule in
-"Shape and depth" above — they never stretch across the bounded column.
+**One todos card**, not three loose pieces: the checklist, the minimal add
+form (label, required; date and course, both optional — nothing else, no
+priority, no tags, no recurrence), and the planner-photo upload all live
+inside one `Card`, stacked. That single card is what sits in the shared grid
+above — a card is the unit the grid lays out, not each piece of it
+separately, which is what made the add form read as misaligned with the
+list above it before this card existed. Each todo gets a small delete
+action ("✕", with an accessible label naming the todo — same idiom as the
+staged-file removal on `Mes cours`' own upload card, not a bare icon
+without one) alongside its checkbox. No confirmation modal: a todo is low
+stakes and trivially re-added.
+
+Native form controls still get the design-system border, radius and colour
+tokens (`<select>`'s own arrow replaced with a token-coloured chevron,
+`appearance-none` on both); what a browser's own chrome renders and CSS
+alone cannot reach — the calendar icon's shape inside `<input type="date">`,
+its locale placeholder — stays native. Replacing those needs a custom
+date-picker component, a new interaction pattern this pass does not
+introduce (`docs/UI.md`'s own "stop and ask" rule for agents).
 
 This screen has no "Retour": it is the destination the sidebar/header's
 "Aujourd'hui" link leads to from anywhere, not a place one arrives at from
