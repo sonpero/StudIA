@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 // colour that only ever marks a course, never how soon something is due.
 test.describe("calendar", () => {
   test("a deadline and a todo appear on their own days, a deadline's day links to its course, and month navigation actually changes what's shown", async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000); // extra room: extraction, a deadline, a todo, and month navigation
     const mockedNow = new Date(2026, 2, 2, 9, 0, 0); // Monday 2026-03-02, 09:00 local
     await page.clock.install({ time: mockedNow });
 
@@ -18,10 +18,7 @@ test.describe("calendar", () => {
     await page.getByRole("button", { name: "Confirmer" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours du calendrier" });
-    // Generous: the worker process is shared with every other e2e spec's
-    // jobs (same contention e2e/progress.spec.ts's and e2e/today.spec.ts's
-    // own generous timeouts already accommodate).
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 45_000 });
+    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
     await documentCard.getByRole("button", { name: "Voir les notions" }).click();
 
     const notionCards = page.getByTestId("notion-card");

@@ -18,7 +18,7 @@ function startOfTomorrowISO(now: Date = new Date()): string {
 // notion, never one per document.
 test.describe("generate cards and review", () => {
   test("generate flashcards from an uploaded document, review one, and its due date moves out of the due window", async ({ page }) => {
-    test.setTimeout(60_000); // extra room for the generation poll under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -129,7 +129,7 @@ test.describe("generate cards and review", () => {
   // the browser sends and the "later today" schedule seeded below are
   // exact and can never be flaky near a real midnight.
   test("a card due later today (before dayBoundary) is revisable now, not just after its exact due instant", async ({ page }) => {
-    test.setTimeout(60_000); // extra room for the generation poll under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the generation poll
     const mockedNow = new Date(2026, 7, 28, 9, 0, 0);
     const dayBoundary = new Date(2026, 7, 29, 0, 0, 0, 0);
     await page.clock.install({ time: mockedNow });

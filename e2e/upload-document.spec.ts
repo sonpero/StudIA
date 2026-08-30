@@ -10,7 +10,7 @@ import { E2E_DATA_DIR } from "./support/env.js";
 // path with a retry."
 test.describe("upload and extraction", () => {
   test("uploading three photos as one document reaches done and the extracted text can be read", async ({ page }) => {
-    test.setTimeout(60_000); // extra room for the extraction poll under full-suite parallel load (M5 added another upload-heavy spec to the mix)
+    test.setTimeout(60_000); // extra room for the extraction poll: three pages, each its own extraction round
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -41,7 +41,7 @@ test.describe("upload and extraction", () => {
   });
 
   test("a failed extraction shows a retry, and the retry works", async ({ page }) => {
-    test.setTimeout(60_000); // extra room under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the initial extraction plus the retry's own
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -73,8 +73,7 @@ test.describe("upload and extraction", () => {
 
     await retryButton.click();
 
-    // Extra room under full-suite parallel load (the shared background
-    // worker processes every e2e test's jobs from one process).
+    // Extra room: the retry's own extraction round through the background worker.
     await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
   });
 });

@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 // homogeneous and the review flow is unambiguous to drive.
 test.describe("activity types", () => {
   test("mcq activity: generate QCM cards, select an option, and see a review outcome", async ({ page }) => {
-    test.setTimeout(60_000); // extra room for the generation poll under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
@@ -65,7 +65,7 @@ test.describe("activity types", () => {
   });
 
   test("open activity: generate open questions, answer, get graded, and see a review outcome", async ({ page }) => {
-    test.setTimeout(60_000); // extra room for the generation poll under full-suite parallel load
+    test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
     await page.getByText("+ Ajouter un cours").click();
