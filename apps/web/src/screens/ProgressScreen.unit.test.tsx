@@ -8,11 +8,11 @@ import { ProgressScreen } from "./ProgressScreen.js";
 import { todayDateKey } from "../lib/day-boundary.js";
 import type { ProgressListItem } from "../lib/progress-api.js";
 
-function renderScreen() {
+function renderScreen(overrides: Partial<{ onBack: () => void; onOpenCourse: (documentId: string) => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <ProgressScreen onBack={() => undefined} />
+      <ProgressScreen onBack={overrides.onBack ?? (() => undefined)} onOpenCourse={overrides.onOpenCourse ?? (() => undefined)} />
     </QueryClientProvider>,
   );
 }
@@ -191,6 +191,27 @@ describe("ProgressScreen", () => {
     expect(screen.getByText(/10\s?%/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /définir une échéance/i })).toBeInTheDocument();
     expect(screen.queryByText(/aucune échéance.*!/i)).not.toBeInTheDocument();
+  });
+
+  it("each card, whatever its kind, offers 'Voir le cours', which opens that course — symmetric to Aujourd'hui's own card action, no label collision with the nav's 'Progression' item", async () => {
+    const onOpenCourse = vi.fn();
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
+      { documentId: "doc-2", title: "Histoire", ...okBase, kind: "ok", progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    const user = userEvent.setup();
+    renderScreen({ onOpenCourse });
+    await screen.findByText("Maths");
+    await screen.findByText("Histoire");
+
+    const mathsCard = screen.getByText("Maths").closest('[data-testid="progress-card"]') as HTMLElement;
+    const histoireCard = screen.getByText("Histoire").closest('[data-testid="progress-card"]') as HTMLElement;
+
+    await user.click(within(mathsCard).getByRole("button", { name: "Voir le cours" }));
+    expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
+
+    await user.click(within(histoireCard).getByRole("button", { name: "Voir le cours" }));
+    expect(onOpenCourse).toHaveBeenCalledWith("doc-2");
   });
 
   it("setting a deadline submits the chosen date and refreshes the list", async () => {

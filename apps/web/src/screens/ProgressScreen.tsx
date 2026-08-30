@@ -90,7 +90,7 @@ function DeadlineForm({ initialDate, initialLabel, onSubmit, onCancel, pending }
   );
 }
 
-function CourseProgressCard({ item }: { item: ProgressListItem }) {
+function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; onOpenCourse: (documentId: string) => void }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
@@ -190,11 +190,20 @@ function CourseProgressCard({ item }: { item: ProgressListItem }) {
           )}
         </>
       )}
+
+      {/* Always visible, independent of editing state or kind: symmetric to
+          Aujourd'hui's own course-card action (TodayScreen's CourseTodayCard).
+          "Voir le cours" never collides with the nav's "Progression" item —
+          the mistake made once on NotionsScreen's own button to this same
+          screen, avoided there by spelling out the full phrase. */}
+      <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
+        Voir le cours
+      </Button>
     </Card>
   );
 }
 
-export function ProgressScreen({ onBack }: { onBack: () => void }) {
+export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; onOpenCourse: (documentId: string) => void }) {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: listProgress });
 
   if (query.status === "pending") {
@@ -245,7 +254,7 @@ export function ProgressScreen({ onBack }: { onBack: () => void }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <CourseProgressCard key={item.documentId} item={item} />
+            <CourseProgressCard key={item.documentId} item={item} onOpenCourse={onOpenCourse} />
           ))}
         </div>
       )}

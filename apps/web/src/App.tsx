@@ -95,7 +95,10 @@ function AppShell() {
             />
           )}
           {view.name === "progress" && (
-            <ProgressScreen onBack={() => (view.fromDocumentId ? setView({ name: "notions", documentId: view.fromDocumentId }) : setView({ name: "documents" }))} />
+            <ProgressScreen
+              onBack={() => (view.fromDocumentId ? setView({ name: "notions", documentId: view.fromDocumentId }) : setView({ name: "documents" }))}
+              onOpenCourse={(documentId) => setView({ name: "notions", documentId })}
+            />
           )}
           {view.name === "today" && (
             <TodayScreen
