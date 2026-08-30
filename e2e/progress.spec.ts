@@ -28,6 +28,14 @@ test.describe("progress", () => {
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
     const notionCount = await notionCards.count();
 
+    // Lecteur opened from Notions du cours returns there, not to Mes cours
+    // (docs/UI.md's Lecteur note — same fromDocumentId-shaped mechanic as
+    // this screen's own Progression round trip, checked further down).
+    await page.getByRole("button", { name: "Lire le cours" }).click();
+    await expect(page.getByRole("heading", { name: "Lecture" })).toBeVisible();
+    await page.getByRole("button", { name: "Retour" }).click();
+    await expect(page.getByRole("heading", { name: "Notions du cours" })).toBeVisible();
+
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
     const docsRes = await page.request.get("/api/documents");

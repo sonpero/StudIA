@@ -34,10 +34,15 @@ const READER_COMPONENTS: Components = {
   code: (props) => <code className="rounded bg-canvas px-1 py-0.5 text-sm" {...props} />,
 };
 
+// Deliberately destination-agnostic (docs/UI.md's Lecteur note, same idiom
+// as ProgressScreen's own plain "Retour"): this screen is reachable from
+// Mes cours or from Notions du cours, and onBack (App.tsx) returns to
+// whichever one it was — a label naming one destination would lie for the
+// other path.
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
-      Retour à mes cours
+      Retour
     </button>
   );
 }

@@ -44,7 +44,10 @@ test.describe("upload and extraction", () => {
     await expect(page.getByRole("heading", { name: "Titre" })).toHaveCount(3);
     await expect(page.getByText("Contenu extrait.").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Retour à mes cours" }).click();
+    // Destination-agnostic label (docs/UI.md's Lecteur note): this reader
+    // was reached from Mes cours, not Notions du cours, so "Retour" returns
+    // there.
+    await page.getByRole("button", { name: "Retour" }).click();
     await expect(page.getByRole("heading", { name: "Mes cours" })).toBeVisible();
   });
 

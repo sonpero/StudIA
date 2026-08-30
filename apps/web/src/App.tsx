@@ -33,7 +33,7 @@ type View =
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
   | { name: "calendar" }
-  | { name: "reader"; documentId: string }
+  | { name: "reader"; documentId: string; fromNotions?: boolean }
   | { name: "proposals"; jobId: string };
 
 function AppShell() {
@@ -95,6 +95,7 @@ function AppShell() {
               onBack={() => setView({ name: "documents" })}
               onReview={(notionId) => setView({ name: "review", documentId: view.documentId, notionId })}
               onOpenProgress={() => setView({ name: "progress", fromDocumentId: view.documentId })}
+              onOpenReader={() => setView({ name: "reader", documentId: view.documentId, fromNotions: true })}
             />
           )}
           {view.name === "review" && (
@@ -118,7 +119,12 @@ function AppShell() {
             />
           )}
           {view.name === "calendar" && <CalendarScreen onOpenCourse={(documentId) => setView({ name: "notions", documentId })} />}
-          {view.name === "reader" && <ReaderScreen documentId={view.documentId} onBack={() => setView({ name: "documents" })} />}
+          {view.name === "reader" && (
+            <ReaderScreen
+              documentId={view.documentId}
+              onBack={() => (view.fromNotions ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "documents" }))}
+            />
+          )}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
         </div>
       </div>

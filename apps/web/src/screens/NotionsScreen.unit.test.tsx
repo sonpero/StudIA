@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotionsScreen } from "./NotionsScreen.js";
 
-function renderScreen() {
+function renderScreen(overrides: Partial<{ onOpenReader: () => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={() => undefined} onOpenProgress={() => undefined} />
+      <NotionsScreen
+        documentId="doc-1"
+        onBack={() => undefined}
+        onReview={() => undefined}
+        onOpenProgress={() => undefined}
+        onOpenReader={overrides.onOpenReader ?? (() => undefined)}
+      />
     </QueryClientProvider>,
   );
 }
@@ -68,7 +74,7 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("2 / 5 notions maîtrisées")).toBeInTheDocument();
   });
 
-  it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has three peer actions, not one", async () => {
+  it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has several peer actions, not one", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -86,6 +92,47 @@ describe("NotionsScreen", () => {
     expect(reviewButton.className).toMatch(/border-border/);
   });
 
+  it("ready state: offers 'Lire le cours', opening the reader for this document", async () => {
+    const onOpenReader = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderScreen({ onOpenReader });
+    await screen.findByText("Photosynthèse");
+
+    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
+
+    expect(onOpenReader).toHaveBeenCalled();
+  });
+
+  it("ready state: 'Créer les fiches' (or 'Régénérer les fiches' once cards exist) sits apart from the common toolbar actions — rare, and destructive once it reads 'Régénérer', so not the same visual level as Lire le cours / Voir la progression / Réviser", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const toolbar = screen.getByTestId("notions-toolbar");
+    expect(within(toolbar).getByRole("button", { name: "Lire le cours" })).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: "Voir la progression" })).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: /créer les fiches|régénérer les fiches/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Créer les fiches" })).toBeInTheDocument();
+  });
+
   it("ready state: offers a way back to the courses list (not just the empty/error states)", async () => {
     vi.stubGlobal(
       "fetch",
@@ -100,7 +147,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");
@@ -200,7 +247,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");

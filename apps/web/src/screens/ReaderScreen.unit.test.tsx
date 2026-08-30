@@ -61,7 +61,7 @@ describe("ReaderScreen", () => {
     renderScreen();
 
     await screen.findByText(/encore en cours de lecture/i);
-    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retour" })).toBeInTheDocument();
 
     const initialCalls = fetchMock.mock.calls.length;
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(initialCalls), { timeout: 4000 });
@@ -73,7 +73,7 @@ describe("ReaderScreen", () => {
 
     await screen.findByText(/la lecture de ce cours a échoué/i);
     expect(screen.queryByRole("button", { name: /réessayer/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retour" })).toBeInTheDocument();
   });
 
   it("done but nothing readable (markdown null): the idle mascot, not a blank page", async () => {
@@ -81,7 +81,7 @@ describe("ReaderScreen", () => {
     renderScreen();
 
     await screen.findByText(/ne contient pas encore de texte lisible/i);
-    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retour" })).toBeInTheDocument();
   });
 
   it("done but nothing readable (markdown blank): same empty state as null, not a rendering crash", async () => {
@@ -120,14 +120,14 @@ describe("ReaderScreen", () => {
     expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
   });
 
-  it("'Retour à mes cours' calls onBack", async () => {
+  it("'Retour' calls onBack — deliberately destination-agnostic text, since this screen can now return to either Mes cours or Notions du cours depending on how it was reached (same idiom as ProgressScreen's own plain 'Retour')", async () => {
     const onBack = vi.fn();
     stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
     const user = userEvent.setup();
     renderScreen(onBack);
 
     await screen.findByText("Contenu du cours.");
-    await user.click(screen.getByRole("button", { name: /retour à mes cours/i }));
+    await user.click(screen.getByRole("button", { name: "Retour" }));
 
     expect(onBack).toHaveBeenCalled();
   });

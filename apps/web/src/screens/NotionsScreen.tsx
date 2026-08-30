@@ -61,11 +61,13 @@ export function NotionsScreen({
   onBack,
   onReview,
   onOpenProgress,
+  onOpenReader,
 }: {
   documentId: string;
   onBack: () => void;
   onReview: (notionId?: string) => void;
   onOpenProgress: () => void;
+  onOpenReader: () => void;
 }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
@@ -201,20 +203,20 @@ export function NotionsScreen({
           </button>
           <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         </div>
-        <div className="flex items-center gap-3">
+        {/* The screen's common actions — reading, checking progress,
+            reviewing. "Créer les fiches" / "Régénérer les fiches" lives
+            apart from this toolbar, not in it (below, by its own type
+            checkboxes): rare, and destructive once it reads "Régénérer"
+            (it destroys the existing cards and starts over), so it does
+            not belong at the same visual level as three routine actions. */}
+        <div className="flex items-center gap-3" data-testid="notions-toolbar">
           {progress && (
             <p className="text-sm text-text-muted">
               {progress.mastered} / {progress.total} notions maîtrisées
             </p>
           )}
-          {generating && (
-            <p aria-live="polite" className="text-sm text-text-muted">
-              {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
-            </p>
-          )}
-          {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
-          <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
-            {generateLabel}
+          <Button variant="secondary" onClick={onOpenReader}>
+            Lire le cours
           </Button>
           <Button variant="secondary" onClick={onOpenProgress}>
             Voir la progression
@@ -225,15 +227,26 @@ export function NotionsScreen({
         </div>
       </div>
 
-      <fieldset className="mb-6 flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
-        <legend className="mb-1 text-sm text-text-muted">Types de fiches à créer</legend>
-        {ALL_CARD_TYPES.map((type) => (
-          <label key={type} className="flex items-center gap-2">
-            <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
-            {CARD_TYPE_LABEL[type]}
-          </label>
-        ))}
-      </fieldset>
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
+          <legend className="mb-1 text-sm text-text-muted">Types de fiches à créer</legend>
+          {ALL_CARD_TYPES.map((type) => (
+            <label key={type} className="flex items-center gap-2">
+              <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
+              {CARD_TYPE_LABEL[type]}
+            </label>
+          ))}
+        </fieldset>
+        <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
+          {generateLabel}
+        </Button>
+        {generating && (
+          <p aria-live="polite" className="text-sm text-text-muted">
+            {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
+          </p>
+        )}
+        {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
+      </div>
 
       <div className="flex flex-col gap-3">
         {notions.map((notion) => {

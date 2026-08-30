@@ -473,13 +473,18 @@ itself is the useful surface even at zero events (you can still page to
 another month), unlike a list screen where zero rows really is nothing to
 show. No mascot for a quiet month.
 
-**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached from a course's
-card on Mes cours ("Lire le cours", replacing the old "Voir le texte" toggle,
-same `status === "done"` gate that button already had), never from the nav:
-this is a drill-down from a specific course, the same shape as Notions du
-cours, not a top-level home, so it keeps its own "‹ Retour à mes cours" rather
-than relying on the nav's generic "Mes cours" the way Aujourd'hui and
-Calendrier do.
+**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached two ways, both
+"Lire le cours": from a course's card on Mes cours (replacing the old "Voir
+le texte" toggle, same `status === "done"` gate that button already had),
+and from Notions du cours' own toolbar. Never from the nav: this is a
+drill-down from a specific course, the same shape as Notions du cours, not
+a top-level home, so it keeps its own back action rather than relying on
+the nav's generic "Mes cours" the way Aujourd'hui and Calendrier do. That
+back action reads plain **"Retour"**, not "Retour à mes cours": it returns
+to wherever the screen was opened from — Mes cours, or Notions du cours
+when opened from there — the same `fromDocumentId`-shaped mechanic
+ProgressScreen already uses for its own two entry paths, and a label
+naming one specific destination would lie on the other path.
 
 **Renders the course's extracted markdown, never its notions strung
 together, and this is a deliberate distinction, not an oversight.** A

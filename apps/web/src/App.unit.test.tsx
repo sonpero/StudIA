@@ -106,6 +106,41 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Mes cours" });
   });
 
+  it("Lecteur opened from Notions du cours returns there on 'Retour', not to Mes cours (fromNotions, same mechanic as ProgressScreen's own fromDocumentId)", async () => {
+    const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+    const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Notion 1", body: "Corps.", difficulty: "medium", position: 0, createdAt: "2026-01-01T00:00:00Z" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (/\/api\/documents\/doc-1$/.test(url)) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ ...aDocument, lastError: null, markdown: "Contenu du cours." }), { status: 200 }),
+          );
+        }
+        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText("Cours test");
+
+    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
+    await screen.findByRole("heading", { name: "Notions du cours" });
+
+    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
+    await screen.findByRole("heading", { name: "Lecture" });
+
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Notions du cours" });
+  });
+
   it("a 401 on any protected call bounces an authenticated session back to the login screen", async () => {
     vi.stubGlobal(
       "fetch",
