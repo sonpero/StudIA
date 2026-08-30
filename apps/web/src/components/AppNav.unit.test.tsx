@@ -46,6 +46,16 @@ describe("AppNav", () => {
     expect(onToday).not.toHaveBeenCalled();
   });
 
+  it("is fixed to the viewport on desktop too, not just mobile — a long page must not carry it away while scrolling (the bug this fixed: md:static previously put it back in normal flow)", () => {
+    render(<AppNav items={items()} />);
+
+    const nav = screen.getByRole("navigation");
+    expect(nav.className).not.toMatch(/md:static/);
+    expect(nav.className).toMatch(/md:fixed/);
+    expect(nav.className).toMatch(/md:inset-y-0/);
+    expect(nav.className).toMatch(/md:left-0/);
+  });
+
   it("stays clickable while dimmed: a focused session must never trap the student behind an unusable nav", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();

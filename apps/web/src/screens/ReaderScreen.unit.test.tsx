@@ -120,6 +120,24 @@ describe("ReaderScreen", () => {
     expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
   });
 
+  it("ready: the reading surface is --surface (white), not --canvas — a page of prose reads as a page, not bare canvas with text floating on it (docs/UI.md's Lecteur note)", async () => {
+    stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
+    renderScreen();
+
+    await screen.findByText("Contenu du cours.");
+    const main = screen.getByRole("main");
+    expect(main.className).toMatch(/bg-surface/);
+    expect(main.className).not.toMatch(/bg-canvas/);
+  });
+
+  it("loading state: the reading surface is --surface too — the screen never flips background between its own states", () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+
+    const main = screen.getByRole("main");
+    expect(main.className).toMatch(/bg-surface/);
+  });
+
   it("'Retour' calls onBack — deliberately destination-agnostic text, since this screen can now return to either Mes cours or Notions du cours depending on how it was reached (same idiom as ProgressScreen's own plain 'Retour')", async () => {
     const onBack = vi.fn();
     stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });

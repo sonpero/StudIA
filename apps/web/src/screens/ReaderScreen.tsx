@@ -69,7 +69,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-4 p-8">
+      <main className="flex flex-col gap-4 bg-surface p-8">
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
           {[0, 1, 2].map((i) => (
@@ -82,7 +82,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-4 bg-surface p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Impossible de charger ce cours. Vérifie ta connexion et réessaie.</p>
@@ -98,7 +98,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
   // defined here, not left to chance (docs/UI.md's Lecteur note).
   if (isActive(document.status)) {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-4 bg-surface p-8 text-center">
         <Reading />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours est encore en cours de lecture. Reviens dans un instant.</p>
@@ -109,7 +109,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
 
   if (document.status === "failed") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-4 bg-surface p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>La lecture de ce cours a échoué. Mets-la à jour depuis Mes cours.</p>
@@ -122,7 +122,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
 
   if (markdown === "") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-4 bg-surface p-8 text-center">
         <Idle />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours ne contient pas encore de texte lisible.</p>
@@ -132,7 +132,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
   }
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-6 bg-surface p-8">
       <div className="flex items-center justify-between">
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <BackButton onBack={onBack} />

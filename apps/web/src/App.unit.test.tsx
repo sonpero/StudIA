@@ -74,6 +74,15 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Calendrier" })).toBeInTheDocument();
   });
 
+  it("authenticated: the content area reserves space for the now-fixed desktop sidebar, so a long page's content never renders underneath it", async () => {
+    stubAuthenticatedFetch();
+
+    render(<App />);
+
+    await screen.findByText(/alex/i);
+    expect(screen.getByTestId("app-content").className).toMatch(/md:ml-60/);
+  });
+
   it("Calendrier is reachable directly from the nav and opens a course from its day panel", async () => {
     stubAuthenticatedFetch();
     const user = userEvent.setup();

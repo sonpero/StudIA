@@ -28,7 +28,13 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
       aria-label="Navigation principale"
       className={cn(
         "fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-surface",
-        "md:static md:inset-auto md:w-60 md:shrink-0 md:flex-col md:gap-1 md:border-t-0 md:border-r md:p-4",
+        // md:static (fixed's opposite) used to put the sidebar back into
+        // normal flow on desktop, so a page taller than the viewport
+        // scrolled it away with everything else — not just "permanent" in
+        // the sense of always-rendered, actually pinned (docs/UI.md's
+        // Desktop layout note). Fixed to the left edge, full viewport
+        // height, exactly like the mobile bar is fixed to the bottom.
+        "md:fixed md:inset-y-0 md:left-0 md:right-auto md:w-60 md:shrink-0 md:flex-col md:gap-1 md:border-t-0 md:border-r md:p-4",
         // Visual de-emphasis only during a review session (docs/UI.md's
         // Révision note): the nav stays fully clickable — "leaving must
         // never feel like a trap" rules out disabling it, so dimming is

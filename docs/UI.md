@@ -160,10 +160,15 @@ Build the desktop layout from the reference, then adapt down. Every screen must
 work at 375px wide.
 
 **Desktop** — Permanent left sidebar, 240px, white, with the wordmark at top,
-icon-plus-label items, the active item in `--primary`. Content area on `--canvas`
-with 32px padding, its content capped at a max-width of 1152px and centred —
-cards, forms and text never stretch to the edge of a wide viewport. Top row
-of the content area holds search on the left, and notifications plus the
+icon-plus-label items, the active item in `--primary`. "Permanent" means
+pinned to the viewport, not just always-rendered: it stays on screen while
+a long page's own content scrolls past it, the same way the mobile tab bar
+already stays fixed to the bottom — a page taller than the viewport (a
+long course in Lecteur, a long list on Mes cours or Notions du cours) must
+never carry the sidebar away with it. Content area on `--canvas` with 32px
+padding, its content capped at a max-width of 1152px and centred — cards,
+forms and text never stretch to the edge of a wide viewport. Top row of
+the content area holds search on the left, and notifications plus the
 user chip on the right.
 
 **Tablet** — Sidebar collapses to 72px, icons only, labels as tooltips.
@@ -536,6 +541,21 @@ already does by hand on every other screen. The reading column caps at
 `max-w-2xl`, narrower than the rest of the app's 1152px content width — a
 deliberately shorter line length for continuous prose, the same "cap it
 instead of stretching it" principle as Shape and depth's form-width rule.
+
+**The reading surface itself is `--surface`, not `--canvas`** — this
+screen's one deliberate deviation from "Content area on `--canvas`"
+(Layout and responsiveness's own Desktop line): a full page of continuous
+prose reads as a page, the way a card or a panel already does on
+`--surface` elsewhere, not as bare canvas with text floating on it. No new
+token: the token table has nothing named for "a full-height reading
+surface" specifically, but `--surface` is already white and already used
+for exactly this kind of contained, page-like area (its own row says
+"Cards, sidebar, panels"); reusing it here is extending that row's
+coverage, not inventing a token for a gap a new one would fix better.
+Contrast improves, not just holds: `--text` on `--surface` measures
+17.75:1 against 16.54:1 on `--canvas`, and `--text-muted` 4.97:1 against
+4.64:1 — both already passed the 4.5:1 floor, this is a strict
+improvement, not a trade.
 
 **No progressive loading, no infinite scroll, one normal scrolling page.**
 Measured, not assumed: `react-markdown`'s own render pipeline, timed via

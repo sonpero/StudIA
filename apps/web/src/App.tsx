@@ -75,7 +75,10 @@ function AppShell() {
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <AppNav items={navItems} dimmed={view.name === "review"} />
-      <div className="flex-1 pb-16 md:pb-0">
+      {/* md:ml-60 reserves the space the now-fixed sidebar (AppNav) takes
+          out of normal flow on desktop — without it, content would render
+          underneath it instead of beside it. */}
+      <div data-testid="app-content" className="flex-1 pb-16 md:ml-60 md:pb-0">
         <div className="flex items-center justify-end gap-3 border-b border-border bg-surface px-8 py-3 text-sm">
           <p>Bonjour, {auth.user?.username}.</p>
           <button type="button" onClick={() => void auth.logout()}>
