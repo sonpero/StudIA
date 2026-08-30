@@ -34,6 +34,36 @@ describe("LoginScreen", () => {
     expect(screen.getByRole("button", { name: /se connecter/i })).toBeInTheDocument();
   });
 
+  it("ready state: the identifier field has focus as soon as the screen mounts", async () => {
+    renderLoginScreen();
+
+    expect(await screen.findByLabelText(/identifiant/i)).toHaveFocus();
+  });
+
+  it("ready state: 'Se connecter' is styled --accent — the single focused action on this screen, exactly what docs/UI.md's rule permits it for", async () => {
+    renderLoginScreen();
+
+    const button = await screen.findByRole("button", { name: /se connecter/i });
+    expect(button.className).toMatch(/bg-accent/);
+  });
+
+  it("pressing Enter submits the form, the same as clicking 'Se connecter'", async () => {
+    const fetchMock = renderLoginScreen();
+    await screen.findByLabelText(/identifiant/i);
+    fetchMock.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/api/auth/login")) return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+    });
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/identifiant/i), "alex");
+    await user.type(screen.getByLabelText(/mot de passe/i), "correct-horse{Enter}");
+
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some((call) => typeof call[0] === "string" && call[0].includes("/api/auth/login"))).toBe(true),
+    );
+  });
+
   it("error state: shows a message on wrong credentials (401) and does not navigate away", async () => {
     const fetchMock = renderLoginScreen();
     await screen.findByLabelText(/identifiant/i);
@@ -58,6 +88,20 @@ describe("LoginScreen", () => {
     await user.click(screen.getByRole("button", { name: /se connecter/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/trop de tentatives/i);
+  });
+
+  it("error state: a network failure shows a readable message and re-enables the button — a real regression, it used to reject silently and stay stuck on 'Connexion en cours…' forever", async () => {
+    const fetchMock = renderLoginScreen();
+    await screen.findByLabelText(/identifiant/i);
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/identifiant/i), "alex");
+    await user.type(screen.getByLabelText(/mot de passe/i), "s3cret");
+    await user.click(screen.getByRole("button", { name: /se connecter/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de se connecter/i);
+    expect(screen.getByRole("button", { name: "Se connecter" })).not.toBeDisabled();
   });
 
   it("loading state: disables the submit button while the login request is in flight", async () => {

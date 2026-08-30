@@ -253,6 +253,42 @@ incomplete, and its Playwright scenario must cover all four.
 
 ## Screen notes
 
+**Connexion** — Never specified until now; unstyled HTML since M1. The one
+screen with no persistent nav (`App.tsx` renders it standalone, before
+`AppShell` mounts): a centred card, capped at `max-w-md` (Shape and depth's
+own default absent a better reason), on `--canvas`. Two fields, each
+labelled above its input, not beside it — the same label-and-`FIELD_CLASS`
+treatment as Aujourd'hui's own add-todo form, not a new pattern. The
+identifier field gets focus on mount, the same ref-plus-effect idiom
+Aujourd'hui's disclosed add-todo form already uses (not the bare
+`autoFocus` attribute); Enter submits, the ordinary behaviour of a real
+`<form>`, nothing extra needed for it.
+
+Login-only, no self-signup (`docs/modules/identity.md`, `README.md`):
+every account is created, or reset, by an administrator from the CLI, so
+this screen has nothing to register and never offers to.
+
+**"Se connecter" is `--accent`, and this is one of the few places in the
+app where that is actually earned:** a single focused screen with exactly
+one action, the same shape as ReviewScreen's session-end/post-grade
+buttons and UploadCard's `Confirmer` — not one of several peer actions
+competing for the same weight, the mistake corrected on NotionsScreen's
+own toolbar. The Forbidden list bans a *second* `--accent` element per
+screen, not this one.
+
+Not the four-state shape (`Required states` above): this screen loads no
+data to display, so there is no "empty" state to speak of. Instead:
+**ready** is the form; **submitting** disables the button (`Button`'s own
+`disabled:opacity-50`, no separate loading style needed) and relabels it
+"Connexion en cours…"; **error** is a plain inline fact next to the field,
+`role="alert"`, no mascot — too small and too focused a screen for one,
+the same call UploadCard's own inline errors already make — in the same
+register as everywhere else in this document, never a raw status code:
+wrong credentials, rate-limited, and the server being unreachable, three
+distinct messages. The third was a real gap this note's own audit found,
+not a hypothetical: the previous version never caught a rejected login
+request at all and got stuck on "Connexion en cours…" forever, silently.
+
 **Aujourd'hui** — Large greeting title, then **one card per course** that has
 something to say today, never split into separate lists by kind. A course
 with nothing due, nothing below its exam target, and no deadline gets no card
