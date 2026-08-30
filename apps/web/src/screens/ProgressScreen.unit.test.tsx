@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProgressScreen } from "./ProgressScreen.js";
@@ -82,6 +82,19 @@ describe("ProgressScreen", () => {
     expect(screen.getByRole("meter", { name: "Préparation" })).toHaveAttribute("aria-valuenow", "30");
   });
 
+  it("bar fill width tracks each gauge's own value, never a flat 100% regardless of it (a real regression: a bare-percent width string once failed to parse as CSS and rendered as full-width for every value)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.71, readiness: 0.32, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const coverageFill = within(screen.getByRole("meter", { name: "Couverture" })).getByTestId("gauge-fill");
+    const readinessFill = within(screen.getByRole("meter", { name: "Préparation" })).getByTestId("gauge-fill");
+    expect(coverageFill).toHaveStyle({ width: "71%" });
+    expect(readinessFill).toHaveStyle({ width: "32%" });
+  });
+
   it("no mascot in the ready state: this is a data-dense list of courses (docs/UI.md)", async () => {
     stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
     renderScreen();
@@ -89,7 +102,7 @@ describe("ProgressScreen", () => {
     expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
   });
 
-  it("behind: states the notion count in --warning, never as an --accent element, and the day count as a plain fact", async () => {
+  it("behind: states the notion count as a plain fact, the same visual weight as the rest of the card — no box, no underline, no --accent", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },
     ]);
@@ -97,7 +110,8 @@ describe("ProgressScreen", () => {
     const card = await screen.findByTestId("progress-card");
     expect(card).toHaveAttribute("data-status", "behind");
     expect(screen.getByText(/9 jours/)).toBeInTheDocument();
-    expect(screen.getByText(/7 notions/)).toBeInTheDocument();
+    const notionCount = screen.getByText(/7 notions/);
+    expect(notionCount).toBeInTheDocument();
     // Never blame the person directly (docs/UI.md: no "tu es en retard").
     expect(screen.queryByText(/tu es en retard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/de retard/i)).not.toBeInTheDocument();
@@ -107,6 +121,10 @@ describe("ProgressScreen", () => {
     // Button's variant="accent" or a raw bg-accent/text-accent/border-accent
     // class, not just today's copy.
     expect(card.querySelectorAll('[class*="accent"]')).toHaveLength(0);
+    // docs/UI.md: a fact stated soberly, never the loudest element on the
+    // card — no boxed/badge treatment (border, background tint, pill
+    // radius, padding) and no underline, whichever element carries the text.
+    expect(notionCount.className).not.toMatch(/border|bg-warning|rounded-full|px-|py-|underline/);
   });
 
   it("ahead or on-track: no notion count shown, no warning marker", async () => {
@@ -119,12 +137,13 @@ describe("ProgressScreen", () => {
     expect(screen.queryByText(/notions? à consolider/)).not.toBeInTheDocument();
   });
 
-  it("recentlyAddedUnreviewed > 0: states the present-tense fact about recently added notions, never 'la couverture a baissé'", async () => {
+  it("recentlyAddedUnreviewed > 0: states the present-tense fact about recently added notions, in notions (recentlyAddedUnreviewed counts notions, not cards — the two units coexist elsewhere and must not be confused), never 'la couverture a baissé'", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.2, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 3 } },
     ]);
     renderScreen();
-    await screen.findByText(/3 fiches ajoutées récemment n'ont pas encore été travaillées/i);
+    await screen.findByText(/3 notions ajoutées récemment n'ont pas encore été travaillées/i);
+    expect(screen.queryByText(/fiches? ajoutée/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/couverture a baissé/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/a chuté/i)).not.toBeInTheDocument();
   });

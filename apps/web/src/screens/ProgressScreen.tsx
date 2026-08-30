@@ -19,6 +19,16 @@ function percent(value: number): string {
   return `${Math.round(value * 100)} %`;
 }
 
+// percent()'s narrow space before "%" (French typography) is invalid inside
+// a CSS <percentage> token — cssstyle/browsers silently drop the whole
+// declaration rather than parse "71 %", leaving width unset and the bar
+// rendering at its parent's full size regardless of value. A bare number's
+// worth of width, with no space, for style only; percent() stays the display
+// and aria-valuetext string.
+function widthPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
 // A neutral progress device (docs/UI.md's Progress section): a --primary
 // bar over --border, the real number always visible next to it — never a
 // bare bar, never the course's own subject colour. role="meter" carries
@@ -36,7 +46,7 @@ function Gauge({ label, value }: { label: string; value: number }) {
         <span className="font-medium tabular-nums">{percent(value)}</span>
       </div>
       <div className="h-2 rounded-full bg-border">
-        <div className="h-2 rounded-full bg-primary" style={{ width: percent(value) }} />
+        <div data-testid="gauge-fill" className="h-2 rounded-full bg-primary" style={{ width: widthPercent(value) }} />
       </div>
     </div>
   );
@@ -128,7 +138,10 @@ function CourseProgressCard({ item }: { item: ProgressListItem }) {
 
           {item.progress.recentlyAddedUnreviewed > 0 && (
             <p className="text-sm text-text-muted">
-              {item.progress.recentlyAddedUnreviewed} fiche{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
+              {/* recentlyAddedUnreviewed counts notions (compute-progress.ts),
+                  never cards — the two units coexist elsewhere in the app
+                  (e.g. TodayScreen's "fiches à revoir") and must not blur here. */}
+              {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
               {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
             </p>
           )}
@@ -141,7 +154,14 @@ function CourseProgressCard({ item }: { item: ProgressListItem }) {
             <p className="text-sm">
               Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
               {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
-                <span className="ml-1 rounded-full border border-warning bg-warning/10 px-2 py-0.5 text-warning">
+                // Same weight as the rest of the card's text (docs/UI.md: a
+                // fact stated soberly, not the loudest element on the card):
+                // no box, no underline. --warning as a text colour is
+                // available but not used here on purpose — at body size it
+                // fails AA contrast against the card's background (~1.8:1,
+                // well under the 3:1 floor for UI-sized text), so this stays
+                // in the card's own default text colour instead.
+                <span className="ml-1">
                   {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
                 </span>
               )}

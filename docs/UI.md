@@ -381,7 +381,9 @@ Two things this screen must explain, or the numbers read as broken:
   no history, no snapshot (`docs/modules/progress.md`). Instead, whenever
   there are notions created in roughly the last week that have never been
   reviewed, it states that present-tense fact next to the number: *"3
-  fiches ajoutées récemment n'ont pas encore été travaillées."* A low or
+  notions ajoutées récemment n'ont pas encore été travaillées."* (notions,
+  never "fiches" — this counts notions, and the two units coexist elsewhere
+  in the app and must not be confused.) A low or
   moved number must never be left for the student to puzzle over, but the
   explanation is a fact about today's notions, never a comparison to a
   remembered past state.
