@@ -117,7 +117,7 @@ describe("ReaderScreen", () => {
     renderScreen();
 
     await screen.findByText("Contenu du cours.");
-    expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
   it("ready: the course title uses --text-title, the same token every other course-title instance uses (docs/UI.md's Type note)", async () => {

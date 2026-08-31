@@ -170,6 +170,6 @@ describe("ProposalsScreen", () => {
     stubFetch({ "GET /api/todos/proposals/job-1": () => jsonResponse(readyView) });
     renderScreen();
     await screen.findByText("Rendre le devoir de maths");
-    expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 });

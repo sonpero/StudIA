@@ -132,6 +132,33 @@ describe("DocumentsScreen", () => {
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
+  it("a card's own 'Lire le cours', 'Voir les notions' and 'Réessayer' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+            { id: "d2", title: "Cours raté", sourceType: "photo", status: "failed", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+          ]),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    renderScreen();
+    await screen.findByText("Chapitre 3");
+    await screen.findByText("Cours raté");
+
+    for (const name of ["Lire le cours", "Voir les notions", "Réessayer"]) {
+      const button = screen.getByRole("button", { name });
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveAttribute("focusable", "false");
+    }
+  });
+
   it("a done document offers to open its notions, calling back with its id", async () => {
     const user = userEvent.setup();
     const onOpenNotions = vi.fn();

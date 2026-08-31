@@ -1,8 +1,10 @@
+import { Upload } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "./ui/button.js";
 import { Card } from "./ui/card.js";
 import { createDocument, deleteDocument, startExtraction, uploadPage } from "../lib/documents-api.js";
 import { guessSourceType } from "../lib/detect-source-type.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 
 interface StagedFile {
   id: string;
@@ -169,6 +171,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
 
       <div className="flex gap-2">
         <Button variant="accent" onClick={() => void confirm()} disabled={submitting || files.length === 0}>
+          <Upload aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           {submitting ? "Envoi en cours…" : "Confirmer"}
         </Button>
         <Button variant="secondary" onClick={reset} disabled={submitting}>

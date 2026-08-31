@@ -2,14 +2,15 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { BookOpen, Home, TrendingUp } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppNav, type AppNavItem } from "./AppNav.js";
 
 function items(overrides: Partial<Record<string, Partial<AppNavItem>>> = {}): AppNavItem[] {
   const base: AppNavItem[] = [
-    { key: "today", label: "Aujourd'hui", active: false, onClick: () => undefined },
-    { key: "documents", label: "Mes cours", active: false, onClick: () => undefined },
-    { key: "progress", label: "Progression", active: false, onClick: () => undefined },
+    { key: "today", label: "Aujourd'hui", icon: Home, active: false, onClick: () => undefined },
+    { key: "documents", label: "Mes cours", icon: BookOpen, active: false, onClick: () => undefined },
+    { key: "progress", label: "Progression", icon: TrendingUp, active: false, onClick: () => undefined },
   ];
   return base.map((item) => ({ ...item, ...overrides[item.key] }));
 }
@@ -44,6 +45,18 @@ describe("AppNav", () => {
 
     expect(onDocuments).toHaveBeenCalledTimes(1);
     expect(onToday).not.toHaveBeenCalled();
+  });
+
+  it("each destination pairs a decorative icon with its own label — the accessible name stays exactly the label, unaffected by the icon (docs/UI.md's Icons note)", () => {
+    render(<AppNav items={items()} />);
+
+    for (const label of ["Aujourd'hui", "Mes cours", "Progression"]) {
+      const button = screen.getByRole("button", { name: label });
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveAttribute("focusable", "false");
+    }
   });
 
   it("is fixed to the viewport on desktop too, not just mobile — a long page must not carry it away while scrolling (the bug this fixed: md:static previously put it back in normal flow)", () => {

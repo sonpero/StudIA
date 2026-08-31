@@ -37,6 +37,19 @@ describe("UploadCard", () => {
     expect(names()).toEqual(["a.jpg", "c.jpg"]);
   });
 
+  it("'Confirmer' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    const user = userEvent.setup();
+    render(<UploadCard onCreated={() => undefined} />);
+    await user.click(screen.getByText(/ajouter un cours/i));
+    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
+
+    const button = screen.getByRole("button", { name: "Confirmer" });
+    const icon = button.querySelector("svg");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon).toHaveAttribute("focusable", "false");
+  });
+
   it("shows an explicit error and does not clear the form when upload fails", async () => {
     vi.stubGlobal(
       "fetch",

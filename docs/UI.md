@@ -153,6 +153,76 @@ number's own line and card, not a competition with the screen chrome.
   date-picker component, which is a new interaction pattern (see "For
   agents" below) this document does not currently ask for.
 
+### Icons
+
+`lucide-react`: a single coherent stroke-based set (~1500 icons, one visual
+grammar — uniform stroke width, corner radius, viewbox — unlike `react-icons`,
+which bundles several unrelated icon families behind one package), rendered
+as individual React components (`import { BookOpen } from "lucide-react"`),
+one named import per icon actually used — real tree-shaking, not a sprite
+sheet or an icon font. It is also shadcn/ui's own default companion: this
+app's component base (`For agents`, below) already carries
+`class-variance-authority` + `clsx` + `tailwind-merge`, the rest of that same
+standard pairing, in `apps/web/package.json` — picking a different set here
+would run a second icon grammar alongside the one shadcn's own generated
+components already assume.
+
+**Size and stroke are tokens, not per-call numbers.** Two sizes, one stroke
+weight, exported once from `apps/web/src/lib/icons.ts` and imported at every
+call site — `ICON_SIZE_INLINE` (16px), paired with a button or card-action
+label at body text size, and `ICON_SIZE_NAV` (20px), for the sidebar/tab-bar
+destination icons, which sit at a larger, more prominent scale of their own;
+`ICON_STROKE_WIDTH` (2, the library's own default, named explicitly rather
+than left implicit) for both. These live as exported TS constants rather
+than `tokens.css` custom properties: Lucide takes `size`/`strokeWidth` as
+component props, not CSS properties, so a constant module is the natural
+token form here, the same "defined once, referenced everywhere, never
+duplicated ad hoc" discipline `tokens.css` already enforces for colour and
+type.
+
+**An icon accompanies its label, never replaces it — no icon-only button
+anywhere in this app** (`Forbidden`, below, already bans one without an
+accessible label; this goes further and keeps the label itself always
+visible). Every icon is `aria-hidden="true"` and `focusable="false"`,
+exactly like the mascot: the accessible name of a nav destination or a card
+action is its text label alone, unaffected by the icon beside it.
+
+**Scope for this pass**: one icon per nav destination (`Home` for
+Aujourd'hui, `BookOpen` for Mes cours, `TrendingUp` for Progression,
+`Calendar` for Calendrier — Tuteur gets its own once it has a screen), and
+on each card's own primary, forward-moving actions — the ones docs/UI.md
+already calls "a path to action" on Aujourd'hui's own course card:
+`BookOpen` for "Voir le cours"/"Voir les notions" (both land on the same
+course-detail screen), `BookOpenText` for "Lire le cours" (a distinct
+destination, the continuous-reading Lecteur), `Repeat` for "Réviser"/
+"Réviser cette notion", `CalendarClock` for setting or updating a deadline,
+`RotateCw` for a single failed document's own "Réessayer", `Upload` for
+UploadCard's "Confirmer". Never on a card's dismissive or destructive
+action — "Supprimer", "Supprimer l'échéance", "Annuler", "Régénérer les
+fiches", "Voir le contenu"'s expand toggle: these are already visually
+demoted (a plain underlined `<button>`, never the `Button` component) or
+already named as destructive/secondary in this document or in code
+comments, and adding an icon would raise their visual weight in exactly the
+direction the demotion was deliberately fighting.
+
+Not extended to `Calendrier` (a day cell, not a course card — the same
+reasoning `Subject colours` already gives for why that screen's colour
+treatment stops there too) or to `Lecteur`/`Révision` (a single "Retour", or
+grading controls — neither is a course-card grid). `NotionsScreen`'s own
+toolbar ("Lire le cours", "Voir la progression", "Réviser" above the notion
+list) is plain page chrome, not inside a `Card`, so it is out of scope by
+the same "actions of a card" rule that puts an icon on that screen's
+per-notion `Card`'s own "Réviser cette notion" instead. `ProposalsScreen`
+(reviewing photo-derived todo proposals) was not addressed — tangential to
+this four-commit visual pass, not one of the screens it has touched so far;
+flagged rather than silently included or excluded by assumption.
+
+Icons do not yet unlock the Tablet section's own 72px icon-only sidebar
+collapse (below): that mode also needs tooltips standing in for the hidden
+labels, a new interaction pattern this pass does not introduce (`For
+agents`' own "stop and ask" rule). The sidebar still keeps its full 240px
+width through the tablet breakpoint for now.
+
 ### Motion
 
 150 to 200ms, ease-out. The review card flip is the one orchestrated moment.
@@ -221,12 +291,12 @@ The user chip moves into the header. Multi-column card grids become a
 single column.
 
 **Not yet built, disclosed rather than silently skipped:**
-- **Icons.** "Icon-plus-label" and the tablet 72px icon-only collapse both
-  depend on an icon set this app doesn't have; adding one is a real
-  dependency needing its own justification (CLAUDE.md), not a layout
-  choice. Nav items are text-only for now, and the sidebar keeps its full
-  240px width through the tablet breakpoint instead of collapsing — it only
-  becomes the mobile bottom bar below 768px.
+- **The tablet 72px icon-only collapse.** Nav items now carry an icon
+  (`Icons`, above), but the collapse itself still needs tooltips standing
+  in for the hidden labels — a new interaction pattern, out of scope for
+  the pass that added the icons themselves. The sidebar keeps its full
+  240px width through the tablet breakpoint for now — it only becomes the
+  mobile bottom bar below 768px.
 - **Search and notifications.** Neither exists yet. The content area's top
   row currently holds only the user chip (greeting and sign-out).
 - **The secondary group.** Mes notes and Réglages have no screen at all

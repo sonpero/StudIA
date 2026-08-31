@@ -74,7 +74,7 @@ describe("CalendarScreen", () => {
     await screen.findByTestId("calendar-grid");
 
     expect(screen.getByTestId("calendar-grid")).toBeInTheDocument();
-    expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
   it("a day with 3 entries or fewer renders one dot per entry, no count badge", async () => {

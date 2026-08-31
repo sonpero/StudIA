@@ -1,5 +1,6 @@
 import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, BookOpenText, RotateCw } from "lucide-react";
 import { useRef } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Reading } from "../components/mascot/Reading.js";
@@ -7,6 +8,7 @@ import { Card } from "../components/ui/card.js";
 import { Button } from "../components/ui/button.js";
 import { UploadCard } from "../components/UploadCard.js";
 import { deleteDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 
 const STATUS_LABEL: Record<ExtractionStatus, string> = {
   pending: "En attente",
@@ -44,15 +46,18 @@ function DocumentCard({
       </p>
       {document.status === "failed" && (
         <Button variant="secondary" onClick={() => void retryExtraction(document.id).then(onChanged)}>
+          <RotateCw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Réessayer
         </Button>
       )}
       {document.status === "done" && (
         <>
           <Button variant="secondary" onClick={() => onOpenReader(document.id)}>
+            <BookOpenText aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Lire le cours
           </Button>
           <Button variant="secondary" onClick={() => onOpenNotions(document.id)}>
+            <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Voir les notions
           </Button>
         </>

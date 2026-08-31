@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BookOpen, Calendar, Home, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
@@ -61,15 +62,16 @@ function AppShell() {
   }
 
   const navItems: AppNavItem[] = [
-    { key: "today", label: "Aujourd'hui", active: view.name === "today", onClick: () => setView({ name: "today" }) },
+    { key: "today", label: "Aujourd'hui", icon: Home, active: view.name === "today", onClick: () => setView({ name: "today" }) },
     {
       key: "documents",
       label: "Mes cours",
+      icon: BookOpen,
       active: view.name === "documents" || view.name === "notions" || view.name === "reader",
       onClick: () => setView({ name: "documents" }),
     },
-    { key: "progress", label: "Progression", active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
-    { key: "calendar", label: "Calendrier", active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
+    { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
+    { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
   ];
 
   return (

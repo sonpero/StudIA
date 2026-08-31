@@ -1,11 +1,13 @@
 import type { DocumentSummary } from "@studia/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, Repeat } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { listDocuments } from "../lib/documents-api.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
 
@@ -275,10 +277,12 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
 
       <div className="flex gap-2">
         <Button variant="secondary" onClick={() => onOpenCourse(card.documentId)}>
+          <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Voir le cours
         </Button>
         {card.dueCount > 0 && (
           <Button variant="secondary" onClick={() => onReviewCourse(card.documentId)}>
+            <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Réviser
           </Button>
         )}

@@ -298,6 +298,25 @@ describe("NotionsScreen", () => {
     expect(onReview).toHaveBeenCalledWith("n1");
   });
 
+  it("a notion card's 'Réviser cette notion' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const button = screen.getByRole("button", { name: "Réviser cette notion" });
+    const icon = button.querySelector("svg");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon).toHaveAttribute("focusable", "false");
+  });
+
   it("polls while there are no notions yet, and shows them once splitting finishes", async () => {
     let notionsCallCount = 0;
     const fetchMock = vi.fn().mockImplementation((url: string) => {

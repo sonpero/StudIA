@@ -114,6 +114,20 @@ describe("TodayScreen", () => {
     expect(card).toHaveStyle({ borderLeftColor: "#F87171" });
   });
 
+  it("ready: 'Voir le cours' and 'Réviser' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    for (const name of ["Voir le cours", "Réviser"]) {
+      const button = screen.getByRole("button", { name });
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveAttribute("focusable", "false");
+    }
+  });
+
   it("ready: a course reached only through an upcoming deadline carries no colour (workspace.md), so its card gets no left-border override", async () => {
     stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 }] });
     renderScreen();
@@ -376,7 +390,7 @@ describe("TodayScreen", () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     renderScreen();
     await screen.findByText("x");
-    expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
   it("ready: offers a minimal form to add a todo by hand — label required, date and course optional, nothing else", async () => {

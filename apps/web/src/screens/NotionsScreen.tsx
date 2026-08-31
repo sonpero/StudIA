@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Repeat } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import {
   generateCardsForDocument,
   getGenerationStatus,
@@ -263,6 +265,7 @@ export function NotionsScreen({
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-text-muted">{notionProgressLabel(notionProgress)}</p>
                   <Button variant="secondary" onClick={() => onReview(notion.id)}>
+                    <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
                     Réviser cette notion
                   </Button>
                 </div>

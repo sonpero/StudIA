@@ -1,9 +1,15 @@
+import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "../app-info.js";
+import { ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
 export interface AppNavItem {
   key: string;
   label: string;
+  // A component reference, never a string name (docs/UI.md's Icons note):
+  // App.tsx passes the icon itself (e.g. `icon: Home`), so there is no
+  // name-to-component lookup for this file to own.
+  icon: LucideIcon;
   active: boolean;
   onClick: () => void;
 }
@@ -16,12 +22,11 @@ export interface AppNavItem {
 // accessible name, breaking getByRole("button", { name }) queries that
 // assume one match.
 //
-// Not yet built: icons (docs/UI.md's "icon-plus-label" and the tablet
-// icon-only collapse to 72px both depend on an icon set this app doesn't
-// have — adding one needs its own justified dependency, out of scope for a
-// visual-only pass) and the secondary group (Mes notes, Réglages have no
-// screen at all yet). The sidebar stays at its full desktop width through
-// the tablet breakpoint instead of collapsing.
+// Not yet built: the secondary group (Mes notes, Réglages have no screen at
+// all yet) and the tablet 72px icon-only collapse, which needs tooltips
+// standing in for the hidden labels — a new interaction pattern this pass
+// does not introduce (docs/UI.md's Icons note). The sidebar stays at its
+// full desktop width through the tablet breakpoint instead of collapsing.
 export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?: boolean }) {
   return (
     <nav
@@ -43,20 +48,24 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
       )}
     >
       <span className="hidden font-[var(--font-display)] text-lg font-extrabold md:mb-6 md:block">{APP_NAME}</span>
-      {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          aria-current={item.active ? "page" : undefined}
-          onClick={item.onClick}
-          className={cn(
-            "min-h-11 flex-1 px-3 py-2 text-sm font-medium md:flex-none md:rounded-[var(--radius-button)] md:text-left",
-            item.active ? "text-primary md:bg-primary-soft" : "text-text-muted hover:text-text md:hover:bg-canvas",
-          )}
-        >
-          {item.label}
-        </button>
-      ))}
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.key}
+            type="button"
+            aria-current={item.active ? "page" : undefined}
+            onClick={item.onClick}
+            className={cn(
+              "flex min-h-11 flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium md:flex-none md:justify-start md:gap-2 md:rounded-[var(--radius-button)] md:text-left",
+              item.active ? "text-primary md:bg-primary-soft" : "text-text-muted hover:text-text md:hover:bg-canvas",
+            )}
+          >
+            <Icon aria-hidden="true" focusable="false" size={ICON_SIZE_NAV} strokeWidth={ICON_STROKE_WIDTH} />
+            {item.label}
+          </button>
+        );
+      })}
     </nav>
   );
 }

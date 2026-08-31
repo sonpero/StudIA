@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, CalendarClock } from "lucide-react";
 import { useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { todayDateKey } from "../lib/day-boundary.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { deleteDeadline, listProgress, setDeadline, type ProgressListItem } from "../lib/progress-api.js";
 
 const QUERY_KEY = ["progress-list"];
@@ -133,6 +135,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
             />
           ) : (
             <Button variant="secondary" onClick={() => setEditing(true)}>
+              <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
               Mettre à jour l'échéance
             </Button>
           )}
@@ -185,6 +188,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
           ) : (
             <div className="flex gap-3">
               <Button variant="secondary" onClick={() => setEditing(true)}>
+                <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
                 {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
               </Button>
               {item.deadlineDate !== null && (
@@ -203,6 +207,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
           the mistake made once on NotionsScreen's own button to this same
           screen, avoided there by spelling out the full phrase. */}
       <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
+        <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         Voir le cours
       </Button>
     </Card>

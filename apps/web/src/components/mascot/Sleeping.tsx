@@ -3,7 +3,7 @@
 // written in text next to it.
 export function Sleeping() {
   return (
-    <svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true" focusable="false" data-testid="mascot">
       <rect x="20" y="10" width="80" height="100" rx="12" fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth="2" />
       {/* closed, curved eyes */}
       <path d="M42 55 Q48 51 54 55" stroke="var(--color-text)" strokeWidth="2.5" fill="none" strokeLinecap="round" />

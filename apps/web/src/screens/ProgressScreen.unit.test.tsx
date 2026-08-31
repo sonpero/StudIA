@@ -108,6 +108,22 @@ describe("ProgressScreen", () => {
     expect(histoireCard).toHaveStyle({ borderLeftColor: "#38BDF8" });
   });
 
+  it("ready state: 'Voir le cours' and 'Définir une échéance' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    for (const name of ["Voir le cours", "Définir une échéance"]) {
+      const button = screen.getByRole("button", { name });
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveAttribute("focusable", "false");
+    }
+  });
+
   it("exposes coverage and readiness as accessible meters carrying the exact value, not just rounded display text", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
@@ -135,7 +151,7 @@ describe("ProgressScreen", () => {
     stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
     renderScreen();
     await screen.findByText("Maths");
-    expect(document.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(0);
+    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
   it("behind: states the notion count as a plain fact, the same visual weight as the rest of the card — no box, no underline, no --accent", async () => {
