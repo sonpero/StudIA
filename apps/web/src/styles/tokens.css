@@ -30,6 +30,14 @@
   --text-body: 0.875rem;
   --text-title: 1.25rem;
   --text-display: 2rem;
+
+  /* docs/UI.md Shape and depth: three named steps, not the flat gap-2/
+     gap-3/gap-4/gap-6 every screen reached for regardless of what was next
+     to what. Referenced via var(), e.g. gap-[var(--space-block)] — the
+     same arbitrary-value convention as --text-*/--font-*/--radius-* above. */
+  --space-related: 0.5rem;
+  --space-block: 1rem;
+  --space-section: 1.5rem;
 }
 
 body {

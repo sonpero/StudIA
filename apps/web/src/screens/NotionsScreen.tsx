@@ -154,7 +154,7 @@ export function NotionsScreen({
   if (notionsQuery.status === "pending") {
     return (
       <main className="p-8">
-        <h1 className="mb-6 font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <div className="flex flex-col gap-3">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
@@ -166,7 +166,7 @@ export function NotionsScreen({
 
   if (notionsQuery.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <p>Impossible de charger les notions de ce cours. Vérifie ta connexion et réessaie.</p>
@@ -179,7 +179,7 @@ export function NotionsScreen({
 
   if (notions.length === 0) {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Idle />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>
@@ -198,7 +198,7 @@ export function NotionsScreen({
 
   return (
     <main className="p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-[var(--space-section)] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
             Retour à mes cours
@@ -230,7 +230,7 @@ export function NotionsScreen({
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-[var(--space-section)] flex flex-wrap items-center gap-4">
         <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
           <legend className="mb-1 text-[var(--text-label)] text-text-muted">Types de fiches à créer</legend>
           {ALL_CARD_TYPES.map((type) => (

@@ -49,6 +49,46 @@ describe("DocumentsScreen", () => {
     expect(screen.queryByText(/^aucun résultat$/i)).not.toBeInTheDocument();
   });
 
+  it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    const loadingHeading = screen.getByText("Mes cours");
+    expect(loadingHeading.className).toMatch(/mb-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    renderScreen();
+    await screen.findByText(/impossible de charger tes cours/i);
+    const errorMain = screen.getByRole("heading", { name: "Mes cours" }).closest("main");
+    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
+    renderScreen();
+    await screen.findByText(/aucun cours/i);
+    const readyHeading = screen.getByText("Mes cours");
+    expect(readyHeading.className).toMatch(/mb-\[var\(--space-section\)\]/);
+  });
+
+  it("the document grid's own gutter is --space-block, cards being distinct blocks within one section (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
+          ]),
+          { status: 200 },
+        ),
+      ),
+    );
+    renderScreen();
+    await screen.findByText("Chapitre 3");
+
+    const grid = screen.getByTestId("document-card").closest(".grid") as HTMLElement;
+    expect(grid.className).toMatch(/gap-\[var\(--space-block\)\]/);
+  });
+
   it("ready state: lists the user's documents with status and subject colour", async () => {
     vi.stubGlobal(
       "fetch",

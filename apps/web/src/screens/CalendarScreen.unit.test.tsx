@@ -68,6 +68,27 @@ describe("CalendarScreen", () => {
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
+  it("the gap between the heading row (or the title) and what follows it is the same --space-section token in every state (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    const loadingMain = screen.getByRole("heading", { name: "Mars 2026" }).closest("main");
+    expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    renderScreen();
+    await screen.findByText(/impossible de charger/i);
+    const errorMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
+    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch({});
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+    const readyMain = screen.getByRole("heading", { name: "Mars 2026" }).closest("main");
+    expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+  });
+
   it("ready: an entirely empty month still renders the grid, never a mascot", async () => {
     stubFetch({});
     renderScreen();

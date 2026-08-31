@@ -144,7 +144,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-6 p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-8">
         {heading}
         <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid-skeleton">
           {Array.from({ length: 35 }, (_, i) => (
@@ -157,7 +157,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Calendrier</h1>
         <p>Impossible de charger le calendrier. Vérifie ta connexion et réessaie.</p>
@@ -174,7 +174,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
   const selectedEntries = selectedDate ? (entriesByDate.get(selectedDate) ?? []) : null;
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-8">
       {heading}
 
       <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid">

@@ -131,8 +131,44 @@ number's own line and card, not a competition with the screen chrome.
   avatars and chips.
 - Shadow: `0 1px 2px rgba(16,24,40,.05)` at rest, `0 4px 12px rgba(16,24,40,.08)`
   on hover for interactive cards. Never more than these two.
-- Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48. Be generous. The reference layout
-  breathes, and cramming content is the fastest way to lose the look.
+- **Three named spacing steps** (`tokens.css`'s `--space-*`), each tied to a
+  relationship rather than left a bare number — the same "name the step for
+  its job" move `Type`'s four size tokens already made, applied here to the
+  gaps between things instead of the size of text:
+
+  | Token | Size | Between |
+  |---|---|---|
+  | `--space-related` | 8px | Elements that read as one unit: a form label and its input, an icon and its own button label, a checkbox and its text. |
+  | `--space-block` | 16px | Distinct blocks sharing one section: cards in a grid, rows in a list. |
+  | `--space-section` | 24px | A section and the next: a screen's title and the content below it. |
+
+  Three of the base scale's seven steps (8, 16, 24) already carried almost
+  exactly these roles before this pass, as `gap-2`, `gap-4`, and `gap-6`/
+  `mb-6` respectively — naming them changes very few actual values, mostly
+  the odd ones out repaired to match rather than a wholesale rewrite. 4, 12,
+  32 and 48 stay unnamed and available for a genuinely finer or coarser
+  need — a card's own internal title-to-body-to-actions rhythm keeps its
+  existing 12px (`gap-3`) untouched, deliberately not folded into either
+  named neighbour: tighter than two peer cards in a grid, looser than a
+  label and its input. `p-8` (32px, every screen's own outer page padding)
+  and a `Card`'s own `p-4` interior padding are a different concern than
+  either — the edge of a container, not the space between siblings inside
+  one — and are likewise untouched. Be generous regardless: the reference
+  layout breathes, and cramming content is the fastest way to lose the look.
+- **Aujourd'hui's own grid can still strand its todos card alone in a row,
+  its column neighbour visibly empty** — `items-start`'s own no-stretch
+  choice (below) is not the cause, spacing naming alone does not fix it,
+  and it is exactly the dead space this pass was asked to close: with an
+  even number of course cards, the todos card — always the item right
+  after the last course card (Aujourd'hui's own note) — used to land alone
+  in the last row on the two-column desktop grid. It now spans both
+  columns on exactly that case (`lg:col-span-2`, applied only when the
+  course-card count is even), instead of floating in one column beside
+  nothing. An odd count already fills its row evenly and is untouched. Not
+  extended to Mes cours' own document grid: a partial last row there is
+  the ordinary tail of a browsing list users already expect, not a
+  stranded, always-present companion card the way Aujourd'hui's todos card
+  is by construction.
 - **A form or list that is not already sized by a card or a grid column
   never stretches to the bounded column's full width.** Cap it at a
   reasonable width instead (448px, Tailwind's `max-w-md`, is the default

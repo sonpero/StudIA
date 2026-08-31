@@ -62,6 +62,38 @@ describe("ProgressScreen", () => {
     expect(screen.queryByText(/aucun résultat/i)).not.toBeInTheDocument();
   });
 
+  it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    const loadingMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch(() => new Response(null, { status: 500 }));
+    renderScreen();
+    await screen.findByText(/impossible de charger/i);
+    const errorMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch([]);
+    renderScreen();
+    await screen.findByText(/aucun cours/i);
+    const readyMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+  });
+
+  it("the progress grid's own gutter is --space-block, cards being distinct blocks within one section (docs/UI.md's Grid and spacing note)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const grid = screen.getByTestId("progress-card").closest(".grid") as HTMLElement;
+    expect(grid.className).toMatch(/gap-\[var\(--space-block\)\]/);
+  });
+
   it("ready state: renders one card per course with its title, coverage, and readiness", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },

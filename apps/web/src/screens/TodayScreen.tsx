@@ -10,6 +10,7 @@ import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
+import { cn } from "../lib/utils.js";
 
 // A design-system chevron replacing <select>'s native arrow (--color-text-muted,
 // #667085, matched by hand — tokens.css's @theme values aren't reachable from
@@ -302,6 +303,7 @@ function TodosCard({
   onDelete,
   onCreate,
   onPhotoUploaded,
+  spanFull,
 }: {
   todos: TodayView["todos"];
   documents: DocumentSummary[];
@@ -310,13 +312,14 @@ function TodosCard({
   onDelete: (id: string) => void;
   onCreate: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
   onPhotoUploaded: (jobId: string) => void;
+  spanFull: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
   const [photoOpen, setPhotoOpen] = useState(false);
 
   return (
-    <Card className="flex flex-col gap-3" data-testid="todos-card">
+    <Card className={cn("flex flex-col gap-3", spanFull && "lg:col-span-2")} data-testid="todos-card">
       <h2 className="text-[var(--text-label)] font-medium text-text-muted">Todos</h2>
       {todos.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -384,7 +387,7 @@ export function TodayScreen({
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-4 p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-8">
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
@@ -397,7 +400,7 @@ export function TodayScreen({
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
         <p>Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>
@@ -410,8 +413,14 @@ export function TodayScreen({
   const courseCards = buildCourseCards(view);
   const nothingAtAll = courseCards.length === 0 && view.todos.length === 0;
 
+  // An even course-card count (0, 2, 4…) leaves the todos card — always the
+  // item right after the last course card — alone in the last row of the
+  // two-column desktop grid, its neighbour cell empty (docs/UI.md's Grid
+  // and spacing note). An odd count already fills its row evenly.
+  const todosSpansFull = courseCards.length % 2 === 0;
+
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-8">
       <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
 
       {nothingAtAll && (
@@ -427,7 +436,7 @@ export function TodayScreen({
           Always rendered, even when nothingAtAll: the todos card (add form,
           photo picker) is still how the empty state's "one useful
           suggestion" is actually acted on, not just illustrated. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2" data-testid="content-grid">
+      <div className="grid grid-cols-1 items-start gap-[var(--space-block)] lg:grid-cols-2" data-testid="content-grid">
         {courseCards.map((card) => (
           <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
         ))}
@@ -439,6 +448,7 @@ export function TodayScreen({
           onDelete={(id) => deleteTodoMutation.mutate(id)}
           onCreate={(input) => createTodoMutation.mutate(input)}
           onPhotoUploaded={onOpenProposals}
+          spanFull={todosSpansFull}
         />
       </div>
     </main>

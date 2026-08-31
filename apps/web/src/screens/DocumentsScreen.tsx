@@ -105,8 +105,8 @@ export function DocumentsScreen({
   if (query.status === "pending") {
     return (
       <main className="p-8">
-        <h1 className="mb-6 font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
           ))}
@@ -117,7 +117,7 @@ export function DocumentsScreen({
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
         <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
@@ -130,7 +130,7 @@ export function DocumentsScreen({
 
   return (
     <main className="p-8">
-      <h1 className="mb-6 font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+      <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
 
       {documents.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-12 text-center">
@@ -141,7 +141,7 @@ export function DocumentsScreen({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
           <UploadCard onCreated={refresh} />
           {documents.map((document) => (
             <DocumentCard key={document.id} document={document} onChanged={refresh} onOpenNotions={onOpenNotions} onOpenReader={onOpenReader} />

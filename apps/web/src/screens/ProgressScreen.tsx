@@ -219,14 +219,14 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-4 p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
           <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
           <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
             Retour
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
           ))}
@@ -237,7 +237,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
         <p>Impossible de charger ta progression. Vérifie ta connexion et réessaie.</p>
@@ -249,7 +249,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
   const items = query.data;
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-8">
       <div className="flex items-center justify-between">
         <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
         <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
@@ -263,7 +263,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
           <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <CourseProgressCard key={item.documentId} item={item} onOpenCourse={onOpenCourse} />
           ))}

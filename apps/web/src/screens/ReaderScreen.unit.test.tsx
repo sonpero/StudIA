@@ -48,6 +48,42 @@ describe("ReaderScreen", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
+  it("the gap between the title and what follows it is the same --space-section token in every one of this screen's six states (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch(() => new Response(null, { status: 500 }));
+    renderScreen();
+    await screen.findByText(/impossible de charger ce cours/i);
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch({ ...doneBase, status: "running", markdown: null });
+    renderScreen();
+    await screen.findByText(/encore en cours de lecture/i);
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch({ ...doneBase, status: "failed", markdown: null });
+    renderScreen();
+    await screen.findByText(/a échoué/i);
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch({ ...doneBase, status: "done", markdown: null });
+    renderScreen();
+    await screen.findByText(/pas encore de texte lisible/i);
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch({ ...doneBase, status: "done", markdown: "# Titre\n\nCorps." });
+    renderScreen();
+    await screen.findByText("Titre");
+    expect(screen.getByRole("heading", { name: "Lecture" }).closest("main")?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+  });
+
   it("error state: a network failure shows the confused mascot and a retry button, never a raw error code", async () => {
     stubFetch(() => new Response(null, { status: 500 }));
     renderScreen();

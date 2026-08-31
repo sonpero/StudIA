@@ -78,6 +78,27 @@ describe("TodayScreen", () => {
     expect(screen.queryByText(/^0$/)).not.toBeInTheDocument();
   });
 
+  it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike, not three different ad hoc values (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    const loadingMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
+    expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch(() => new Response(null, { status: 500 }));
+    renderScreen();
+    await screen.findByText(/impossible de charger/i);
+    const errorMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
+    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    const readyMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
+    expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+  });
+
   it("ready: shows due cards grouped by course", async () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
     renderScreen();
@@ -218,11 +239,37 @@ describe("TodayScreen", () => {
     expect(grid.className).toMatch(/\bgrid\b/);
     expect(grid.className).toMatch(/items-start/);
     expect(grid.className).not.toMatch(/flex-col/);
+    // Cards are distinct blocks within one section (docs/UI.md's Grid and
+    // spacing note): the grid's own gutter is --space-block, not a bare gap-4.
+    expect(grid.className).toMatch(/gap-\[var\(--space-block\)\]/);
 
     const courseCard = screen.getByTestId("course-today-card");
     const todosCard = screen.getByTestId("todos-card");
     expect(grid).toContainElement(courseCard);
     expect(grid).toContainElement(todosCard);
+  });
+
+  it("ready: the todos card spans both columns on desktop when an even number of course cards would otherwise strand it alone in a row, dead space beside it (docs/UI.md's Grid and spacing note)", async () => {
+    // Also a class-name assertion, same exception as the grid-sharing test
+    // above: lg:col-span-2 has no accessible trace, it is the whole point.
+    stubFetch({
+      ...emptyView,
+      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
+      notionsBelowTarget: [{ documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }],
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+    await screen.findByText("Histoire");
+
+    expect(screen.getByTestId("todos-card").className).toMatch(/lg:col-span-2/);
+  });
+
+  it("ready: the todos card does not span both columns when an odd number of course cards already fills the last row evenly", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    expect(screen.getByTestId("todos-card").className).not.toMatch(/lg:col-span-2/);
   });
 
   it("ready: the checklist, the add-todo trigger and the photo trigger live in one todos card, not three separate pieces (docs/UI.md)", async () => {

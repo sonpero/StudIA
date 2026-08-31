@@ -57,6 +57,40 @@ describe("NotionsScreen", () => {
     expect(screen.queryByText(/^aucun résultat$/i)).not.toBeInTheDocument();
   });
 
+  it("the gap between the title (or the header row) and what follows it is the same --space-section token in every state (docs/UI.md's Grid and spacing note)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderScreen();
+    expect(screen.getByText("Notions du cours").className).toMatch(/mb-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    renderScreen();
+    await screen.findByText(/impossible de charger les notions/i);
+    const errorMain = screen.getByRole("heading", { name: "Notions du cours" }).closest("main");
+    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
+    renderScreen();
+    await screen.findByText(/pas encore été créées/i);
+    const emptyMain = screen.getByRole("heading", { name: "Notions du cours" }).closest("main");
+    expect(emptyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
+    cleanup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+    const headerRow = screen.getByRole("heading", { name: "Notions du cours" }).closest("div")?.parentElement;
+    expect(headerRow?.className).toMatch(/mb-\[var\(--space-section\)\]/);
+  });
+
   it("ready state: lists the document's notions with their difficulty, and shows progress", async () => {
     vi.stubGlobal(
       "fetch",
