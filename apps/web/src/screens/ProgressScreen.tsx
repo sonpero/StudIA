@@ -110,7 +110,12 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
   const dataStatus = item.kind === "error" ? "error" : isToday ? "today" : item.progress.status;
 
   return (
-    <Card className="flex flex-col gap-3" data-testid="progress-card" data-status={dataStatus}>
+    <Card
+      className="flex flex-col gap-3 border-l-4"
+      style={{ borderLeftColor: item.colour }}
+      data-testid="progress-card"
+      data-status={dataStatus}
+    >
       <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{item.title}</h3>
 
       {item.kind === "error" ? (

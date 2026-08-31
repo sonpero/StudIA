@@ -33,7 +33,7 @@ function dateOffset(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const okBase = { deadlineDate: null, deadlineLabel: null } as const;
+const okBase = { colour: "#F87171", deadlineDate: null, deadlineLabel: null } as const;
 
 describe("ProgressScreen", () => {
   afterEach(() => {
@@ -93,6 +93,19 @@ describe("ProgressScreen", () => {
     const label = screen.getByText("Couverture");
     expect(label.className).toContain("text-[var(--text-label)]");
     expect(label.className).not.toContain("text-[var(--text-display)]");
+  });
+
+  it("ready state: a course card's subject colour is a left border on the whole card (docs/UI.md's Subject colours note) — this screen carried no colour marker before", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, colour: "#F87171", kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-2", title: "Histoire", ...okBase, colour: "#38BDF8", kind: "ok", progress: { coverage: 0.1, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="progress-card"]') as HTMLElement;
+    const histoireCard = screen.getByText("Histoire").closest('[data-testid="progress-card"]') as HTMLElement;
+
+    expect(mathsCard).toHaveStyle({ borderLeftColor: "#F87171" });
+    expect(histoireCard).toHaveStyle({ borderLeftColor: "#38BDF8" });
   });
 
   it("exposes coverage and readiness as accessible meters carrying the exact value, not just rounded display text", async () => {
@@ -194,7 +207,7 @@ describe("ProgressScreen", () => {
 
   it("deadline-in-past in the aggregate list: an actionable line, never a disappearing row or a raw error code", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
+      { documentId: "doc-1", title: "Maths", colour: "#F87171", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
       { documentId: "doc-2", title: "Histoire", ...okBase, kind: "ok", progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
@@ -219,7 +232,7 @@ describe("ProgressScreen", () => {
   it("each card, whatever its kind, offers 'Voir le cours', which opens that course — symmetric to Aujourd'hui's own card action, no label collision with the nav's 'Progression' item", async () => {
     const onOpenCourse = vi.fn();
     stubFetch([
-      { documentId: "doc-1", title: "Maths", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
+      { documentId: "doc-1", title: "Maths", colour: "#F87171", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
       { documentId: "doc-2", title: "Histoire", ...okBase, kind: "ok", progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     const user = userEvent.setup();

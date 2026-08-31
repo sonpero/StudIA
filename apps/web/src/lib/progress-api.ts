@@ -12,7 +12,7 @@ export type CourseProgress = {
 // Named ProgressListItem/listProgress to match packages/core/src/progress
 // (docs/modules/progress.md) — a different concept from notions-api.ts's
 // getProgress, which is review's own per-document mastery summary.
-export type ProgressListItem = { documentId: string; title: string; deadlineDate: string | null; deadlineLabel: string | null } & (
+export type ProgressListItem = { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null } & (
   | { kind: "ok"; progress: CourseProgress }
   | { kind: "error"; error: "deadline-in-past" }
 );

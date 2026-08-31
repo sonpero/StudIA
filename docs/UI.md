@@ -61,6 +61,32 @@ Two rules:
   never carries meaning.
 - Subject colours are for identity only. They never indicate progress or state.
 
+**Card left border, not a tinted background.** Where a course gets its own
+card — Aujourd'hui's course cards and Progression's — the colour runs as a
+4px solid border down the card's left edge, `aria-hidden` like the dot it
+replaces, paired with the course title the same rule above already requires.
+The rest of the card stays `--surface` white with its ordinary `--border`
+edge on the other three sides; nothing about body text's background changes.
+A tinted fill was considered and set aside for exactly that reason: this
+palette rotates automatically per course and is meant to become user-editable
+(see above, not yet built), so a background tint would need a fresh,
+per-hex-and-per-edit contrast check against the card's own text forever,
+where a border needs none — it carries no text of its own to stay readable
+against. The second rule above still applies at full strength to the border:
+a course behind its target gets the exact same border as one on track or
+ahead, never `--warning`, never a heavier or brighter version of its colour.
+
+Measured, since a border still has to be visible, if not read, against
+`--surface`: the six palette hexes score between 1.77:1 (`#F5B940`) and
+4.23:1 (`#8B5CF6`) on WCAG's non-text contrast formula against white — three
+of the six land under the 3:1 guideline for a meaningful UI boundary on its
+own. Not a new problem: these are the same six hexes, at the same ratios,
+already used for the small dot this border replaces on Aujourd'hui, and still
+used unchanged for the identical dot on Mes cours' and Lecteur's own course
+cards. The palette itself is `ingestion`'s domain
+(`packages/core/src/ingestion/domain/colour.ts`), out of scope for this pass;
+named here rather than left for someone to rediscover.
+
 ### Progress
 
 Mastery is shown with a neutral progress device, never with subject colour: a
@@ -345,6 +371,13 @@ non-zero at once. That is not a contradiction — they measure different
 things — and the wording carries that distinction on its own, without naming
 FSRS or the scheduling model to the student.
 
+Each course card carries its subject colour as the left-border treatment
+`Subject colours` describes, replacing the small dot this card used next to
+its title before. A course reached only through `upcomingDeadlines` (no due
+count, no below-target count — `workspace.md`) carries no colour at all, the
+same as it carried no dot before: its card's border stays plain `--border`
+on all four sides.
+
 Every card is a path to action, not just a number, through two explicit
 buttons — same idiom as the per-item actions on `Mes cours`' own course
 page, never a click hidden on the title: "Voir le cours" always opens that
@@ -414,7 +447,9 @@ mid-session saves progress. No timer, no countdown, no "hurry".
 
 **Progression** (M5: `progress` module — see `docs/modules/progress.md`) —
 One card per course, no day list, no calendar. Each card carries two gauges
-and one status line.
+and one status line, and, like Aujourd'hui's own course cards, its course's
+subject colour as a left border (`Subject colours` above) — this screen
+carried no colour marker of any kind before.
 
 - **Coverage** — the neutral progress device (`--primary` over `--border`,
   real percentage always shown), answering "how much of this course have I
@@ -480,6 +515,16 @@ including an empty one; selecting a day highlights its cell (`--primary-soft`,
 the same selected-state token used elsewhere) and reveals its contents in a
 panel below the grid, never a modal — a day can hold several entries, and
 the Forbidden list below reserves modals for something shorter than that.
+
+Not extended to a left border here: this screen's unit is a day cell, not a
+course card, and it already carries subject colour fully through its own
+dots (below) and the day panel's own entries — a border has nothing to
+attach to on a cell that can hold several different courses' colours at
+once. `Notions du cours` (`NotionsScreen`) is skipped for a different
+reason: every row on that screen already belongs to the one course its
+header names, so a border repeated identically down every row would encode
+nothing a card grid's border does — no course-to-course distinction to make
+on a single-course screen.
 
 **A day cell holds at most three tokens, always: up to three dots, or two
 dots plus a count.** Three entries or fewer — a deadline and two todos,

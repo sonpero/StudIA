@@ -105,6 +105,24 @@ describe("TodayScreen", () => {
     expect(qualifier.className).not.toContain("text-[var(--text-display)]");
   });
 
+  it("ready: a course card's subject colour is a left border on the whole card, not a small dot beside the title (docs/UI.md's Subject colours note)", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const card = screen.getByTestId("course-today-card");
+    expect(card).toHaveStyle({ borderLeftColor: "#F87171" });
+  });
+
+  it("ready: a course reached only through an upcoming deadline carries no colour (workspace.md), so its card gets no left-border override", async () => {
+    stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const card = screen.getByTestId("course-today-card");
+    expect(card.style.borderLeftColor).toBe("");
+  });
+
   it("ready: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass", async () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
     renderScreen();

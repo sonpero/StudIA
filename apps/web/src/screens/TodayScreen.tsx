@@ -238,11 +238,12 @@ function AddTodoForm({
 
 function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseCard; onOpenCourse: (documentId: string) => void; onReviewCourse: (documentId: string) => void }) {
   return (
-    <Card className="flex flex-col gap-3" data-testid="course-today-card">
-      <div className="flex items-center gap-2">
-        {card.colour && <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: card.colour }} />}
-        <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{card.documentTitle}</h3>
-      </div>
+    <Card
+      className={`flex flex-col gap-3 ${card.colour ? "border-l-4" : ""}`}
+      style={card.colour ? { borderLeftColor: card.colour } : undefined}
+      data-testid="course-today-card"
+    >
+      <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{card.documentTitle}</h3>
 
       <div className="flex flex-col gap-1">
         {/* The due/below-target counts are the most useful fact on this
