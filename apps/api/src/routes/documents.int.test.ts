@@ -88,7 +88,7 @@ describe("documents routes", () => {
     });
 
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ title: "Cours de SVT", sourceType: "photo", status: "pending", pageCount: 0, colour: "#F87171" });
+    expect(res.json()).toMatchObject({ title: "Cours de SVT", sourceType: "photo", status: "pending", pageCount: 0, colour: "#F75757" });
   });
 
   it("POST /api/documents requires authentication (401)", async () => {

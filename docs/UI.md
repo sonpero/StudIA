@@ -41,7 +41,7 @@ a token.** No arbitrary Tailwind palette values, no gradients, no coloured shado
 | `--primary` | `#2563EB` | Active nav, links, selected state, progress |
 | `--primary-soft` | `#DCEAF7` | Filled info cards (the pale blue lesson cards) |
 | `--accent` | `#0F7B5F` | The single primary call to action. Nothing else. |
-| `--success` | `#12B5A5` | Completed, mastered |
+| `--success` | `#12B556` | Completed, mastered |
 | `--warning` | `#F5B940` | Due soon, needs attention |
 
 **`--accent` belongs to the app, never to a course — non-negotiable.** It is
@@ -79,24 +79,54 @@ is exactly what pressing "Réviser" is, where blue said nothing in
 particular. Measured, not assumed: white text on `#0F7B5F` is 5.23:1,
 clearing 4.5:1 with room to spare, no lightness adjustment needed.
 
-**The accent's whole hue family is excluded from the subject palette,
-enforced, not just written down.** `#0F7B5F` sits at hue 164° — close
-enough to SVT's own default turquoise (`#12B5A5`, hue 174°, a 9.7° gap) to
-repeat the same collision green was meant to fix, confirmed on screen
-before touching any value: a card's own teal border and its "Réviser"
-button read as the same colour family. Per the rule above (the app's own
-accent is what stays fixed; a subject colour is what moves), SVT's default
-shifted to `#12B2B5` (hue 181°, same saturation and lightness as before,
-16.6° from the accent and still 17.4° from the palette's own sky blue,
-`#38BDF8`) — `packages/core/src/ingestion/domain/colour.ts`'s own
-`SUBJECT_COLOUR_PALETTE`, its one changed entry. `15°` is the floor a new
-test (`apps/web/src/styles/tokens.accent-collision.unit.test.ts`) now
-holds every palette hue to against whatever `--accent` currently is: under
-that floor is what a 3.9° gap looked like on screen, at or above it is
-what 16.6°–24.8° (this palette's actual remaining gaps) looked like — nothing
-in between has been checked, so the floor is deliberately close to the
-larger end of "confirmed collision," not the smaller end of "confirmed
-safe."
+**Every semantic colour token's hue family is excluded from every other,
+enforced, not just written down.** First written as an accent-vs-subject-
+palette rule alone; widened once `--accent`'s own move to green surfaced a
+collision this narrower rule couldn't see: `--success` (`#12B5A5`, hue
+174°) sat 9.7° from the new `--accent` (`#0F7B5F`, hue 164°) — the same
+family of problem, between two *semantic* tokens this time, not a
+semantic token and a subject colour. The real invariant was never "the
+accent avoids the subject palette", it is "no two colours this app hands
+out a fixed meaning to — `--primary`, `--accent`, `--success`,
+`--warning`, and every subject-palette hue — read as the same colour."
+`15°` remains the floor (unchanged from the narrower version of this
+rule): nothing new has been measured to move it, and the values below sit
+either comfortably clear of it or were moved specifically to clear it.
+`apps/web/src/styles/tokens.colour-collision.unit.test.ts` (renamed from
+`tokens.accent-collision.unit.test.ts`, no longer accent-specific) now
+checks every pair drawn from that full set, not just accent-vs-palette.
+
+Two collisions this widening found, both fixed by moving the *subject*
+colour, never a semantic token — the same policy the accent/turquoise fix
+above already established, extended rather than reconsidered:
+- SVT's default (`#12B5A5` originally, already moved once to `#12B2B5` for
+  `--accent`'s sake) stays exactly where that first move put it (hue 181°,
+  16.6° from `--accent`) — a corridor between `--accent` (164°) and the
+  palette's own sky blue (198°) only 34° wide, so 15°+ clearance from both
+  fixed ends caps the best possible margin near where it already sits;
+  moving `--accent` or the sky blue would be needed to open more room, and
+  neither is being reopened here.
+- Anglais's default (`#F5B940`) was not just close to `--warning`, it *was*
+  `--warning` — the exact same hex, a 0° gap missed until this pass because
+  the original rule never compared a subject colour to anything but
+  `--accent`. Confined to a genuinely narrow spot: 15°+ from `--warning`
+  (40°) on one side and from the palette's own red (0°) on the other leaves
+  a 10°-wide corridor, `[15°, 25°]` — landed at its centre, 20°, for the
+  same reason SVT's fix landed at its own corridor's centre.
+
+**`--success` moves, it is not retired, even though `--accent` now also
+means "forward, on track".** Considered and rejected: the two tokens still
+answer different questions on the one screen where they appear
+together — `ReviewScreen.tsx`'s graded MCQ view sets `ring-success` on
+whichever option was factually correct and, when the student picked a
+*different* option, `ring-accent` on that wrong pick, both visible at
+once, on two different options in the same list. Collapsing them into one
+green would leave nothing distinguishing "this was the right answer" from
+"this is merely what you clicked" at the exact moment a wrong answer most
+needs to read as wrong — the opposite of decorative, load-bearing for the
+one thing this app is for. Moved to `#12B556` (hue 145°, clear of the
+whole `--accent`/turquoise cluster entirely rather than squeezed beside
+it — 19.4° from `--accent`, comfortably past the floor).
 
 **Destructive actions carry no colour of their own, still — settled here so
 it stays a decision, not a gap.** "Supprimer" (a document, a deadline, a
@@ -140,7 +170,7 @@ Each course gets a colour, assigned automatically at creation from this rotating
 palette, and editable by the user. The colour identifies the course everywhere:
 calendar chips, card left borders, task dots, plan entries.
 
-`#F87171` `#F5B940` `#12B2B5` `#38BDF8` `#8B5CF6` `#EC4899`
+`#F75757` `#F36016` `#109DA0` `#0897D6` `#8B5CF6` `#EC4899`
 
 Neither `--accent` nor `--primary` appears in this palette, deliberately: a
 course must never look like the primary call to action or like the active nav
@@ -168,16 +198,33 @@ against. The second rule above still applies at full strength to the border:
 a course behind its target gets the exact same border as one on track or
 ahead, never `--warning`, never a heavier or brighter version of its colour.
 
-Measured, since a border still has to be visible, if not read, against
-`--surface`: the six palette hexes score between 1.77:1 (`#F5B940`) and
-4.23:1 (`#8B5CF6`) on WCAG's non-text contrast formula against white — three
-of the six land under the 3:1 guideline for a meaningful UI boundary on its
-own. Not a new problem: these are the same six hexes, at the same ratios,
-already used for the small dot this border replaces on Aujourd'hui, and still
-used unchanged for the identical dot on Mes cours' and Lecteur's own course
-cards. The palette itself is `ingestion`'s domain
-(`packages/core/src/ingestion/domain/colour.ts`), out of scope for this pass;
-named here rather than left for someone to rediscover.
+**Measured and enforced, not just measured.** A border still has to be
+visible against `--surface` to do its one job, and this was flagged twice
+without ever actually being fixed: first as "three of the six land under
+the 3:1 guideline", a miscount — the real number, confirmed by recomputing
+every value rather than trusting the earlier note, was **four of six**
+(`#F87171` 2.77:1, `#F5B940` 1.77:1, the old `#12B5A5`/`#12B2B5` turquoise
+2.57–2.61:1, `#38BDF8` 2.14:1 — only `#8B5CF6` at 4.23:1 and `#EC4899` at
+3.53:1 ever actually passed). Visible on screen before the fix, not just on
+paper: Anglais's own card border read noticeably paler than its neighbours.
+All six now clear 3:1, same hue each (Anglais moved hue too, forced there
+by the corridor above; the other three kept their hue, only darkened):
+
+| Course (example) | Old | Old contrast | New | New contrast |
+|---|---|---|---|---|
+| Mathématiques | `#F87171` | 2.77:1 | `#F75757` | 3.25:1 |
+| Anglais | `#F5B940` | 1.77:1 | `#F36016` | 3.23:1 |
+| SVT | `#12B2B5` | 2.61:1 | `#109DA0` | 3.31:1 |
+| Histoire-Géo | `#38BDF8` | 2.14:1 | `#0897D6` | 3.28:1 |
+| Physique-Chimie | `#8B5CF6` | 4.23:1 | unchanged | 4.23:1 |
+| Espagnol | `#EC4899` | 3.53:1 | unchanged | 3.53:1 |
+
+`tokens.colour-collision.unit.test.ts` holds every one of these to 3:1
+against `#FFFFFF`, alongside the hue-distance rule above — a value is
+only admissible if it clears both, not either. The palette itself is `ingestion`'s domain
+(`packages/core/src/ingestion/domain/colour.ts`); this is the second pass
+to touch it, both times for a measured reason named here rather than left
+for someone to rediscover.
 
 ### Progress
 
