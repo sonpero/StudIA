@@ -14,9 +14,9 @@ function seedUser(db: Db, id: string): void {
       VALUES (${id}, ${`user-${id}`}, 'x', 1, ${NOW.toISOString()})`);
 }
 
-function seedDocument(db: Db, id: string, userId: string, title: string): void {
+function seedDocument(db: Db, id: string, userId: string, title: string, colour = "#F87171"): void {
   db.run(sql`INSERT INTO documents (id, user_id, title, source_type, status, colour, created_at)
-      VALUES (${id}, ${userId}, ${title}, 'photo', 'done', '#F87171', ${NOW.toISOString()})`);
+      VALUES (${id}, ${userId}, ${title}, 'photo', 'done', ${colour}, ${NOW.toISOString()})`);
 }
 
 function seedNotion(db: Db, id: string, documentId: string, userId: string, position: number): void {
@@ -111,6 +111,27 @@ describe("listProgress — cross-document isolation (mandatory integration cover
     expect(byDocumentId.get("doc-a")?.deadlineLabel).toBe("Contrôle A");
     expect(byDocumentId.get("doc-b")?.deadlineDate).toBe("2026-05-01");
     expect(byDocumentId.get("doc-b")?.deadlineLabel).toBe("Contrôle B");
+  });
+
+  // docs/UI.md: subject colour identifies a course everywhere, including a
+  // Progression card — this is the read side that makes that possible.
+  // Two distinct colours, not one repeated, so a leak (wrong document's
+  // colour, or a shared default) shows up as a specific wrong value
+  // instead of an accidental pass.
+  it("carries each document's own subject colour, in both the ok and error (deadline-in-past) shapes", async () => {
+    const { db, deps } = setup();
+    seedUser(db, "u1");
+    seedDocument(db, "doc-red", "u1", "Cours rouge", "#F87171");
+    seedDocument(db, "doc-blue", "u1", "Cours bleu", "#38BDF8");
+    await deps.repo.setDeadline("u1", { id: "d-blue", documentId: "doc-blue", userId: "u1", date: "2020-01-01", label: null, createdAt: NOW.toISOString() });
+
+    const items = await listProgress(deps, "u1", NOW);
+    const byDocumentId = new Map(items.map((item) => [item.documentId, item]));
+
+    expect(byDocumentId.get("doc-red")?.kind).toBe("ok");
+    expect(byDocumentId.get("doc-red")?.colour).toBe("#F87171");
+    expect(byDocumentId.get("doc-blue")?.kind).toBe("error");
+    expect(byDocumentId.get("doc-blue")?.colour).toBe("#38BDF8");
   });
 });
 

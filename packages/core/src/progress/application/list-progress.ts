@@ -14,8 +14,8 @@ export interface ListProgressDeps {
 }
 
 export type ProgressListItem =
-  | { documentId: string; title: string; deadlineDate: string | null; deadlineLabel: string | null; kind: "ok"; progress: CourseProgress }
-  | { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; kind: "error"; error: "deadline-in-past" };
+  | { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null; kind: "ok"; progress: CourseProgress }
+  | { documentId: string; title: string; colour: string; deadlineDate: string; deadlineLabel: string | null; kind: "error"; error: "deadline-in-past" };
 
 function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>();
@@ -60,8 +60,8 @@ export async function listProgress(deps: ListProgressDeps, userId: string, now: 
 
     const result = computeProgress({ notions: progressNotions, deadline: deadlineInput, now });
     if (!result.ok) {
-      return { documentId: document.id, title: document.title, deadlineDate: deadline!.date, deadlineLabel: deadline!.label, kind: "error", error: "deadline-in-past" };
+      return { documentId: document.id, title: document.title, colour: document.colour, deadlineDate: deadline!.date, deadlineLabel: deadline!.label, kind: "error", error: "deadline-in-past" };
     }
-    return { documentId: document.id, title: document.title, deadlineDate: deadline?.date ?? null, deadlineLabel: deadline?.label ?? null, kind: "ok", progress: result.value };
+    return { documentId: document.id, title: document.title, colour: document.colour, deadlineDate: deadline?.date ?? null, deadlineLabel: deadline?.label ?? null, kind: "ok", progress: result.value };
   });
 }

@@ -205,8 +205,14 @@ describe("progress routes", () => {
       const res = await app.inject({ method: "GET", url: `/api/course-progress?${todayParam()}`, headers: { cookie: aliceCookie } });
 
       expect(res.statusCode).toBe(200);
-      const items = res.json<{ documentId: string; title: string }[]>();
+      const items = res.json<{ documentId: string; title: string; colour: string }[]>();
       expect(items.map((i) => i.documentId).sort()).toEqual(["doc-1", "doc-2"]);
+      // docs/UI.md: subject colour identifies a course everywhere. doc-1 is
+      // seeded '#F87171' in beforeEach, doc-2 '#38BDF8' just above — two
+      // distinct values so a mix-up shows up as a specific wrong colour.
+      const byDocumentId = new Map(items.map((i) => [i.documentId, i]));
+      expect(byDocumentId.get("doc-1")?.colour).toBe("#F87171");
+      expect(byDocumentId.get("doc-2")?.colour).toBe("#38BDF8");
     });
 
     it("flags a document past its deadline in-band, rather than dropping it from the list", async () => {
