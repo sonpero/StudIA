@@ -282,7 +282,7 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
           Voir le cours
         </Button>
         {card.dueCount > 0 && (
-          <Button variant="secondary" onClick={() => onReviewCourse(card.documentId)}>
+          <Button variant="accent" onClick={() => onReviewCourse(card.documentId)}>
             <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Réviser
           </Button>

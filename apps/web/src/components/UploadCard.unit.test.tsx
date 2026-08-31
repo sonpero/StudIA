@@ -70,6 +70,28 @@ describe("UploadCard", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/déjà été ajoutée/i);
   });
 
+  it("the inline error is plain --text, never --accent — a sober fact like every other error in this app (docs/UI.md's Accessibility floor note), not the app's own call-to-action colour", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/api/documents") && !url.includes("/pages")) {
+          return Promise.resolve(new Response(JSON.stringify({ id: "d1" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify({ error: "duplicate" }), { status: 409 }));
+      }),
+    );
+    const user = userEvent.setup();
+    render(<UploadCard onCreated={() => undefined} />);
+    await user.click(screen.getByText(/ajouter un cours/i));
+    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
+
+    await user.click(screen.getByRole("button", { name: /confirmer/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.className).not.toMatch(/text-accent/);
+    expect(alert.className).toMatch(/text-text\b/);
+  });
+
   it("rolls back the abandoned document from a refused upload, and a later valid upload is unaffected", async () => {
     const calls: { method: string; url: string }[] = [];
     let createCount = 0;

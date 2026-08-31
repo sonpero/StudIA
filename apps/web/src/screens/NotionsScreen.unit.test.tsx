@@ -308,6 +308,26 @@ describe("NotionsScreen", () => {
     expect(screen.queryByText(/^1\./)).not.toBeInTheDocument();
   });
 
+  it("a notion card's 'Réviser cette notion' is --accent, the card's one primary action — distinct from the toolbar's own secondary 'Réviser' (docs/UI.md's Colour note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const perNotion = screen.getByRole("button", { name: "Réviser cette notion" });
+    expect(perNotion.className).toMatch(/bg-accent/);
+    expect(perNotion.className).toMatch(/text-white/);
+
+    const toolbar = screen.getByRole("button", { name: "Réviser" });
+    expect(toolbar.className).not.toMatch(/bg-accent/);
+  });
+
   it("clicking 'Réviser cette notion' starts a review scoped to that notion", async () => {
     vi.stubGlobal(
       "fetch",

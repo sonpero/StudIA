@@ -164,7 +164,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-accent">
+        <p role="alert" className="text-sm text-text">
           {error}
         </p>
       )}

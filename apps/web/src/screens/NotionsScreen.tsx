@@ -264,7 +264,7 @@ export function NotionsScreen({
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-text-muted">{notionProgressLabel(notionProgress)}</p>
-                  <Button variant="secondary" onClick={() => onReview(notion.id)}>
+                  <Button variant="accent" onClick={() => onReview(notion.id)}>
                     <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
                     Réviser cette notion
                   </Button>

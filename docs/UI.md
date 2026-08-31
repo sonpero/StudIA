@@ -40,9 +40,99 @@ a token.** No arbitrary Tailwind palette values, no gradients, no coloured shado
 | `--border` | `#EAECF0` | Card borders, dividers, table rules |
 | `--primary` | `#2563EB` | Active nav, links, selected state, progress |
 | `--primary-soft` | `#DCEAF7` | Filled info cards (the pale blue lesson cards) |
-| `--accent` | `#F04438` | The single primary call to action. Nothing else. |
+| `--accent` | `#0F7B5F` | The single primary call to action. Nothing else. |
 | `--success` | `#12B5A5` | Completed, mastered |
 | `--warning` | `#F5B940` | Due soon, needs attention |
+
+**`--accent` belongs to the app, never to a course — non-negotiable.** It is
+a fixed colour, the same on every screen and every card, chosen once here;
+nothing about a specific course, its subject colour, or its state ever
+changes it. The moment an accent button started borrowing a course's own
+colour, that colour would stop meaning "this is Maths" and start meaning
+"this one needs attention" — exactly the confusion `Subject colours`' own
+second rule (below) exists to prevent. Kept as its own token, distinct from
+`--primary` (`#2563EB`, active nav) even though an earlier version of this
+pass considered collapsing them into one shared value — deliberately not
+done: the two answer different questions (which nav item is active, versus
+which button on this card is the one to press), and coupling them would
+mean a future change to one always dragging the other along for no reason
+tied to either question.
+
+**A deep green, not the indigo that first replaced red.** `#F04438`, this
+token's original value, was tried and rejected in an earlier version of
+this same pass: white text on it measured 3.76:1, under the 4.5:1 floor
+`Accessibility floor` (below) demands, a real pre-existing failure this
+pass's own contrast check caught. Darkening it to `#D92D20` (same hue,
+4.83:1) fixed the contrast but not a second, worse problem, found by
+looking at the screen with real course cards rather than trusting the
+numbers alone: `#D92D20` sat 3.9° from the subject palette's own red
+(`#F87171`) — a course's own identity colour and the app's one call-to-
+action, indistinguishable on Mathématiques' own card. Reusing `--primary`'s
+indigo was tried next and did clear that collision (22.8° from the
+palette's own closest hue), but was set aside for a different reason: it
+is Tailwind's own default blue, instantly recognisable as such, and wearing
+a framework's stock colour as the app's own signature reads as an
+un-designed, generated interface. `#0F7B5F`, a deep green, is what this
+pass settled on instead — chosen for what it says, not just what it avoids:
+green already means "forward, on track" everywhere outside this app, which
+is exactly what pressing "Réviser" is, where blue said nothing in
+particular. Measured, not assumed: white text on `#0F7B5F` is 5.23:1,
+clearing 4.5:1 with room to spare, no lightness adjustment needed.
+
+**The accent's whole hue family is excluded from the subject palette,
+enforced, not just written down.** `#0F7B5F` sits at hue 164° — close
+enough to SVT's own default turquoise (`#12B5A5`, hue 174°, a 9.7° gap) to
+repeat the same collision green was meant to fix, confirmed on screen
+before touching any value: a card's own teal border and its "Réviser"
+button read as the same colour family. Per the rule above (the app's own
+accent is what stays fixed; a subject colour is what moves), SVT's default
+shifted to `#12B2B5` (hue 181°, same saturation and lightness as before,
+16.6° from the accent and still 17.4° from the palette's own sky blue,
+`#38BDF8`) — `packages/core/src/ingestion/domain/colour.ts`'s own
+`SUBJECT_COLOUR_PALETTE`, its one changed entry. `15°` is the floor a new
+test (`apps/web/src/styles/tokens.accent-collision.unit.test.ts`) now
+holds every palette hue to against whatever `--accent` currently is: under
+that floor is what a 3.9° gap looked like on screen, at or above it is
+what 16.6°–24.8° (this palette's actual remaining gaps) looked like — nothing
+in between has been checked, so the floor is deliberately close to the
+larger end of "confirmed collision," not the smaller end of "confirmed
+safe."
+
+**Destructive actions carry no colour of their own, still — settled here so
+it stays a decision, not a gap.** "Supprimer" (a document, a deadline, a
+todo, a staged upload photo) has always rendered as a plain `--text-muted`
+underlined link or a bare icon, never a button, never a colour — true
+before this pass and left exactly as it is. Freeing red from accent duty
+does not make it the app's new danger colour: repurposing it that way
+would put a saturated warning-red next to every delete action, the same
+loud, alarm-reading problem this pass just removed from the primary
+action, now on the destructive one instead — a straightforward
+contradiction of `Who this is for`'s own "never rushes anyone" stance.
+Destructiveness here is signalled by visual demotion (a small, easy-to-
+skip link, not by colour), which is also why none of these actions carry a
+confirmation modal: low visual weight already tells the story `--warning`
+or a red button would otherwise have to carry.
+
+**One accent-weighted action per card, not per screen.** `Forbidden`
+(below) has always banned a second `--accent` element competing for
+attention on the same screen — right for a single-purpose screen
+(Connexion, UploadCard's own confirm step) where every accent element really
+does compete with every other one for the same decision. It reads
+differently on a screen that is a *grid of independent cards* (Aujourd'hui,
+Notions du cours): each card is its own self-contained decision, so two
+course cards each showing their own accent "Réviser" are not two accent
+elements competing for one choice, they are two separate one-choice cards
+shown at once — the same shape ReviewScreen's own accent buttons already
+have, one at a time, just several instances of the same shape visible
+together instead of hidden behind sequential steps. The invariant that
+actually matters, and the one a screen must never violate, is scoped to the
+card: **never more than one accent element inside a single card.** Concretely:
+Aujourd'hui's own course card's "Réviser" (`Aujourd'hui`'s own note, below)
+and Notions du cours' per-notion card's own "Réviser cette notion" (`Icons`'
+own note) are both accent, one per card, for the same reason in both places.
+Notions du cours' *toolbar* "Réviser" stays `--secondary` regardless — a
+peer among several toolbar actions outside any card, `Icons`' own note on
+why it stayed icon-free applies to accent for the identical reason.
 
 ### Subject colours
 
@@ -50,11 +140,13 @@ Each course gets a colour, assigned automatically at creation from this rotating
 palette, and editable by the user. The colour identifies the course everywhere:
 calendar chips, card left borders, task dots, plan entries.
 
-`#F87171` `#F5B940` `#12B5A5` `#38BDF8` `#8B5CF6` `#EC4899`
+`#F87171` `#F5B940` `#12B2B5` `#38BDF8` `#8B5CF6` `#EC4899`
 
 Neither `--accent` nor `--primary` appears in this palette, deliberately: a
 course must never look like the primary call to action or like the active nav
-state.
+state — and neither does any hue close enough to `--accent`'s own to read as
+the same colour, `Colour`'s own note above (SVT's own default, tested and
+enforced there, is what changed to hold this).
 
 Two rules:
 - A subject colour is always paired with the course name or an icon. Colour alone
@@ -427,8 +519,9 @@ app where that is actually earned:** a single focused screen with exactly
 one action, the same shape as ReviewScreen's session-end/post-grade
 buttons and UploadCard's `Confirmer` — not one of several peer actions
 competing for the same weight, the mistake corrected on NotionsScreen's
-own toolbar. The Forbidden list bans a *second* `--accent` element per
-screen, not this one.
+own toolbar. `Colour`'s own accent note above still applies here at its
+strictest: a single-purpose screen, not a card grid, so its whole surface
+is the "one card" the rule counts against.
 
 Not the four-state shape (`Required states` above): this screen loads no
 data to display, so there is no "empty" state to speak of. Instead:
@@ -488,9 +581,21 @@ Every card is a path to action, not just a number, through two explicit
 buttons — same idiom as the per-item actions on `Mes cours`' own course
 page, never a click hidden on the title: "Voir le cours" always opens that
 course's page, and, only when the due count is above zero, "Réviser" starts
-a review session for that course directly. Both `--secondary`, never
-`--accent` — several cards on one screen would otherwise mean several accent
-elements, which the Forbidden list bans.
+a review session for that course directly. **Now with a real hierarchy
+between them, not the identical weight both used to carry:** "Réviser",
+when it is there, is the card's one `--accent` button — it is the action
+that actually moves the student forward, spaced repetition's whole point,
+so it is the one that looks like the obvious next click. "Voir le cours"
+stays `--secondary` on every card, always, whether or not its sibling
+"Réviser" is present that day — a stable rule (the same button always
+looks the same way) beats a rule that would repaint "Voir le cours" as
+accent on the days it happens to be the only button on the card. A card
+with no due count shows only "Voir le cours", and shows it exactly as
+secondary as it is everywhere else: absence of the accent action is not an
+invitation to promote the remaining one. `Colour`'s own note above is what
+allows several cards to each show their own accent "Réviser" on this one
+screen at once — the invariant is one accent element per card, not one
+per screen.
 
 If nothing needs attention anywhere: the `sleeping` mascot, a plain
 statement, and one useful suggestion. Never a guilt message, never "tu n'as
@@ -790,8 +895,12 @@ mastered. That number is true, and it is what the exam measures.
 Checked in the Playwright suite:
 
 - Visible keyboard focus everywhere. Never `outline: none` without a replacement.
-- Contrast AA on all text. `--accent` and `--warning` are never text colours on
-  white at body size.
+- Contrast AA on all text. `--warning` is never a text colour on white at
+  body size (it fails 3:1, let alone 4.5:1). `--accent` passes 4.5:1 as
+  running text too (`#0F7B5F`, 5.23:1, `Colour` above) but still is not used
+  that way, on purpose: its one job is marking the primary action, and
+  letting it also colour arbitrary text — an error message, say — would blur that
+  single meaning even where the numbers technically allow it.
 - `prefers-reduced-motion` respected, including for the mascot.
 - Every field has a real `<label>`. A placeholder is not a label.
 - The review screen is fully operable by keyboard.
@@ -805,7 +914,9 @@ Checked in the Playwright suite:
 - Toasts for blocking errors
 - Carousels
 - Gradients, coloured shadows, glassmorphism
-- More than one `--accent` element per screen
+- More than one `--accent` element inside the same card, or on a
+  single-purpose screen that is not a grid of cards (`Colour`'s own note
+  above on why a card grid reads differently)
 - Icon-only buttons without an accessible label
 - Infinite scroll
 - Any colour outside the token set
