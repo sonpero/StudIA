@@ -205,9 +205,24 @@ card: **never more than one accent element inside a single card.** Concretely:
 Aujourd'hui's own course card's "Réviser" (`Aujourd'hui`'s own note, below)
 and Notions du cours' per-notion card's own "Réviser cette notion" (`Icons`'
 own note) are both accent, one per card, for the same reason in both places.
-Notions du cours' *toolbar* "Réviser" stays `--secondary` regardless — a
-peer among several toolbar actions outside any card, `Icons`' own note on
-why it stayed icon-free applies to accent for the identical reason.
+
+**Notions du cours' own *toolbar* "Réviser" is accent too, and this does
+not put two accents in one card.** An earlier version of this pass kept it
+`--secondary`, reasoning it was "a peer among several toolbar actions
+outside any card" — true as far as it went, but it missed that the same
+word names the same gesture twice on one screen: the toolbar's "Réviser"
+and every notion card's own "Réviser cette notion" are the identical
+action (review, whole-document or scoped to one notion), so leaving one of
+the two looking like a plain secondary button while the other reads as the
+screen's one call to action was inconsistent, not neutral. The invariant
+that actually matters is still exactly what it always was — **never more
+than one accent element inside a single card** — and it still holds:
+the toolbar's "Réviser" sits outside every card, so it never shares a
+card boundary with any notion's own "Réviser cette notion" to double up
+against. It coexists with the grid of per-notion accents the same way
+those already coexist with each other — each represents its own
+self-contained decision (this whole document, versus this one notion),
+not two elements competing for the same choice.
 
 ### Subject colours
 
@@ -468,6 +483,27 @@ number's own line and card, not a competition with the screen chrome.
   an empty date field shows — stays native; replacing those needs a custom
   date-picker component, which is a new interaction pattern (see "For
   agents" below) this document does not currently ask for.
+- **A toolbar mixing one screen-level action with navigation to other
+  screens demotes the navigation, it does not wrap or shrink the
+  action.** Found on Notions du cours' own toolbar: "Lire le cours" /
+  "Voir la progression" / "Réviser" sat as three `Button`s of identical
+  weight, and at 375px the row didn't fit — three bordered buttons plus a
+  count, unwrapped. Stacking the buttons or shortening their labels were
+  both rejected: the actual defect is that nothing on screen said which of
+  the three mattered most, the same "identical weight, one is supposed to
+  dominate" mistake `Aujourd'hui`'s own course-card buttons already had
+  and were fixed for. "Lire le cours" and "Voir la progression" leave this
+  screen for another one — reading the course, checking its progress —
+  while "Réviser" is this screen's own action, and now shares its accent
+  colour with the identical gesture on every notion card below it
+  (`Colour`'s own note above). The two navigation actions demote to a
+  plain underlined link, the same idiom `Forbidden` already uses for
+  every other secondary or destructive action in this document ("Retour à
+  mes cours," "Supprimer") — narrower than a bordered `Button` by
+  construction, which is what actually closes the 375px gap, not a media
+  query reshuffling the same three buttons. The only toolbar in the app
+  shaped like this today; written as a general rule for the next one, not
+  because there are two yet.
 
 ### Icons
 
@@ -538,10 +574,19 @@ grading controls — neither is a course-card grid). `NotionsScreen`'s own
 toolbar ("Lire le cours", "Voir la progression", "Réviser" above the notion
 list) is plain page chrome, not inside a `Card`, so it is out of scope by
 the same "actions of a card" rule that puts an icon on that screen's
-per-notion `Card`'s own "Réviser cette notion" instead. `ProposalsScreen`
-(reviewing photo-derived todo proposals) was not addressed — tangential to
-this four-commit visual pass, not one of the screens it has touched so far;
-flagged rather than silently included or excluded by assumption.
+per-notion `Card`'s own "Réviser cette notion" instead — **reconsidered,
+not just carried over, once the toolbar's own "Réviser" became accent
+(`Colour`'s own note above): the icon rule's boundary was always
+structural (inside a `Card` or not), never about colour or weight, and
+that boundary hasn't moved just because the button's colour did. "Lire le
+cours" and "Voir la progression" are answered the same way `Forbidden`'s
+neighbouring list already does for every other demoted plain link in this
+document — a step down from the `Button` component entirely now (below),
+and an icon would raise their weight back up in exactly the direction
+that demotion exists to avoid.** `ProposalsScreen` (reviewing photo-derived
+todo proposals) was not addressed — tangential to this four-commit visual
+pass, not one of the screens it has touched so far; flagged rather than
+silently included or excluded by assumption.
 
 Icons do not yet unlock the Tablet section's own 72px icon-only sidebar
 collapse (below): that mode also needs tooltips standing in for the hidden
@@ -910,11 +955,15 @@ it, not beside the title.** Previously placed directly in front of the
 title, reading as though the two were paired — a navigation back to the
 parent list is not the same kind of thing as a screen's own name, and
 sitting next to it suggested otherwise. It stays a plain underlined link,
-never a `Button`: still a step down in weight from "Lire le cours" / "Voir
-la progression" / "Réviser" above it, which stay the screen's own peer
-actions, not a link's. Tab order follows this: the three toolbar actions,
-then "Retour à mes cours" last — the natural consequence of where it now
-sits in the layout, not a separate decision.
+never a `Button` — the same treatment "Lire le cours" and "Voir la
+progression" now share (`Shape and depth`'s own toolbar-hierarchy note,
+above), though for a different reason: those two are demoted because
+they leave the screen for somewhere else, this one because it is the one
+navigation action that was never a peer of the toolbar's own actions to
+begin with. "Réviser" is the only one of the four still a `Button`, and
+the only one in accent. Tab order follows the layout: the toolbar's own
+actions (the two links, then "Réviser"), then "Retour à mes cours" last —
+the natural consequence of where it sits, not a separate decision.
 
 **Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
 just its two raw numbers.** Each notion's own card already shows

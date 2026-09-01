@@ -253,12 +253,17 @@ export function NotionsScreen({
             the toolbar's own Button-weight actions — tab order follows
             this layout, the three toolbar actions then this link last. */}
         <div className="flex flex-col items-end gap-[var(--space-related)]">
-          {/* The screen's common actions — reading, checking progress,
-              reviewing. "Créer les fiches" / "Régénérer les fiches" lives
-              apart from this toolbar, not in it (below, by its own type
-              checkboxes): rare, and destructive once it reads "Régénérer"
-              (it destroys the existing cards and starts over), so it does
-              not belong at the same visual level as three routine actions. */}
+          {/* "Créer les fiches" / "Régénérer les fiches" lives apart from
+              this toolbar, not in it (below, by its own type checkboxes):
+              rare, and destructive once it reads "Régénérer" (it destroys
+              the existing cards and starts over), so it does not belong at
+              the same visual level as this toolbar's own actions.
+              "Réviser" is this screen's own action and the only Button
+              left here — "Lire le cours" / "Voir la progression" leave for
+              another screen, so they demote to a plain link, the same
+              idiom "Retour à mes cours" already uses (docs/UI.md's Shape
+              and depth note): what actually closes the 375px gap this
+              toolbar used to overflow, not a wrap or a shorter label. */}
           <div className="flex items-center gap-3" data-testid="notions-toolbar">
             {progress && (
               <p>
@@ -266,13 +271,20 @@ export function NotionsScreen({
                 <span className="text-[length:var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
               </p>
             )}
-            <Button variant="secondary" onClick={onOpenReader}>
+            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenReader}>
               Lire le cours
-            </Button>
-            <Button variant="secondary" onClick={onOpenProgress}>
+            </button>
+            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenProgress}>
               Voir la progression
-            </Button>
-            <Button variant="secondary" onClick={() => onReview()}>
+            </button>
+            {/* Accent, matching every notion card's own "Réviser cette
+                notion" below (docs/UI.md's Colour note): the same word
+                names the same gesture on this screen, whole-document here
+                versus scoped to one notion there. This button sits
+                outside every card, so it never doubles the one-accent-
+                per-card invariant those cards each already satisfy on
+                their own. */}
+            <Button variant="accent" onClick={() => onReview()}>
               Réviser
             </Button>
           </div>

@@ -152,7 +152,7 @@ describe("NotionsScreen", () => {
     expect(screen.getByText("Types de fiches à créer").className).toContain("text-[length:var(--text-label)]");
   });
 
-  it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has several peer actions, not one", async () => {
+  it("ready state: the toolbar's 'Réviser' is --accent, the same colour as every notion card's own 'Réviser cette notion' — the same word names the same gesture on this screen (docs/UI.md's Colour note, reversed from an earlier version of this pass)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -166,8 +166,29 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const reviewButton = screen.getByRole("button", { name: "Réviser" });
-    expect(reviewButton.className).not.toMatch(/bg-accent/);
-    expect(reviewButton.className).toMatch(/border-border/);
+    expect(reviewButton.className).toMatch(/bg-accent/);
+    expect(reviewButton.className).toMatch(/text-white/);
+  });
+
+  it("ready state: 'Lire le cours' and 'Voir la progression' are plain underlined links, not Buttons — they leave this screen for another one, so they demote the same way 'Retour à mes cours' already does (docs/UI.md's Shape and depth note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    for (const name of ["Lire le cours", "Voir la progression"]) {
+      const link = screen.getByRole("button", { name });
+      expect(link.className).toMatch(/underline/);
+      expect(link.className).not.toMatch(/border-border/);
+      expect(link.className).not.toMatch(/bg-accent/);
+    }
   });
 
   it("ready state: offers 'Lire le cours', opening the reader for this document", async () => {
@@ -514,7 +535,7 @@ describe("NotionsScreen", () => {
     expect(screen.queryByText(/^1\./)).not.toBeInTheDocument();
   });
 
-  it("a notion card's 'Réviser cette notion' is --accent, the card's one primary action — distinct from the toolbar's own secondary 'Réviser' (docs/UI.md's Colour note)", async () => {
+  it("a notion card's 'Réviser cette notion' and the toolbar's 'Réviser' are both --accent, the identical gesture at two scopes — this does not put two accents inside one card, since the toolbar's own button sits outside every card (docs/UI.md's Colour note)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -531,7 +552,14 @@ describe("NotionsScreen", () => {
     expect(perNotion.className).toMatch(/text-white/);
 
     const toolbar = screen.getByRole("button", { name: "Réviser" });
-    expect(toolbar.className).not.toMatch(/bg-accent/);
+    expect(toolbar.className).toMatch(/bg-accent/);
+
+    // The invariant that actually matters — never more than one accent
+    // element inside a single card — still holds: the toolbar's own
+    // accent button is not a descendant of the notion card at all.
+    const notionCard = screen.getByTestId("notion-card");
+    expect(within(notionCard).getAllByRole("button").filter((b) => /bg-accent/.test(b.className))).toHaveLength(1);
+    expect(notionCard).not.toContainElement(toolbar);
   });
 
   it("clicking 'Réviser cette notion' starts a review scoped to that notion", async () => {
