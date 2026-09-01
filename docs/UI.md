@@ -1307,6 +1307,34 @@ when opened from there — the same `fromDocumentId`-shaped mechanic
 ProgressScreen already uses for its own two entry paths, and a label
 naming one specific destination would lie on the other path.
 
+**The course content's own heading scale is a rule, not a calibration
+value: content can never render at the same size as the chrome that
+contains it.** This screen's own DOM already nests the document's
+headings two levels below the page's own (`h1` from the markdown becomes
+a DOM `h3`, and so on — see the code comment on `READER_COMPONENTS`), but
+nesting the DOM alone doesn't nest the *look*: until this pass, content
+`h1`/`h2`/`h3` rendered at `text-2xl`/`text-xl`/`text-lg` — literally the
+same Tailwind classes as the page's own `<h1>` ("Lecture", 24px) and the
+document's own title `<h2>` (`--text-title`, 20px). A fact stated inside
+the course text read at the identical size and weight as the screen's own
+name; scrolling past a content heading gave no visual signal that you
+were still inside one document, not looking at a new page. Checked on
+screen, not assumed: a static mockup of a multi-level course made this
+immediately obvious side by side, not only reasoned about in the abstract
+(`Shape and depth`'s own recalibration note, above, is the general form
+of why that check mattered here specifically).
+Content's own scale is now `text-lg`/`text-base`/`text-sm` (18/16/14px)
+for `h1`/`h2`/`h3` — every level strictly under `--text-title` (20px),
+the smallest heading the chrome itself ever shows, so no content heading
+can ever equal or outrank it, whatever the source document's own
+structure looks like. `h3` lands at the same 14px as ordinary body text;
+weight (extrabold) and typeface (`--font-display` vs. `--font-body`)
+still carry the "this is a heading" signal on their own, the same two
+channels every heading in this app already relies on, checked on the
+same mockup and legible there. The `mt-8`/`mt-6`/`mt-4` rhythm between
+levels is unchanged — smaller headings, checked on the same mockup, did
+not make that spacing read as oversized.
+
 **The document-title row and the course content beneath it carry
 `--space-section` (24px), not the 0px gap that used to sit between
 them.** Neither the title row nor the content wrapper ever had a gap or

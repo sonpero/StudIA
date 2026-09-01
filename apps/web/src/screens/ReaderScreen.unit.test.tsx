@@ -148,6 +148,27 @@ describe("ReaderScreen", () => {
     expect(screen.getByRole("heading", { name: "Chapitre premier" })).toBeInTheDocument();
   });
 
+  it("ready: the course content's own heading scale is strictly smaller than --text-title (20px), the smallest heading the page chrome itself shows — content can never render at the same size as its own frame (docs/UI.md's Lecteur note)", async () => {
+    stubFetch({
+      ...doneBase,
+      status: "done",
+      markdown: "# Chapitre premier\n\nIntro.\n\n## Une section\n\nCorps.\n\n### Un détail\n\nSuite.",
+    });
+    renderScreen();
+
+    const h1 = await screen.findByRole("heading", { name: "Chapitre premier" });
+    const h2 = screen.getByRole("heading", { name: "Une section" });
+    const h3 = screen.getByRole("heading", { name: "Un détail" });
+
+    // The page's own "Lecture" is text-2xl and the document title is
+    // --text-title (20px) — content must never reach either.
+    expect(h1.className).toContain("text-lg");
+    expect(h1.className).not.toMatch(/text-2xl|text-xl\b|text-\[length:var\(--text-title\)\]/);
+    expect(h2.className).toContain("text-base");
+    expect(h2.className).not.toMatch(/text-2xl|text-xl\b|text-lg\b|text-\[length:var\(--text-title\)\]/);
+    expect(h3.className).toContain("text-sm");
+  });
+
   it("ready: shows the course's own subject colour, no mascot — this is a data-dense view", async () => {
     stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
     renderScreen();

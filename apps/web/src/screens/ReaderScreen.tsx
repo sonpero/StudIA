@@ -20,11 +20,16 @@ function isActive(status: ExtractionStatus): boolean {
 // Heading levels are shifted down by two (source h1 -> DOM h3, and so on):
 // the screen already has its own h1 ("Lecture") and h2 (the course title),
 // so the document's own heading hierarchy nests under those rather than
-// competing with them, while keeping the same visual size per level.
+// competing with them. Content's own size scale (text-lg/text-base/
+// text-sm, 18/16/14px) is deliberately NOT the same visual size per level
+// as before this pass: it must sit strictly under --text-title (20px), the
+// smallest heading the chrome itself ever shows, so a fact stated inside
+// the document can never read at the same size as the screen's own name
+// or the document's own title (docs/UI.md's Lecteur note).
 const READER_COMPONENTS: Components = {
-  h1: (props) => <h3 className="mt-8 font-[family-name:var(--font-display)] text-2xl font-extrabold first:mt-0" {...props} />,
-  h2: (props) => <h4 className="mt-6 font-[family-name:var(--font-display)] text-xl font-extrabold first:mt-0" {...props} />,
-  h3: (props) => <h5 className="mt-4 font-[family-name:var(--font-display)] text-lg font-extrabold first:mt-0" {...props} />,
+  h1: (props) => <h3 className="mt-8 font-[family-name:var(--font-display)] text-lg font-extrabold first:mt-0" {...props} />,
+  h2: (props) => <h4 className="mt-6 font-[family-name:var(--font-display)] text-base font-extrabold first:mt-0" {...props} />,
+  h3: (props) => <h5 className="mt-4 font-[family-name:var(--font-display)] text-sm font-extrabold first:mt-0" {...props} />,
   p: (props) => <p className="mt-4 leading-relaxed text-text first:mt-0" {...props} />,
   ul: (props) => <ul className="mt-4 list-disc pl-6 text-text" {...props} />,
   ol: (props) => <ol className="mt-4 list-decimal pl-6 text-text" {...props} />,
