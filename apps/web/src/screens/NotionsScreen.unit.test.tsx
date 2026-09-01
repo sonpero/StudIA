@@ -208,6 +208,28 @@ describe("NotionsScreen", () => {
     expect(screen.getByRole("button", { name: "Créer les fiches" })).toBeInTheDocument();
   });
 
+  it("ready state: 'Créer les fiches' sits before 'Types de fiches à créer', not after it", async () => {
+    // No accessible role distinguishes "before" from "after" in a
+    // flex-wrap row (docs/TESTING.md's exception for structure with no
+    // accessible trace): document position is the only way to assert this.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const button = screen.getByRole("button", { name: "Créer les fiches" });
+    const fieldset = screen.getByText("Types de fiches à créer").closest("fieldset");
+
+    expect(button.compareDocumentPosition(fieldset!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("ready state: offers a way back to the courses list (not just the empty/error states)", async () => {
     vi.stubGlobal(
       "fetch",

@@ -272,6 +272,9 @@ export function NotionsScreen({
       </div>
 
       <div className="mb-[var(--space-section)] flex flex-wrap items-center gap-4">
+        <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
+          {generateLabel}
+        </Button>
         <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
           <legend className="mb-1 text-[var(--text-label)] text-text-muted">Types de fiches à créer</legend>
           {ALL_CARD_TYPES.map((type) => (
@@ -281,9 +284,6 @@ export function NotionsScreen({
             </label>
           ))}
         </fieldset>
-        <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
-          {generateLabel}
-        </Button>
         {generating && (
           <p aria-live="polite" className="text-sm text-text-muted">
             {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
