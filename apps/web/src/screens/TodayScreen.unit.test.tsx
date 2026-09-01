@@ -48,7 +48,7 @@ async function openAddTodoForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function openPhotoPicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /ajouter des todos depuis une photo/i }));
+  await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
 }
 
 describe("TodayScreen", () => {
@@ -273,9 +273,9 @@ describe("TodayScreen", () => {
     expect(histoireReviser.style.backgroundColor).toBe("");
   });
 
-  it("ready: course cards and the todos card share one grid — two columns wide, one item's height never stretching another's (docs/UI.md)", async () => {
+  it("ready: course cards and the todos card share one grid — two columns wide, items stretched to the row's own height (docs/UI.md's Grid and spacing note, reversed from this pass's earlier items-start)", async () => {
     // No accessible role or label distinguishes a grid from a stack, or
-    // items-start from the grid default (docs/TESTING.md's exception for
+    // items-stretch from items-start (docs/TESTING.md's exception for
     // genuinely inaccessible structure): the one place in this file that
     // asserts on a class name.
     stubFetch({
@@ -288,7 +288,8 @@ describe("TodayScreen", () => {
 
     const grid = screen.getByTestId("content-grid");
     expect(grid.className).toMatch(/\bgrid\b/);
-    expect(grid.className).toMatch(/items-start/);
+    expect(grid.className).toMatch(/items-stretch/);
+    expect(grid.className).not.toMatch(/items-start/);
     expect(grid.className).not.toMatch(/flex-col/);
     // Cards are distinct blocks within one section (docs/UI.md's Grid and
     // spacing note): the grid's own gutter is --space-block, not a bare gap-4.
@@ -298,6 +299,16 @@ describe("TodayScreen", () => {
     const todosCard = screen.getByTestId("todos-card");
     expect(grid).toContainElement(courseCard);
     expect(grid).toContainElement(todosCard);
+  });
+
+  it("ready: a course card's action row is pushed to the card's own bottom edge (mt-auto) — what keeps items-stretch from leaving it floating over a gap on a short card (docs/UI.md's Grid and spacing note)", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const reviser = screen.getByRole("button", { name: "Réviser" });
+    const actionRow = reviser.closest("div");
+    expect(actionRow?.className).toMatch(/mt-auto/);
   });
 
   it("ready: course cards are sorted by urgency, nearest deadline first, no-deadline courses last (docs/UI.md's Aujourd'hui note)", async () => {
@@ -341,9 +352,10 @@ describe("TodayScreen", () => {
     expect(titles).toEqual(["Maths", "Histoire"]);
   });
 
-  it("ready: the todos card spans both columns on desktop when an even number of course cards would otherwise strand it alone in a row, dead space beside it (docs/UI.md's Grid and spacing note)", async () => {
+  it("ready: the todos card always occupies exactly one grid column, the same footprint as a course card — no longer widened to fill a stranded row (docs/UI.md's Grid and spacing note, reversed from an earlier version of this pass)", async () => {
+    // Even course-card count: previously the trigger for lg:col-span-2.
     // Also a class-name assertion, same exception as the grid-sharing test
-    // above: lg:col-span-2 has no accessible trace, it is the whole point.
+    // above: a missing col-span has no accessible trace, it is the point.
     stubFetch({
       ...emptyView,
       dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
@@ -353,15 +365,54 @@ describe("TodayScreen", () => {
     await screen.findByText("Maths");
     await screen.findByText("Histoire");
 
-    expect(screen.getByTestId("todos-card").className).toMatch(/lg:col-span-2/);
+    expect(screen.getByTestId("todos-card").className).not.toMatch(/col-span/);
   });
 
-  it("ready: the todos card does not span both columns when an odd number of course cards already fills the last row evenly", async () => {
+  it("ready: the todos card stays single-column on an odd course-card count too — unconditional now, not a special case", async () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
     renderScreen();
     await screen.findByText("Maths");
 
-    expect(screen.getByTestId("todos-card").className).not.toMatch(/lg:col-span-2/);
+    expect(screen.getByTestId("todos-card").className).not.toMatch(/col-span/);
+  });
+
+  it("ready: todo rows are separated by --space-block, not the tighter --space-related a checkbox shares with its own label inside one row (docs/UI.md's Aujourd'hui note)", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [
+        { id: "t1", label: "Un", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
+        { id: "t2", label: "Deux", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
+      ],
+    });
+    renderScreen();
+    await screen.findByText("Un");
+
+    const list = screen.getByText("Un").closest("ul");
+    expect(list?.className).toMatch(/gap-\[var\(--space-block\)\]/);
+  });
+
+  it("ready: the checklist is a bounded, scrollable panel — capped in height, but every todo stays mounted and reachable, none removed from the page (docs/UI.md's Shape and depth note)", async () => {
+    const todos = Array.from({ length: 12 }, (_, i) => ({
+      id: `t${i}`,
+      label: `Todo ${i}`,
+      dueDate: null,
+      documentId: null,
+      done: false,
+      source: "manual" as const,
+      createdAt: "2026-03-01T00:00:00.000Z",
+    }));
+    stubFetch({ ...emptyView, todos });
+    renderScreen();
+    await screen.findByText("Todo 0");
+
+    const list = screen.getByText("Todo 0").closest("ul");
+    expect(list?.className).toMatch(/overflow-y-auto/);
+    expect(list?.className).toMatch(/max-h-/);
+    // A capped height is a viewport onto the list, not a smaller list:
+    // every row stays in the document, reachable by Tab past the visible
+    // fold — this is not the infinite scroll docs/UI.md's Forbidden list
+    // bans, since nothing here is lazily loaded.
+    expect(screen.getAllByRole("checkbox")).toHaveLength(12);
   });
 
   it("ready: the checklist, the add-todo trigger and the photo trigger live in one todos card, not three separate pieces (docs/UI.md)", async () => {
@@ -372,7 +423,7 @@ describe("TodayScreen", () => {
     const todosCard = screen.getByTestId("todos-card");
     expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
     expect(within(todosCard).getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-    expect(within(todosCard).getByRole("button", { name: /ajouter des todos depuis une photo/i })).toBeInTheDocument();
+    expect(within(todosCard).getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
   });
 
   it("ready: 'Todos' is a section label, --text-label, not body text — a label, not a title (docs/UI.md's Type note)", async () => {

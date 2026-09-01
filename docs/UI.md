@@ -339,20 +339,46 @@ number's own line and card, not a competition with the screen chrome.
   either — the edge of a container, not the space between siblings inside
   one — and are likewise untouched. Be generous regardless: the reference
   layout breathes, and cramming content is the fastest way to lose the look.
-- **Aujourd'hui's own grid can still strand its todos card alone in a row,
-  its column neighbour visibly empty** — `items-start`'s own no-stretch
-  choice (below) is not the cause, spacing naming alone does not fix it,
-  and it is exactly the dead space this pass was asked to close: with an
-  even number of course cards, the todos card — always the item right
-  after the last course card (Aujourd'hui's own note) — used to land alone
-  in the last row on the two-column desktop grid. It now spans both
-  columns on exactly that case (`lg:col-span-2`, applied only when the
-  course-card count is even), instead of floating in one column beside
-  nothing. An odd count already fills its row evenly and is untouched. Not
-  extended to Mes cours' own document grid: a partial last row there is
-  the ordinary tail of a browsing list users already expect, not a
-  stranded, always-present companion card the way Aujourd'hui's todos card
-  is by construction.
+- **A list that could grow without bound gets a bounded, scrollable panel
+  inside its card, never an ever-taller card.** Concretely: Aujourd'hui's
+  own todos checklist (below). Four conditions, together, or it is not
+  this pattern: (1) the panel caps only the list itself, never the card
+  around it — a header, a section label, or a form beneath it stays
+  outside the scrollable region, always visible; (2) the boundary shows a
+  partially-cut entry, never a fade gradient and never a "+N" counter — a
+  visibly clipped row is what tells a reader there is more, and neither of
+  the other two says that without being read; (3) it never removes an
+  entry from the page — every row stays mounted and reachable by Tab, the
+  browser's own native scroll-into-view carries a keyboard user past the
+  fold with no extra wiring, and nothing here is `tabindex`-trapped; (4)
+  every item is already in memory, nothing loads as the reader scrolls —
+  the one thing that would make it the infinite scroll `Forbidden` (below)
+  actually bans. A grid's own `items-stretch` (`Aujourd'hui`'s own "One
+  grid, not two" note, further below) is what makes this necessary at
+  all: without a cap, a long list would keep growing exactly as tall as
+  it needs, stretching whatever card happens to share its row along with
+  it — see the next note here for why a wider card is not the answer
+  either.
+- **Aujourd'hui's own grid used to strand its todos card alone in a row,
+  its column neighbour visibly empty — no longer patched by widening the
+  card.** The previous fix here made the todos card span both grid columns
+  whenever the course-card count was even (`lg:col-span-2`), so it would
+  never sit alone beside an empty cell. That widened card exposed a
+  different defect instead: its own two collapsed triggers ("Ajouter un
+  todo" / the photo picker, `Aujourd'hui`'s own note below) are two
+  buttons of very different widths, sized to their own text, and a card
+  twice as wide left most of that width empty beside them — the same dead
+  space, simply moved from beside the card to inside it. Stretching those
+  buttons to fill the extra width was considered and rejected: it would
+  size a plain secondary trigger to whatever the card's column-span
+  happened to be that day, the same "gabarit follows a moment's content"
+  mistake this whole pass exists to remove, just aimed at a button instead
+  of a card. The todos card now **always** occupies exactly one grid
+  column, the same footprint as a course card — it is one, in every way
+  this grid can see. An even course-card count leaves the neighbouring
+  cell empty; the same tolerance `Mes cours`' own document grid already
+  extends to an incomplete last row, not a stranded, always-present
+  companion card that needs artificial widening to look intentional.
 - **A form or list that is not already sized by a card or a grid column
   never stretches to the bounded column's full width.** Cap it at a
   reasonable width instead (448px, Tailwind's `max-w-md`, is the default
@@ -648,10 +674,16 @@ there are no courses yet, the screen falls to its empty state below.
 **One grid, not two.** Course cards and the todos card (below) are items in
 the *same* grid — one column below the tablet breakpoint, two on desktop —
 so their edges share the same gutters instead of the todos block landing in
-its own, differently-sized column underneath. Grid items keep their own
-height (`items-start`, never the grid's default stretch): a short card next
-to a taller one is never stretched to match it, which would leave dead
-space under its buttons. Course cards fill the grid left to right, top to
+its own, differently-sized column underneath. **Grid items stretch to the
+row's own height** (`items-stretch`, the grid's own default — reversed
+from an earlier version of this pass, which used `items-start` specifically
+to stop a short card being stretched behind its buttons): every card in a
+row now shares one height, and each card is its own flex column with its
+action row pushed to the card's own bottom edge (`mt-auto` on that row,
+below) — so a shorter card's content stays anchored at the top, the extra
+height lands as breathing room *above* its buttons, and nothing ever floats
+over a gap beneath them the way a stretched, non-flex card would. Course
+cards fill the grid left to right, top to
 bottom, **sorted by urgency, nearest deadline first**: `deadline?.daysAway
 ?? Infinity`, ascending — a course three days from its exam sorts ahead of
 one three weeks out, and a course with no deadline at all (`daysAway`
@@ -707,7 +739,10 @@ secondary as it is everywhere else: absence of the accent action is not an
 invitation to promote the remaining one. `Colour`'s own note above is what
 allows several cards to each show their own accent "Réviser" on this one
 screen at once — the invariant is one accent element per card, not one
-per screen.
+per screen. This is the row of buttons `One grid, not two` (above) means by
+"action row": `mt-auto` on it is what pushes it to the card's own bottom
+edge once the grid's `items-stretch` has made the card taller than its own
+content needs.
 
 If nothing needs attention anywhere: the `sleeping` mascot, a plain
 statement, and one useful suggestion. Never a guilt message, never "tu n'as
@@ -723,7 +758,24 @@ list above it before this card existed. Each todo gets a small delete
 action ("✕", with an accessible label naming the todo — same idiom as the
 staged-file removal on `Mes cours`' own upload card, not a bare icon
 without one) alongside its checkbox. No confirmation modal: a todo is low
-stakes and trivially re-added.
+stakes and trivially re-added. The gap between one todo row and the next is
+`--space-block` — `Shape and depth`'s own table already names this exact
+relationship ("rows in a list"), and the list had been using the tighter
+`--space-related` instead, the same gap as a checkbox and its own label
+*inside* one row: two different relationships reading as one distance is
+what made the list look like a single undifferentiated block rather than
+a set of rows, exactly the "nothing groups visually" defect this pass was
+asked to close.
+
+**The checklist is a bounded, scrollable panel** (`Shape and depth`'s own
+general rule, above), capped at roughly five rows before it scrolls
+internally — `13rem`, tuned against the real rendered row height rather
+than a round Tailwind step: `max-h-60` (15rem) was tried first and, checked
+live, landed exactly on a row boundary, six full rows and no visible cut
+at all, silently failing condition (2) of the general rule above. Everything
+else in the card — the "Todos" label, both collapsed triggers, either
+opened form — stays outside the scrollable region and always visible; only
+the `<ul>` itself scrolls.
 
 **A todo's due date, when it has one, is shown on its row** — discreet,
 right-aligned, before the delete action. No date set means nothing shown
@@ -734,9 +786,15 @@ come — no `--warning`, no colour of any kind marking it overdue.
 
 **The add form and the photo picker are both collapsed by default**,
 behind their own discreet `--secondary` action ("Ajouter un todo" /
-"Ajouter des todos depuis une photo de l'agenda") — a permanently open
-input for either was, by itself, wider and taller than the list it sat
-below. Opening the add form puts focus on the label field. Escape closes
+"Ajouter depuis une photo") — a permanently open input for either was, by
+itself, wider and taller than the list it sat below. The photo trigger's
+label was shortened from "Ajouter des todos depuis une photo de l'agenda"
+during this pass: "des todos" is redundant with the card it already sits
+in, "de l'agenda" survives once the form opens (`PhotoUploadInput`'s own
+field label, "Photo de l'agenda", unchanged), and the shorter form keeps
+the same verb as its sibling trigger — a deliberate choice over a still
+more literal cut, since the two triggers reading as a matched pair is
+worth more here than either one being maximally short on its own. Opening the add form puts focus on the label field. Escape closes
 it again without discarding what was already typed — reopening shows the
 same draft, not a blank form — except when there was nothing to lose, in
 which case closing is simply closing. A successful submission collapses

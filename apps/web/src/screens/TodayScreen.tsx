@@ -10,7 +10,6 @@ import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
-import { cn } from "../lib/utils.js";
 
 // A design-system chevron replacing <select>'s native arrow (--color-text-muted,
 // #667085, matched by hand — tokens.css's @theme values aren't reachable from
@@ -227,7 +226,7 @@ function AddTodoForm({
           id={courseId}
           value={draft.documentId}
           onChange={(e) => onDraftChange({ ...draft, documentId: e.target.value })}
-          className={`${FIELD_CLASS} bg-no-repeat pr-9`}
+          className={`${FIELD_CLASS} bg-no-repeat pr-8`}
           style={{ backgroundImage: SELECT_CHEVRON, backgroundPosition: "right 0.6rem center", backgroundSize: "1rem" }}
         >
           <option value="">Aucun</option>
@@ -282,7 +281,12 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
         )}
       </div>
 
-      <div className="flex gap-2">
+      {/* mt-auto pushes this row to the card's own bottom edge (docs/UI.md's
+          Grid and spacing note): once items-stretch (below) makes this card
+          as tall as its row's tallest neighbour, the extra height lands here,
+          above the buttons, rather than leaving them floating over a gap
+          beneath. */}
+      <div className="mt-auto flex gap-2">
         <Button variant="secondary" onClick={() => onOpenCourse(card.documentId)}>
           <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Voir le cours
@@ -309,7 +313,6 @@ function TodosCard({
   onDelete,
   onCreate,
   onPhotoUploaded,
-  spanFull,
 }: {
   todos: TodayView["todos"];
   documents: DocumentSummary[];
@@ -318,17 +321,32 @@ function TodosCard({
   onDelete: (id: string) => void;
   onCreate: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
   onPhotoUploaded: (jobId: string) => void;
-  spanFull: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
   const [photoOpen, setPhotoOpen] = useState(false);
 
   return (
-    <Card className={cn("flex flex-col gap-3", spanFull && "lg:col-span-2")} data-testid="todos-card">
+    <Card className="flex flex-col gap-3" data-testid="todos-card">
       <h2 className="text-[var(--text-label)] font-medium text-text-muted">Todos</h2>
       {todos.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        // A bounded, scrollable panel (docs/UI.md's Shape and depth note):
+        // caps only the list, roughly five rows tall, never the card around
+        // it. 13rem is deliberately not a clean multiple of one row's own
+        // rendered height (a round max-h-60/15rem was tried first and
+        // measured live: it landed exactly on a row boundary, six full rows
+        // and no visible cut at all) — this value was tuned against the
+        // real rendered row height so a partial row shows at the boundary
+        // once there is more to see, never a fade gradient, never a "+N"
+        // count, so nothing readable ever silently disappears. Every row
+        // stays mounted regardless (no virtualisation): Tab still reaches
+        // all of them, the browser's own native scroll-into-view carries a
+        // keyboard user past the fold, and nothing here is lazily loaded —
+        // this is not the infinite scroll the Forbidden list bans. Rows are
+        // --space-block apart (docs/UI.md's Aujourd'hui note: "rows in a
+        // list"), not the tighter --space-related a checkbox shares with
+        // its own label inside one row.
+        <ul className="flex max-h-[13rem] flex-col gap-[var(--space-block)] overflow-y-auto">
           {todos.map((todo) => (
             <TodoRow key={todo.id} todo={todo} onToggle={(done) => onToggle(todo.id, done)} onDelete={() => onDelete(todo.id)} />
           ))}
@@ -356,7 +374,7 @@ function TodosCard({
         <PhotoUploadInput onUploaded={onPhotoUploaded} />
       ) : (
         <Button type="button" variant="secondary" onClick={() => setPhotoOpen(true)} className="self-start">
-          Ajouter des todos depuis une photo de l'agenda
+          Ajouter depuis une photo
         </Button>
       )}
     </Card>
@@ -419,12 +437,6 @@ export function TodayScreen({
   const courseCards = buildCourseCards(view);
   const nothingAtAll = courseCards.length === 0 && view.todos.length === 0;
 
-  // An even course-card count (0, 2, 4…) leaves the todos card — always the
-  // item right after the last course card — alone in the last row of the
-  // two-column desktop grid, its neighbour cell empty (docs/UI.md's Grid
-  // and spacing note). An odd count already fills its row evenly.
-  const todosSpansFull = courseCards.length % 2 === 0;
-
   return (
     <main className="flex flex-col gap-[var(--space-section)] p-8">
       <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
@@ -437,12 +449,13 @@ export function TodayScreen({
       )}
 
       {/* One grid, not two (docs/UI.md): course cards and the todos card
-          are items in the same grid, sharing its gutters — items-start so
-          a short card is never stretched to match a taller neighbour.
-          Always rendered, even when nothingAtAll: the todos card (add form,
-          photo picker) is still how the empty state's "one useful
-          suggestion" is actually acted on, not just illustrated. */}
-      <div className="grid grid-cols-1 items-start gap-[var(--space-block)] lg:grid-cols-2" data-testid="content-grid">
+          are items in the same grid, sharing its gutters — items-stretch so
+          every card in a row shares one height (each card pushes its own
+          action row to the bottom with mt-auto instead). Always rendered,
+          even when nothingAtAll: the todos card (add form, photo picker) is
+          still how the empty state's "one useful suggestion" is actually
+          acted on, not just illustrated. */}
+      <div className="grid grid-cols-1 items-stretch gap-[var(--space-block)] lg:grid-cols-2" data-testid="content-grid">
         {courseCards.map((card) => (
           <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
         ))}
@@ -454,7 +467,6 @@ export function TodayScreen({
           onDelete={(id) => deleteTodoMutation.mutate(id)}
           onCreate={(input) => createTodoMutation.mutate(input)}
           onPhotoUploaded={onOpenProposals}
-          spanFull={todosSpansFull}
         />
       </div>
     </main>
