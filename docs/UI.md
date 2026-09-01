@@ -387,6 +387,55 @@ number's own line and card, not a competition with the screen chrome.
   and stacking one on top of the other (a cap inside a card already capped
   by its grid column) only makes it narrower than its neighbours for no
   reason.
+- **Two or more trigger buttons at the same level share the same width,
+  never sized to their own label alone.** Found on Aujourd'hui's own todos
+  card: "Ajouter un todo" and "Ajouter depuis une photo" are a matched pair
+  of collapsed triggers, stacked, but sat at two different widths because
+  each sized itself to its own text. Wrapped in a single-column
+  `inline-grid` (not `w-full`, which would stretch both to the width of
+  whatever container they happen to sit in — the same "gabarit follows the
+  container, not the role" mistake the bullet above already rules out for
+  a form, just aimed at a button pair here): the container itself shrinks
+  to the widest label's own natural width, and the default CSS Grid
+  stretch (`justify-items: stretch`, nothing to opt into) makes the
+  narrower button match it — neither wider than it needs to be, both the
+  same. The only pairing in the app today; written as a general rule
+  because a second one will eventually need the same fix, not because
+  there are two yet.
+- **A trigger-revealed area is always closable without submitting, and
+  that close action is reachable by keyboard.** Found missing on both of
+  Aujourd'hui's own todos-card triggers: the add-todo form's Escape
+  handler existed with no visible button beside it (closeable only by a
+  shortcut nothing on screen suggested trying), and the photo picker had
+  no way to close at all short of picking a file or reloading the page.
+  Three mechanisms exist in this app for what a trigger reveals; which one
+  applies depends on whether there is a draft worth returning to:
+  - **The trigger becomes the close action** (`NotionsScreen`'s own "Voir
+    le contenu" / "Masquer le contenu"). Fits a read-only reveal: the same
+    single control toggles both ways because both states are the same
+    *kind* of thing, one line of text either shown or hidden. Does not fit
+    a form or a file picker — a button flipping into a set of fields isn't
+    the same kind of control any more, so it cannot also double as its own
+    closer the way a text toggle can.
+  - **"Annuler"** (`UploadCard`'s own confirm step, `Progression`'s
+    deadline form) — the revealed area unmounts and does not keep its own
+    state alive anywhere else: reopening starts genuinely fresh. Right
+    when there is nothing worth returning to — staged files or a
+    half-typed deadline edit are meant to be redone, not resumed.
+  - **"Fermer"** (Aujourd'hui's own add-todo form) — the area still
+    unmounts, but its draft already lived one level up, in the parent, not
+    inside the component that just disappeared (`Aujourd'hui`'s own note):
+    reopening shows the same non-empty draft, not a blank form. Right when
+    closing by mistake, or to glance at something else, should not cost
+    someone what they had already typed. The photo picker gets this same
+    label and the same disabled-while-in-flight treatment `UploadCard`'s
+    own "Annuler" already uses, even though it holds no text draft to
+    preserve — consistency between the card's own two triggers matters
+    more here than a label chosen for a distinction with nothing on the
+    other side of it.
+  Either way, Escape does exactly what the visible button does — never a
+  keyboard-only path with no on-screen equivalent, which is the actual
+  defect this note exists to close.
 - **Native form controls need `appearance-none` plus a token-coloured
   replacement, not just width discipline, to stop reading as an unstyled
   browser control.** A native `<select>`'s dropdown arrow and an
@@ -786,18 +835,35 @@ come — no `--warning`, no colour of any kind marking it overdue.
 
 **The add form and the photo picker are both collapsed by default**,
 behind their own discreet `--secondary` action ("Ajouter un todo" /
-"Ajouter depuis une photo") — a permanently open input for either was, by
-itself, wider and taller than the list it sat below. The photo trigger's
-label was shortened from "Ajouter des todos depuis une photo de l'agenda"
-during this pass: "des todos" is redundant with the card it already sits
-in, "de l'agenda" survives once the form opens (`PhotoUploadInput`'s own
-field label, "Photo de l'agenda", unchanged), and the shorter form keeps
-the same verb as its sibling trigger — a deliberate choice over a still
-more literal cut, since the two triggers reading as a matched pair is
-worth more here than either one being maximally short on its own. Opening the add form puts focus on the label field. Escape closes
-it again without discarding what was already typed — reopening shows the
-same draft, not a blank form — except when there was nothing to lose, in
-which case closing is simply closing. A successful submission collapses
+"Ajouter depuis une photo"), the same width as each other
+(`Shape and depth`'s own general rule, above) — a permanently open input
+for either was, by itself, wider and taller than the list it sat below.
+The photo trigger's label was shortened from "Ajouter des todos depuis une
+photo de l'agenda" during this pass: "des todos" is redundant with the
+card it already sits in, "de l'agenda" survives once the form opens
+(`PhotoUploadInput`'s own field label, "Photo de l'agenda", unchanged),
+and the shorter form keeps the same verb as its sibling trigger — a
+deliberate choice over a still more literal cut, since the two triggers
+reading as a matched pair is worth more here than either one being
+maximally short on its own.
+
+Opening the add form puts focus on the label field, and opening the photo
+picker puts focus on its file input, the same convention for the same
+reason on both — it is also what lets Escape reach either one at all: the
+trigger button that opened it is gone the instant it does, so without this
+the browser would fall focus back to the page body, outside the revealed
+area entirely, and a keydown there would never bubble through it. Both the
+add form and
+the photo picker can be closed without submitting, by Escape or by their
+own visible **"Fermer"** button (`Shape and depth`'s own general rule,
+above) — a defect this pass found and fixed, not a pre-existing choice:
+the add form's Escape handler existed with no visible equivalent beside
+it, and the photo picker had no closing mechanism at all. Closing the add
+form never discards what was already typed — reopening shows the same
+draft, not a blank form — except when there was nothing to lose, in which
+case closing is simply closing; closing the photo picker is disabled while
+a photo is already uploading, the same guard `UploadCard`'s own "Annuler"
+already applies to its own confirm step. A successful submission collapses
 the form on its own and the new todo appears in the list below; nothing
 else about the checklist or the photo path changes.
 

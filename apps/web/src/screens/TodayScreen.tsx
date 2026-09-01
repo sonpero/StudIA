@@ -109,10 +109,24 @@ function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number
 
 // Reused in both the empty and ready states: the only way in this screen to
 // reach the photo-extraction flow (docs/modules/workspace.md's step 3).
-function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void }) {
+// Closable without picking a file — Escape or the visible "Fermer" button
+// do the same thing, disabled while a photo is already uploading, the same
+// guard UploadCard's own "Annuler" applies to its confirm step (docs/UI.md's
+// Shape and depth note).
+function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string) => void; onClose: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Same convention as AddTodoForm's own label field: opening this puts
+  // focus inside it. Also what makes Escape reach the onKeyDown handler
+  // below at all — the trigger button that opened this unmounts on click,
+  // so without this, focus would fall back to the page body, outside this
+  // component entirely, and a keydown there would never bubble through it.
+  useEffect(() => {
+    fileInputRef.current?.focus();
+  }, []);
 
   async function handleChange(file: File | undefined) {
     if (!file) return;
@@ -129,12 +143,18 @@ function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void 
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="flex flex-col gap-1"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !uploading) onClose();
+      }}
+    >
       <label htmlFor={inputId} className="text-sm font-medium">
         Photo de l'agenda
       </label>
       <input
         id={inputId}
+        ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         disabled={uploading}
@@ -146,6 +166,9 @@ function PhotoUploadInput({ onUploaded }: { onUploaded: (jobId: string) => void 
           {error}
         </p>
       )}
+      <Button type="button" variant="secondary" disabled={uploading} onClick={onClose} className="self-start">
+        Fermer
+      </Button>
     </div>
   );
 }
@@ -192,8 +215,10 @@ function AddTodoForm({
       onKeyDown={(e) => {
         // Whether there's a draft to keep or not, Escape only ever closes
         // — it never clears `draft`, so a non-empty label survives to the
-        // next open on its own; an empty one has nothing to survive.
-        if (e.key === "Escape") onClose();
+        // next open on its own; an empty one has nothing to survive. Same
+        // guard as the visible "Fermer" button below: neither closes
+        // mid-submit.
+        if (e.key === "Escape" && !pending) onClose();
       }}
       onSubmit={(e) => {
         e.preventDefault();
@@ -237,9 +262,18 @@ function AddTodoForm({
           ))}
         </select>
       </label>
-      <Button type="submit" variant="secondary" disabled={pending || !draft.label.trim()} className="self-start">
-        {pending ? "Ajout…" : "Ajouter"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" variant="secondary" disabled={pending || !draft.label.trim()}>
+          {pending ? "Ajout…" : "Ajouter"}
+        </Button>
+        {/* Closes without discarding the draft (docs/UI.md's Shape and
+            depth note) — not "Annuler", which elsewhere in this app means
+            the revealed area's own state does not survive closing; this
+            one's draft lives in the parent and is still there next open. */}
+        <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>
+          Fermer
+        </Button>
+      </div>
     </form>
   );
 }
@@ -354,29 +388,41 @@ function TodosCard({
       )}
 
       {/* Collapsed by default (docs/UI.md): a permanently open form was, on
-          its own, wider and taller than the list it sat below. */}
-      {addOpen ? (
-        <AddTodoForm
-          documents={documents}
-          pending={createPending}
-          draft={draft}
-          onDraftChange={setDraft}
-          onSubmit={onCreate}
-          onClose={() => setAddOpen(false)}
-        />
-      ) : (
-        <Button type="button" variant="secondary" onClick={() => setAddOpen(true)} className="self-start">
-          Ajouter un todo
-        </Button>
-      )}
+          its own, wider and taller than the list it sat below. While both
+          triggers are still collapsed, they share one width (docs/UI.md's
+          Shape and depth note): a single-column inline-grid, self-start so
+          the wrapper itself hugs its own content instead of stretching to
+          the card's full width the way Card's own flex-col would otherwise
+          give it by default, and the grid's own default stretch then makes
+          the narrower button match the wider one. The moment either opens,
+          this reverts to a plain stack — an open form is meant to take the
+          card's full width already (Shape and depth's own form-width rule),
+          and the other trigger, if still collapsed, goes back to its own
+          natural size rather than being stretched to match a form. */}
+      <div className={addOpen || photoOpen ? "flex flex-col gap-3" : "inline-grid grid-cols-1 gap-3 self-start"}>
+        {addOpen ? (
+          <AddTodoForm
+            documents={documents}
+            pending={createPending}
+            draft={draft}
+            onDraftChange={setDraft}
+            onSubmit={onCreate}
+            onClose={() => setAddOpen(false)}
+          />
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => setAddOpen(true)}>
+            Ajouter un todo
+          </Button>
+        )}
 
-      {photoOpen ? (
-        <PhotoUploadInput onUploaded={onPhotoUploaded} />
-      ) : (
-        <Button type="button" variant="secondary" onClick={() => setPhotoOpen(true)} className="self-start">
-          Ajouter depuis une photo
-        </Button>
-      )}
+        {photoOpen ? (
+          <PhotoUploadInput onUploaded={onPhotoUploaded} onClose={() => setPhotoOpen(false)} />
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => setPhotoOpen(true)}>
+            Ajouter depuis une photo
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

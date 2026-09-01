@@ -426,6 +426,24 @@ describe("TodayScreen", () => {
     expect(within(todosCard).getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
   });
 
+  it("ready: the two collapsed triggers share the same width via a single-column inline-grid, not each sized to its own label (docs/UI.md's Shape and depth note)", async () => {
+    // jsdom does no real layout, so equal on-screen width can't be asserted
+    // numerically here (verified live instead); this checks the mechanism
+    // that produces it is actually present — the one class-name assertion
+    // this test makes, same exception as the grid-stretch tests above.
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const addTrigger = screen.getByRole("button", { name: "Ajouter un todo" });
+    const photoTrigger = screen.getByRole("button", { name: /ajouter depuis une photo/i });
+    const wrapper = addTrigger.parentElement;
+
+    expect(wrapper).toBe(photoTrigger.parentElement);
+    expect(wrapper?.className).toMatch(/\binline-grid\b/);
+    expect(wrapper?.className).toMatch(/grid-cols-1/);
+  });
+
   it("ready: 'Todos' is a section label, --text-label, not body text — a label, not a title (docs/UI.md's Type note)", async () => {
     stubFetch(emptyView);
     renderScreen();
@@ -665,6 +683,107 @@ describe("TodayScreen", () => {
 
     await openAddTodoForm(user);
     expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("");
+  });
+
+  it("the add-todo form has a visible 'Fermer' button — Escape alone is a keyboard-only path with no on-screen equivalent (docs/UI.md's Shape and depth note)", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
+
+    expect(screen.getByRole("button", { name: "Fermer" })).toBeInTheDocument();
+  });
+
+  it("clicking 'Fermer' closes the add-todo form without discarding a non-empty draft — reopening it shows the same values, exactly like Escape", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
+
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
+    await user.click(screen.getByRole("button", { name: "Fermer" }));
+
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+
+    await openAddTodoForm(user);
+    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("Brouillon");
+  });
+
+  it("the add-todo form's 'Fermer' button is reachable by Tab and activatable by keyboard, not just by mouse", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openAddTodoForm(user);
+
+    // A label is required for "Ajouter" to be enabled at all — an empty
+    // field would leave it disabled and skipped in tab order, silently
+    // shifting every count below by one.
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
+    await user.tab(); // date
+    await user.tab(); // cours
+    await user.tab(); // Ajouter (submit)
+    await user.tab(); // Fermer
+    expect(screen.getByRole("button", { name: "Fermer" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+  });
+
+  it("offers a way to close the photo picker without picking a file — it had no closing mechanism at all before this pass (docs/UI.md's Shape and depth note)", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openPhotoPicker(user);
+
+    await user.click(screen.getByRole("button", { name: "Fermer" }));
+
+    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
+  });
+
+  it("Escape also closes the photo picker, exactly what its visible 'Fermer' button does", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openPhotoPicker(user);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
+  });
+
+  it("the photo picker's 'Fermer' button is disabled while a photo is already uploading — same guard UploadCard's own 'Annuler' applies to its confirm step", async () => {
+    let resolveUpload: (() => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
+          return new Promise((resolve) => {
+            resolveUpload = () => resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
+          });
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+    await openPhotoPicker(user);
+
+    const input = screen.getByLabelText(/photo de l'agenda/i);
+    const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
+    await user.upload(input, file);
+
+    expect(screen.getByRole("button", { name: "Fermer" })).toBeDisabled();
+    resolveUpload?.();
   });
 
   it("ready: a todo's due date shows on its row, discreet and placed right before the delete button — and nothing shows when it has none", async () => {
