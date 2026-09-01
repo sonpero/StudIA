@@ -243,16 +243,21 @@ export function NotionsScreen({
 
   return (
     <main className="p-8">
-      <div className="mb-[var(--space-section)] flex flex-wrap items-start justify-between gap-4">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
-        {/* "Retour à mes cours" sits below the toolbar, right-aligned with
-            it, not beside the title (docs/UI.md's Notions du cours note):
-            a navigation back to the parent list isn't the same kind of
-            thing as the screen's own name, and sitting next to it used to
-            suggest otherwise. Stays a plain underlined link, a step below
-            the toolbar's own Button-weight actions — tab order follows
-            this layout, the three toolbar actions then this link last. */}
-        <div className="flex flex-col items-end gap-[var(--space-related)]">
+      <div>
+        {/* "Retour à mes cours" sits on its own line above the title, flush
+            left — not beside the title, not sharing its line at all
+            (docs/UI.md's Notions du cours note). Two corrections, not one:
+            the original bug paired it with the title on one line; the
+            first fix moved it under the toolbar, right-aligned, which
+            cleared that but put it in the wrong place entirely — a back
+            link reads top-left, before the title, by convention. Tab
+            order follows: this link first, then the toolbar's three
+            actions. */}
+        <button type="button" className="mb-[var(--space-block)] text-sm text-text-muted underline" onClick={onBack}>
+          Retour à mes cours
+        </button>
+        <div className="mb-[var(--space-section)] flex flex-wrap items-start justify-between gap-4">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
           {/* "Créer les fiches" / "Régénérer les fiches" lives apart from
               this toolbar, not in it (below, by its own type checkboxes):
               rare, and destructive once it reads "Régénérer" (it destroys
@@ -293,9 +298,6 @@ export function NotionsScreen({
               Réviser
             </Button>
           </div>
-          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
-            Retour à mes cours
-          </button>
         </div>
       </div>
 

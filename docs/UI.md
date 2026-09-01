@@ -967,21 +967,36 @@ link, so both homes stay reachable from any screen.
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 
-**Notions du cours (`NotionsScreen`)'s own header: the title stands alone,
-top left; "Retour à mes cours" sits under the toolbar, right-aligned with
-it, not beside the title.** Previously placed directly in front of the
-title, reading as though the two were paired — a navigation back to the
-parent list is not the same kind of thing as a screen's own name, and
-sitting next to it suggested otherwise. It stays a plain underlined link,
-never a `Button` — the same treatment "Lire le cours" and "Voir la
-progression" now share (`Shape and depth`'s own toolbar-hierarchy note,
-above), though for a different reason: those two are demoted because
-they leave the screen for somewhere else, this one because it is the one
-navigation action that was never a peer of the toolbar's own actions to
-begin with. "Réviser" is the only one of the four still a `Button`, and
-the only one in accent. Tab order follows the layout: the toolbar's own
-actions (the two links, then "Réviser"), then "Retour à mes cours" last —
-the natural consequence of where it sits, not a separate decision.
+**Notions du cours (`NotionsScreen`)'s own header: "Retour à mes cours"
+sits on its own line above the title, flush left — not beside the title,
+and not sharing the title's own line at all.** Two corrections happened
+here, not one. The original defect was placing the link directly in
+front of the title, reading as though the two were paired — a navigation
+back to the parent list is not the same kind of thing as a screen's own
+name. The first fix addressed that by moving the link under the toolbar,
+right-aligned with it, which did clear the "beside the title" problem but
+traded it for a worse one: a back link reads top-left, before the title,
+by a convention this app shares with the rest of the web, and burying it
+bottom-right after three other actions was never what needed fixing —
+only its collocation on the title's own line was. It now sits above the
+title, its own line, flush left: the position a back link should have
+had from the very first fix, distinct from the title because it is on a
+separate line, not because it moved to a side. It stays a plain
+underlined link, never a `Button` — the same treatment "Lire le cours"
+and "Voir la progression" share (`Shape and depth`'s own
+toolbar-hierarchy note, above), though for a different reason: those two
+are demoted because they leave the screen for somewhere else, this one
+because it is the one navigation action that was never a peer of the
+toolbar's own actions to begin with. Considered and rejected: an added
+chevron or other shape distinction from those two links — this app's own
+Icons section already demotes this exact link family (plain page chrome,
+outside any card) specifically so an icon never raises their weight back
+up, and a chevron here would be the same mistake in reverse. Position
+alone — its own line, above the title — already carries the distinction.
+"Réviser" is the only one of the four still a `Button`, and the only one
+in accent. Tab order follows the layout: "Retour à mes cours" first,
+then the toolbar's own three actions — the natural consequence of where
+it now sits, not a separate decision.
 
 **Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
 just its two raw numbers.** Each notion's own card already shows

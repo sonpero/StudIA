@@ -280,9 +280,9 @@ describe("NotionsScreen", () => {
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("ready state: 'Retour à mes cours' sits after the toolbar's own actions (Lire le cours / Voir la progression / Réviser), not in front of the title (docs/UI.md's Notions du cours note)", async () => {
+  it("ready state: 'Retour à mes cours' sits above the title, before the toolbar's own actions (Lire le cours / Voir la progression / Réviser) (docs/UI.md's Notions du cours note)", async () => {
     // Same exception as the 'Créer les fiches' position test above:
-    // document position is the only way to assert "after", nothing
+    // document position is the only way to assert "before", nothing
     // accessible distinguishes it.
     vi.stubGlobal(
       "fetch",
@@ -297,12 +297,12 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const back = screen.getByRole("button", { name: /retour à mes cours/i });
-    const reviser = within(screen.getByTestId("notions-toolbar")).getByRole("button", { name: "Réviser" });
+    const title = screen.getByRole("heading", { name: "Notions du cours" });
 
-    expect(reviser.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("ready state: tab order visits the toolbar's three actions, then 'Retour à mes cours' last", async () => {
+  it("ready state: tab order visits 'Retour à mes cours' first, then the toolbar's three actions", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -315,8 +315,12 @@ describe("NotionsScreen", () => {
     renderScreen();
     await screen.findByText("Photosynthèse");
 
+    const back = screen.getByRole("button", { name: /retour à mes cours/i });
+    back.focus();
+    expect(back).toHaveFocus();
+
     const toolbar = screen.getByTestId("notions-toolbar");
-    within(toolbar).getByRole("button", { name: "Lire le cours" }).focus();
+    await user.tab();
     expect(within(toolbar).getByRole("button", { name: "Lire le cours" })).toHaveFocus();
 
     await user.tab();
@@ -324,9 +328,6 @@ describe("NotionsScreen", () => {
 
     await user.tab();
     expect(within(toolbar).getByRole("button", { name: "Réviser" })).toHaveFocus();
-
-    await user.tab();
-    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toHaveFocus();
   });
 
   it("ready state: shows each notion's own mastery progress, with a distinct label when it has no cards yet", async () => {
