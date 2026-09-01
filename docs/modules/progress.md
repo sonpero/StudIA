@@ -851,9 +851,13 @@ Required behaviour, all traceable to `docs/UI.md`:
   (`coverage`, and readiness projected to
   `now + PROGRESS_NO_DEADLINE_HORIZON_DAYS`) with an invitation to set a
   deadline, not a warning about the missing one.
-- **A `'deadline-in-past'` course in the aggregate list**: an actionable
-  line ("cette échéance est passée, mets-la à jour"), never a disappearing
-  row and never a raw `422`/error code.
+- **A `'deadline-in-past'` course in the aggregate list**: coverage and
+  readiness shown exactly as on any other card (revised — an earlier
+  version of this line described a card replaced entirely by an
+  actionable message; see `docs/UI.md`'s own note on why that was the
+  actual defect, not the wording), a short fact ("Cette échéance est
+  passée.") positioned above both gauges, and two actions — update or
+  delete the deadline — never a disappearing row, never a raw `422`.
 - **Zero notions**: `idle` mascot, an invitation matching `docs/UI.md`'s
   empty-state rule, not a `0 %` readout presented as a problem.
 - **Four states**: loading (skeleton list matching the eventual card

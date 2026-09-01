@@ -265,7 +265,7 @@ describe("ProgressScreen", () => {
     expect(screen.getByText(/40\s?%/)).toBeInTheDocument();
   });
 
-  it("deadline-in-past in the aggregate list: an actionable line, never a disappearing row or a raw error code", async () => {
+  it("deadline-in-past: coverage and readiness still show, exactly like any other card — the lapsed date is one more fact, not a takeover (docs/UI.md's Progression note)", async () => {
     stubFetch([
       {
         documentId: "doc-1",
@@ -280,17 +280,97 @@ describe("ProgressScreen", () => {
     renderScreen();
     await screen.findByText("Maths");
     await screen.findByText("Histoire");
-    expect(screen.getByText(/passée/i)).toBeInTheDocument();
+
+    const card = screen.getByText("Maths").closest('[data-testid="progress-card"]') as HTMLElement;
+    expect(within(card).getByRole("meter", { name: "Couverture" })).toHaveAttribute("aria-valuenow", "60");
+    expect(within(card).getByRole("meter", { name: "Préparation" })).toHaveAttribute("aria-valuenow", "20");
+    expect(within(card).getByText(/60\s?%/)).toBeInTheDocument();
+    expect(within(card).getByText(/20\s?%/)).toBeInTheDocument();
+    expect(card).toHaveAttribute("data-status", "deadline-in-past");
+  });
+
+  it("deadline-in-past: the message is exactly 'Cette échéance est passée.', positioned above both gauges, distinguished by weight and position — never colour (docs/UI.md's Progression note)", async () => {
+    stubFetch([
+      {
+        documentId: "doc-1",
+        title: "Maths",
+        colour: "#F87171",
+        deadlineDate: "2020-01-01",
+        deadlineLabel: "Vieux contrôle",
+        progress: { coverage: 0.6, readiness: 0.2, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const message = screen.getByText("Cette échéance est passée.");
+    expect(message.className).toContain("font-semibold");
+    expect(message.className).toContain("text-sm");
+    expect(message.className).not.toContain("text-text-muted");
+    expect(message.className).not.toMatch(/warning/);
+
+    const coverageMeter = screen.getByRole("meter", { name: "Couverture" });
+    expect(message.compareDocumentPosition(coverageMeter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // No leftover raw text or object dump, and no longer boxed in a
+    // --warning border/background (docs/UI.md: retired, not patched — it
+    // measured ~1.8:1, under the 3:1 floor, and was never right here).
+    expect(screen.queryByText(/mets-la à jour pour suivre/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/deadline-in-past/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\[object/)).not.toBeInTheDocument();
-    // Contract commit, no visible change: the underlying condition moved
-    // from item.kind === "error" to item.progress.status ===
-    // "deadline-in-past", but the resulting data-status value — and every
-    // other rendered detail — stays exactly what it already was. The
-    // actual redesign (gauges shown, message repositioned, second action)
-    // is a separate commit.
-    const card = screen.getByText("Maths").closest('[data-testid="progress-card"]');
-    expect(card).toHaveAttribute("data-status", "error");
+    const card = screen.getByTestId("progress-card");
+    expect(card.querySelector(".border-warning")).toBeNull();
+    expect(card.querySelector('[class*="bg-warning"]')).toBeNull();
+  });
+
+  it("deadline-in-past: offers two actions, updating and deleting the deadline — previously only the first existed (docs/UI.md's Progression note)", async () => {
+    stubFetch([
+      {
+        documentId: "doc-1",
+        title: "Maths",
+        colour: "#F87171",
+        deadlineDate: "2020-01-01",
+        deadlineLabel: "Vieux contrôle",
+        progress: { coverage: 0.6, readiness: 0.2, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    // Reuses "Modifier l'échéance", the same label an upcoming deadline
+    // already has — not a distinct "Mettre à jour", which wrapped to two
+    // lines paired with "Supprimer l'échéance" at this card's real column
+    // width (docs/UI.md's Progression note).
+    const updateButton = screen.getByRole("button", { name: /modifier l'échéance/i });
+    expect(updateButton.tagName).toBe("BUTTON");
+    const deleteLink = screen.getByRole("button", { name: /supprimer l'échéance/i });
+    // The same idiom every other destructive action in this app already
+    // uses (docs/UI.md's Forbidden note): a plain underlined text-muted
+    // link, never a Button, never coloured, no confirmation dialog.
+    expect(deleteLink.className).toMatch(/underline/);
+    expect(deleteLink.className).not.toMatch(/bg-|border-border/);
+  });
+
+  it("deadline-in-past: clicking 'Supprimer l'échéance' deletes it immediately, no confirmation dialog — the same reused link, not a new one", async () => {
+    stubFetch([
+      {
+        documentId: "doc-1",
+        title: "Maths",
+        colour: "#F87171",
+        deadlineDate: "2020-01-01",
+        deadlineLabel: "Vieux contrôle",
+        progress: { coverage: 0.6, readiness: 0.2, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      },
+    ]);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText("Maths");
+
+    await user.click(screen.getByRole("button", { name: /supprimer l'échéance/i }));
+
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    const call = fetchMock.mock.calls.find((args: unknown[]) => args[0] === "/api/documents/doc-1/deadline" && (args[1] as { method?: string } | undefined)?.method === "DELETE");
+    expect(call).toBeDefined();
   });
 
   it("no deadline set: the two numbers and an invitation, never a warning about the missing deadline", async () => {

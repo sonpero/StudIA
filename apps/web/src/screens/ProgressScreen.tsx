@@ -109,12 +109,8 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
 
   const todayKey = todayDateKey();
   const isToday = item.deadlineDate === todayKey;
-  // Contract-only rename: the condition that used to be item.kind ===
-  // "error" is now item.progress.status === "deadline-in-past" (a lapsed
-  // deadline is no longer a separate kind — computeProgress can't fail).
-  // dataStatus's own "error" value is kept as-is on purpose: this commit
-  // changes no rendered output, only the shape feeding it.
-  const dataStatus = item.progress.status === "deadline-in-past" ? "error" : isToday ? "today" : item.progress.status;
+  const isPast = item.progress.status === "deadline-in-past";
+  const dataStatus = isPast ? "deadline-in-past" : isToday ? "today" : item.progress.status;
 
   return (
     <Card
@@ -125,96 +121,97 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
     >
       <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h3>
 
-      {item.progress.status === "deadline-in-past" ? (
-        <>
-          <p className="rounded-[var(--radius-button)] border border-warning bg-warning/10 p-3 text-sm text-text">
-            Cette échéance est passée. Mets-la à jour pour suivre ta progression.
-          </p>
-          {editing ? (
-            <DeadlineForm
-              initialDate=""
-              initialLabel={item.deadlineLabel ?? ""}
-              pending={setDeadlineMutation.isPending}
-              onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
-              onCancel={() => setEditing(false)}
-            />
-          ) : (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-              Mettre à jour l'échéance
-            </Button>
-          )}
-        </>
-      ) : (
-        <>
-          {/* --space-block (16px) between the two gauges, not the card's
-              own 12px rhythm used everywhere else on it (docs/UI.md's
-              Progression note): title→gauge is buffered by the gauge's own
-              label, but gauge→gauge puts a bar directly against a bare
-              label with nothing between two 32px numbers — checked against
-              real sizes, not assumed from the general rule alone. */}
-          <div className="flex flex-col gap-[var(--space-block)]">
-            <Gauge label="Couverture" value={item.progress.coverage} />
-            <Gauge label="Préparation" value={item.progress.readiness} />
-          </div>
+      {/* A lapsed deadline is one more fact about the course, never a
+          takeover of the whole card (docs/UI.md's Progression note): the
+          gauges below render exactly as they do on any other card. The
+          message leads, before both gauges, since it's the most pressing
+          fact on the card — weight and position carry the emphasis, never
+          colour: font-semibold, full-strength text (not muted), the same
+          text-sm as everything else here. No box: the border-warning/
+          bg-warning/10 treatment this used to carry measured ~1.8:1
+          against the card's white background, under the 3:1 floor, and
+          was retired rather than patched. */}
+      {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}
 
-          {item.progress.recentlyAddedUnreviewed > 0 && (
-            <p className="text-sm text-text-muted">
-              {/* recentlyAddedUnreviewed counts notions (compute-progress.ts),
-                  never cards — the two units coexist elsewhere in the app
-                  (e.g. TodayScreen's "fiches à revoir") and must not blur here. */}
-              {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
-              {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
-            </p>
-          )}
+      {/* --space-block (16px) between the two gauges, not the card's
+          own 12px rhythm used everywhere else on it (docs/UI.md's
+          Progression note): title→gauge is buffered by the gauge's own
+          label, but gauge→gauge puts a bar directly against a bare
+          label with nothing between two 32px numbers — checked against
+          real sizes, not assumed from the general rule alone. */}
+      <div className="flex flex-col gap-[var(--space-block)]">
+        <Gauge label="Couverture" value={item.progress.coverage} />
+        <Gauge label="Préparation" value={item.progress.readiness} />
+      </div>
 
-          {item.deadlineDate === null ? (
-            <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
-          ) : isToday ? (
-            <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
-          ) : (
-            <p className="text-sm">
-              Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
-              {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
-                // Same weight as the rest of the card's text (docs/UI.md: a
-                // fact stated soberly, not the loudest element on the card):
-                // no box, no underline. --warning as a text colour is
-                // available but not used here on purpose — at body size it
-                // fails AA contrast against the card's background (~1.8:1,
-                // well under the 3:1 floor for UI-sized text), so this stays
-                // in the card's own default text colour instead.
-                <span className="ml-1">
-                  {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
-                </span>
-              )}
-            </p>
-          )}
-
-          {editing ? (
-            <DeadlineForm
-              initialDate={item.deadlineDate ?? ""}
-              initialLabel={item.deadlineLabel ?? ""}
-              pending={setDeadlineMutation.isPending}
-              onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
-              onCancel={() => setEditing(false)}
-            />
-          ) : (
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => setEditing(true)}>
-                <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-                {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
-              </Button>
-              {item.deadlineDate !== null && (
-                <button type="button" className="text-sm text-text-muted underline" onClick={() => deleteDeadlineMutation.mutate()}>
-                  Supprimer l'échéance
-                </button>
-              )}
-            </div>
-          )}
-        </>
+      {item.progress.recentlyAddedUnreviewed > 0 && (
+        <p className="text-sm text-text-muted">
+          {/* recentlyAddedUnreviewed counts notions (compute-progress.ts),
+              never cards — the two units coexist elsewhere in the app
+              (e.g. TodayScreen's "fiches à revoir") and must not blur here. */}
+          {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
+          {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
+        </p>
       )}
 
-      {/* Always visible, independent of editing state or kind: symmetric to
+      {isPast ? null : item.deadlineDate === null ? (
+        <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
+      ) : isToday ? (
+        <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
+      ) : (
+        <p className="text-sm">
+          Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
+          {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
+            // Same weight as the rest of the card's text (docs/UI.md: a
+            // fact stated soberly, not the loudest element on the card):
+            // no box, no underline. --warning as a text colour is
+            // available but not used here on purpose — at body size it
+            // fails AA contrast against the card's background (~1.8:1,
+            // well under the 3:1 floor for UI-sized text), so this stays
+            // in the card's own default text colour instead.
+            <span className="ml-1">
+              {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
+            </span>
+          )}
+        </p>
+      )}
+
+      {editing ? (
+        <DeadlineForm
+          initialDate={isPast ? "" : (item.deadlineDate ?? "")}
+          initialLabel={item.deadlineLabel ?? ""}
+          pending={setDeadlineMutation.isPending}
+          onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+            {/* No separate "Mettre à jour" wording for a lapsed deadline
+                (docs/UI.md's Progression note): the message above already
+                says it's stale, and a first attempt at a distinct label
+                wrapped to two lines paired with "Supprimer l'échéance" at
+                this card's real column width — "Modifier l'échéance" fits
+                on one, reused as-is from the upcoming-deadline case. */}
+            {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
+          </Button>
+          {/* Reused as-is, the same plain --text-muted underlined link
+              "Supprimer" already uses everywhere else in this app
+              (docs/UI.md's destructive-actions note): no colour, no
+              confirmation modal — low visual weight already tells the
+              story. Previously only reachable once a deadline was still
+              upcoming; a lapsed one (item.deadlineDate !== null here too)
+              had no way to be removed at all. */}
+          {item.deadlineDate !== null && (
+            <button type="button" className="text-sm text-text-muted underline" onClick={() => deleteDeadlineMutation.mutate()}>
+              Supprimer l'échéance
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Always visible, independent of editing state or status: symmetric to
           Aujourd'hui's own course-card action (TodayScreen's CourseTodayCard).
           "Voir le cours" never collides with the nav's "Progression" item —
           the mistake made once on NotionsScreen's own button to this same

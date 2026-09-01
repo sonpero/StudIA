@@ -1224,6 +1224,52 @@ estimate), in `--warning`, never `--accent`, and never a comment on why or
 since when. No streak, no "tu n'as pas ouvert ce cours depuis 5 jours", no
 red.
 
+**A course whose deadline has already passed keeps showing coverage and
+readiness like every other card — the lapsed date is one more fact about
+the course, never a takeover of the whole card.** Previously this state
+replaced the entire card with a boxed message and a single button; the
+work already done on that course didn't stop existing just because a date
+passed, and hiding it was the actual defect, the wording was only a
+symptom. Both gauges render exactly as they do on any other card (`target`
+and `status`-derived facts stop applying past the deadline — see
+`docs/modules/progress.md` — but `coverage` and `readiness` never depended
+on the deadline at all, so neither is affected).
+
+The message shortens to **"Cette échéance est passée."** (no second
+sentence) and moves above both gauges, the first thing read about this
+course — the most pressing fact on the card, so it reads first, the same
+way a due count already leads Aujourd'hui's own card. It carries no
+colour: `font-semibold`, full-strength `--text` (not `--text-muted`), same
+`text-sm` as everything else on the card — weight and position carry the
+emphasis a colour used to, the same lever `strong` already uses in
+rendered markdown elsewhere in this app. This also retires the boxed
+`border-warning`/`bg-warning/10` treatment the message used to carry,
+which measured roughly 1.8:1 against the card's white background — well
+under the 3:1 floor for a UI-component border, and never actually checked
+until this pass. Not patched: removed, since a coloured box was never
+right here to begin with — `Calendrier`'s own rule already states a past
+date "renders exactly like one still to come — no `--warning`, no colour
+of any kind marking it overdue" (below), and this state was the one place
+on the app that still contradicted it.
+
+**Two actions, not one: "Modifier l'échéance" and "Supprimer
+l'échéance."** Previously only the first existed, so a stale deadline
+could be edited but never removed. Both are the exact idiom every other
+destructive/secondary action in this app already uses — `Modifier
+l'échéance` stays the card's own `--secondary` `Button`, the same label
+and action an upcoming deadline already uses (no separate "Mettre à jour"
+wording for a lapsed one: the message above it already says the deadline
+is stale, so the button doesn't need to repeat that, and a first attempt
+at a distinct label — "Mettre à jour l'échéance" — measured against this
+card's own real column width in the 3-column grid and, paired with
+"Supprimer l'échéance" on the same row, wrapped to two lines; "Modifier
+l'échéance" fits on one, checked the same way). `Supprimer l'échéance`
+is the same plain `--text-muted` underlined link `Supprimer` uses
+everywhere else in this document, reused as-is rather than invented
+fresh. No confirmation modal, per `Forbidden`'s and this document's own
+destructive-actions rule (above): low visual weight already tells the
+story.
+
 **Calendrier** (`workspace` module — see `docs/modules/workspace.md`'s
 Calendar section) — A month grid: seven weekday columns, a row per week,
 "‹ Mois précédent" / "Mois suivant ›" navigation either side of the current
