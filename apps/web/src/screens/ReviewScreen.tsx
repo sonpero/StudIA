@@ -136,7 +136,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
   if (sessionQuery.status === "pending") {
     return (
       <main className="flex flex-col items-center gap-4 p-8">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <div className="h-48 w-full max-w-md animate-pulse rounded-[var(--radius-card)] bg-border" />
       </main>
     );
@@ -146,7 +146,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <p>Impossible de démarrer la révision. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void sessionQuery.refetch()}>Réessayer</Button>
       </main>
@@ -163,7 +163,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Sleeping />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <p>Tout est à jour.</p>
         {nextDueNote && <p className="text-sm text-text-muted">{nextDueNote}</p>}
         <Button variant="secondary" onClick={onLeave}>
@@ -178,7 +178,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
   if (!current) {
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <p>Tu as terminé cette session.</p>
         <p className="text-sm text-text-muted">
           Tu as revu {cards.length} fiche{cards.length > 1 ? "s" : ""}.
@@ -194,7 +194,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
   return (
     <main className="flex flex-col items-center gap-6 p-8">
       <div className="flex w-full max-w-md items-center justify-between">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Révision</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Révision</h1>
         <button type="button" className="text-sm text-text-muted underline" onClick={() => void handleLeave()}>
           Quitter
         </button>

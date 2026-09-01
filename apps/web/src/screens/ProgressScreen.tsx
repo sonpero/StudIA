@@ -46,8 +46,8 @@ function Gauge({ label, value }: { label: string; value: number }) {
       {/* The percentage is the useful fact here (docs/UI.md's Type note):
           dominant on its own line, the label small and muted above it,
           not sharing a row at the same size as before. */}
-      <span className="text-[var(--text-label)] text-text-muted">{label}</span>
-      <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{percent(value)}</span>
+      <span className="text-[length:var(--text-label)] text-text-muted">{label}</span>
+      <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{percent(value)}</span>
       <div className="h-2 rounded-full bg-border">
         <div data-testid="gauge-fill" className="h-2 rounded-full bg-primary" style={{ width: widthPercent(value) }} />
       </div>
@@ -118,7 +118,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
       data-testid="progress-card"
       data-status={dataStatus}
     >
-      <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{item.title}</h3>
+      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h3>
 
       {item.kind === "error" ? (
         <>
@@ -221,7 +221,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
     return (
       <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
-          <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
           <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
             Retour
           </button>
@@ -239,7 +239,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
         <p>Impossible de charger ta progression. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -251,7 +251,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
   return (
     <main className="flex flex-col gap-[var(--space-section)] p-8">
       <div className="flex items-center justify-between">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Progression</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
         <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
           Retour
         </button>

@@ -110,7 +110,7 @@ describe("ProgressScreen", () => {
     ]);
     renderScreen();
     const title = await screen.findByText("Maths");
-    expect(title.className).toContain("text-[var(--text-title)]");
+    expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
   it("ready state: a gauge's percentage is the dominant number on its line, --text-display, its label small and muted (docs/UI.md's Type note)", async () => {
@@ -121,10 +121,10 @@ describe("ProgressScreen", () => {
     await screen.findByText("Maths");
 
     const percentValue = screen.getByText(/54\s?%/);
-    expect(percentValue.className).toContain("text-[var(--text-display)]");
+    expect(percentValue.className).toContain("text-[length:var(--text-display)]");
     const label = screen.getByText("Couverture");
-    expect(label.className).toContain("text-[var(--text-label)]");
-    expect(label.className).not.toContain("text-[var(--text-display)]");
+    expect(label.className).toContain("text-[length:var(--text-label)]");
+    expect(label.className).not.toContain("text-[length:var(--text-display)]");
   });
 
   it("ready state: a course card's subject colour is a left border on the whole card (docs/UI.md's Subject colours note) — this screen carried no colour marker before", async () => {

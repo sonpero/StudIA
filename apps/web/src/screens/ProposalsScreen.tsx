@@ -75,7 +75,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
   if (query.status === "pending") {
     return (
       <main className="flex flex-col gap-4 p-8">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
         <div className="flex flex-col gap-3">
           {[0, 1].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
@@ -89,7 +89,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
         <p>Impossible de charger les propositions. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -101,7 +101,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
   if (view.status === "pending" || view.status === "running") {
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
         <p>Extraction en cours…</p>
       </main>
     );
@@ -111,7 +111,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
         <p>{view.lastError ?? "L'extraction a échoué."}</p>
         <Button variant="secondary" disabled={pending} onClick={() => void handleReject()}>
           Fermer
@@ -124,7 +124,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
     return (
       <main className="flex flex-col items-center gap-4 p-8 text-center">
         <Idle />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
         <p>Aucun devoir trouvé sur cette photo.</p>
         <Button variant="secondary" disabled={pending} onClick={() => void handleReject()}>
           Fermer
@@ -135,7 +135,7 @@ export function ProposalsScreen({ jobId, onBack }: { jobId: string; onBack: () =
 
   return (
     <main className="flex flex-col gap-6 p-8">
-      <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Propositions</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Propositions</h1>
       <Card>
         <ul className="flex flex-col gap-4">
           {view.proposals.map((proposal) => (

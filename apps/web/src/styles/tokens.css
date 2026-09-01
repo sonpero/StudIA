@@ -14,6 +14,12 @@
   --color-success: #12b556;
   --color-warning: #f5b940;
 
+  /* Referenced as font-[family-name:var(--font-display)], never the bare
+     font-[var(--font-display)] this comment itself used to show: Tailwind's
+     font- prefix is ambiguous between font-family and font-weight, and
+     without the family-name: hint it silently compiled to font-weight
+     instead -- confirmed against the real compiler, not assumed
+     (apps/web/src/styles/tailwind-type-hints.unit.test.ts). */
   --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
 
@@ -23,9 +29,12 @@
   /* docs/UI.md Type section: four explicit roles, not a bare numeric
      scale -- text-body (14px) is the existing baseline, named here for
      completeness rather than a class to newly apply anywhere. Referenced
-     via var(), e.g. text-[var(--text-title)], the same arbitrary-value
-     convention already used for the font and radius tokens above, rather
-     than relying on the auto-generated theme utilities. */
+     as text-[length:var(--text-title)], never the bare text-[var(--text-
+     title)] this comment itself used to show: Tailwind's text- prefix is
+     ambiguous between colour and font-size (among others), and without
+     the length: hint it silently compiled to `color` instead -- every
+     size token in this app rendered at the browser's default size, not
+     its own, until this was found and fixed (docs/UI.md's Type note). */
   --text-label: 0.75rem;
   --text-body: 0.875rem;
   --text-title: 1.25rem;
@@ -33,8 +42,10 @@
 
   /* docs/UI.md Shape and depth: three named steps, not the flat gap-2/
      gap-3/gap-4/gap-6 every screen reached for regardless of what was next
-     to what. Referenced via var(), e.g. gap-[var(--space-block)] — the
-     same arbitrary-value convention as --text-*/--font-*/--radius-* above. */
+     to what. Referenced via var(), e.g. gap-[var(--space-block)], with no
+     type hint needed here or on rounded-[var(--radius-*)] above: gap and
+     border-radius are single-property Tailwind prefixes, nothing to be
+     ambiguous about, unlike text-/font- above. */
   --space-related: 0.5rem;
   --space-block: 1rem;
   --space-section: 1.5rem;

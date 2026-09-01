@@ -47,7 +47,7 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
         dimmed && "opacity-50",
       )}
     >
-      <span className="hidden font-[var(--font-display)] text-lg font-extrabold md:mb-6 md:block">{APP_NAME}</span>
+      <span className="hidden font-[family-name:var(--font-display)] text-lg font-extrabold md:mb-6 md:block">{APP_NAME}</span>
       {items.map((item) => {
         const Icon = item.icon;
         return (

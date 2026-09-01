@@ -126,11 +126,11 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const count = screen.getByText("2");
-    expect(count.className).toContain("text-[var(--text-display)]");
+    expect(count.className).toContain("text-[length:var(--text-display)]");
     const qualifier = screen.getByText("/ 5 notions maîtrisées");
-    expect(qualifier.className).toContain("text-[var(--text-label)]");
+    expect(qualifier.className).toContain("text-[length:var(--text-label)]");
     const title = screen.getByText("Photosynthèse");
-    expect(title.className).toContain("text-[var(--text-title)]");
+    expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
   it("ready state: 'Types de fiches à créer' is a section label, --text-label, not body text (docs/UI.md's Type note)", async () => {
@@ -146,7 +146,7 @@ describe("NotionsScreen", () => {
     renderScreen();
     await screen.findByText("Photosynthèse");
 
-    expect(screen.getByText("Types de fiches à créer").className).toContain("text-[var(--text-label)]");
+    expect(screen.getByText("Types de fiches à créer").className).toContain("text-[length:var(--text-label)]");
   });
 
   it("ready state: the toolbar's 'Réviser' is --secondary like its neighbours, not --accent — docs/UI.md reserves --accent for a screen's single focused call to action, and this toolbar has several peer actions, not one", async () => {
@@ -369,7 +369,7 @@ describe("NotionsScreen", () => {
 
     const detail = screen.getByText(/1\/3 fiche a fait 3 révisions/);
     expect(detail.className).not.toMatch(/warning/);
-    expect(detail.className).toContain("text-[var(--text-label)]");
+    expect(detail.className).toContain("text-[length:var(--text-label)]");
   });
 
   it("ready state: the notion's body is hidden by default and revealed on demand", async () => {

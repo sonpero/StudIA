@@ -125,7 +125,7 @@ describe("DocumentsScreen", () => {
     renderScreen();
 
     const title = await screen.findByText("Chapitre 3");
-    expect(title.className).toContain("text-[var(--text-title)]");
+    expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
   it("a done document offers to open the reader, calling back with its id — replacing the old inline 'Voir le texte' toggle", async () => {

@@ -22,9 +22,9 @@ function isActive(status: ExtractionStatus): boolean {
 // so the document's own heading hierarchy nests under those rather than
 // competing with them, while keeping the same visual size per level.
 const READER_COMPONENTS: Components = {
-  h1: (props) => <h3 className="mt-8 font-[var(--font-display)] text-2xl font-extrabold first:mt-0" {...props} />,
-  h2: (props) => <h4 className="mt-6 font-[var(--font-display)] text-xl font-extrabold first:mt-0" {...props} />,
-  h3: (props) => <h5 className="mt-4 font-[var(--font-display)] text-lg font-extrabold first:mt-0" {...props} />,
+  h1: (props) => <h3 className="mt-8 font-[family-name:var(--font-display)] text-2xl font-extrabold first:mt-0" {...props} />,
+  h2: (props) => <h4 className="mt-6 font-[family-name:var(--font-display)] text-xl font-extrabold first:mt-0" {...props} />,
+  h3: (props) => <h5 className="mt-4 font-[family-name:var(--font-display)] text-lg font-extrabold first:mt-0" {...props} />,
   p: (props) => <p className="mt-4 leading-relaxed text-text first:mt-0" {...props} />,
   ul: (props) => <ul className="mt-4 list-disc pl-6 text-text" {...props} />,
   ol: (props) => <ol className="mt-4 list-decimal pl-6 text-text" {...props} />,
@@ -70,7 +70,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
   if (query.status === "pending") {
     return (
       <main className="flex flex-col gap-[var(--space-section)] bg-surface p-8">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-4 animate-pulse rounded-[var(--radius-button)] bg-border" />
@@ -84,7 +84,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Impossible de charger ce cours. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -100,7 +100,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
         <Reading />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours est encore en cours de lecture. Reviens dans un instant.</p>
         <BackButton onBack={onBack} />
       </main>
@@ -111,7 +111,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>La lecture de ce cours a échoué. Mets-la à jour depuis Mes cours.</p>
         <BackButton onBack={onBack} />
       </main>
@@ -124,7 +124,7 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
         <Idle />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours ne contient pas encore de texte lisible.</p>
         <BackButton onBack={onBack} />
       </main>
@@ -134,13 +134,13 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
   return (
     <main className="flex flex-col gap-[var(--space-section)] bg-surface p-8">
       <div className="flex items-center justify-between">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Lecture</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <BackButton onBack={onBack} />
       </div>
       <div className="mx-auto w-full max-w-2xl">
         <div className="flex items-center gap-2">
           <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-          <h2 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{document.title}</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h2>
         </div>
         <Markdown components={READER_COMPONENTS}>{document.markdown}</Markdown>
       </div>

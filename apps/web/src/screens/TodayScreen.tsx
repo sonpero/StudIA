@@ -285,7 +285,7 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
       style={card.colour ? { borderLeftColor: card.colour } : undefined}
       data-testid="course-today-card"
     >
-      <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{card.documentTitle}</h3>
+      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{card.documentTitle}</h3>
 
       <div className="flex flex-col gap-1">
         {/* The due/below-target counts are the most useful fact on this
@@ -293,16 +293,16 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
             its qualifier stays small and muted beside it. */}
         {card.dueCount > 0 && (
           <p>
-            <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{card.dueCount}</span>{" "}
-            <span className="text-[var(--text-label)] text-text-muted">
+            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.dueCount}</span>{" "}
+            <span className="text-[length:var(--text-label)] text-text-muted">
               fiche{card.dueCount > 1 ? "s" : ""} à revoir aujourd'hui
             </span>
           </p>
         )}
         {card.belowTargetCount > 0 && (
           <p>
-            <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{card.belowTargetCount}</span>{" "}
-            <span className="text-[var(--text-label)] text-text-muted">
+            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.belowTargetCount}</span>{" "}
+            <span className="text-[length:var(--text-label)] text-text-muted">
               notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
             </span>
           </p>
@@ -362,7 +362,7 @@ function TodosCard({
 
   return (
     <Card className="flex flex-col gap-3" data-testid="todos-card">
-      <h2 className="text-[var(--text-label)] font-medium text-text-muted">Todos</h2>
+      <h2 className="text-[length:var(--text-label)] font-medium text-text-muted">Todos</h2>
       {todos.length > 0 && (
         // A bounded, scrollable panel (docs/UI.md's Shape and depth note):
         // caps only the list, roughly five rows tall, never the card around
@@ -458,7 +458,7 @@ export function TodayScreen({
   if (query.status === "pending") {
     return (
       <main className="flex flex-col gap-[var(--space-section)] p-8">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
@@ -472,7 +472,7 @@ export function TodayScreen({
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
         <p>Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -485,7 +485,7 @@ export function TodayScreen({
 
   return (
     <main className="flex flex-col gap-[var(--space-section)] p-8">
-      <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
 
       {nothingAtAll && (
         <div className="flex flex-col items-center gap-4 py-12 text-center">

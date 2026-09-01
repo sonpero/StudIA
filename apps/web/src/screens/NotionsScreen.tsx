@@ -195,7 +195,7 @@ export function NotionsScreen({
   if (notionsQuery.status === "pending") {
     return (
       <main className="p-8">
-        <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <div className="flex flex-col gap-3">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
@@ -209,7 +209,7 @@ export function NotionsScreen({
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <p>Impossible de charger les notions de ce cours. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void notionsQuery.refetch()}>Réessayer</Button>
       </main>
@@ -222,7 +222,7 @@ export function NotionsScreen({
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Idle />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>
         <Button variant="secondary" onClick={onBack}>
           Retour à mes cours
@@ -244,7 +244,7 @@ export function NotionsScreen({
           <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
             Retour à mes cours
           </button>
-          <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         </div>
         {/* The screen's common actions — reading, checking progress,
             reviewing. "Créer les fiches" / "Régénérer les fiches" lives
@@ -255,8 +255,8 @@ export function NotionsScreen({
         <div className="flex items-center gap-3" data-testid="notions-toolbar">
           {progress && (
             <p>
-              <span className="font-[var(--font-display)] text-[var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
-              <span className="text-[var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
+              <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
+              <span className="text-[length:var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
             </p>
           )}
           <Button variant="secondary" onClick={onOpenReader}>
@@ -276,7 +276,7 @@ export function NotionsScreen({
           {generateLabel}
         </Button>
         <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
-          <legend className="mb-1 text-[var(--text-label)] text-text-muted">Types de fiches à créer</legend>
+          <legend className="mb-1 text-[length:var(--text-label)] text-text-muted">Types de fiches à créer</legend>
           {ALL_CARD_TYPES.map((type) => (
             <label key={type} className="flex items-center gap-2">
               <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
@@ -300,7 +300,7 @@ export function NotionsScreen({
             <Card key={notion.id} className="flex flex-col gap-3" data-testid="notion-card">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{notion.title}</h3>
+                  <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{notion.title}</h3>
                   <p className="text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -321,7 +321,7 @@ export function NotionsScreen({
                 return (
                   <div className="flex flex-col gap-1">
                     <p className="text-sm text-text-muted">{gap.sentence}</p>
-                    <p className="text-[var(--text-label)] text-text-muted">{gap.detail}</p>
+                    <p className="text-[length:var(--text-label)] text-text-muted">{gap.detail}</p>
                   </div>
                 );
               })()}

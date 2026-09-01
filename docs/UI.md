@@ -298,6 +298,27 @@ regardless of role before this pass:
 | `--text-title` | 20px | Card and course titles — Aujourd'hui's course cards, Progression's, a notion's own, the reader's course heading. One step up from the 16px they shared with plain body text before. |
 | `--text-display` | 32px | The one dominant number on its line: a due count, a gauge percentage, a mastered-notions count. Display face (Plus Jakarta Sans, 800, `tabular-nums`), its unit and qualifier beside it in `--text-label` and `--text-muted` — never the reverse, and never both the same size. |
 
+**Neither the display face nor any of these four sizes ever actually
+rendered, from the very first commit of this pass until it was found and
+fixed.** `font-[var(--font-display)]` and `text-[var(--text-*)]` both
+compiled — silently, no build error, no lint warning — to the wrong CSS
+property: Tailwind's arbitrary-value syntax is ambiguous for both prefixes
+(`font-` could mean family, weight, or style; `text-` could mean colour,
+size, or line-height), and without an explicit type hint it guessed wrong
+both times, `font-weight` and `color` respectively. Every title sat in
+Inter (the body face) at whatever weight `font-extrabold` gave it, and
+every one of these four sizes rendered at the browser's own default,
+never its own token — the numbers in this table were correct on paper and
+absent on screen, the entire time. Confirmed against the real Tailwind
+compiler, not assumed: `font-[family-name:var(--font-display)]` and
+`text-[length:var(--text-label)]` (the type-hinted forms Tailwind actually
+needs) now hold every call site in the app, checked by
+`apps/web/src/styles/tailwind-type-hints.unit.test.ts`, which compiles
+every such class through Tailwind itself and asserts the property it
+produces — the class-name-string assertions every other test here used
+instead could not have caught this, and did not, through the entire Type
+pass and everything built on it since.
+
 Four of the seven steps the original 12/14/16/20/24/32/44 scale listed, each
 now named for its job instead of left as a bare number. 16, 24 and 44 stay
 exactly as they were — Tailwind's own `text-base` (unused after this pass),
@@ -1203,3 +1224,18 @@ Checked in the Playwright suite:
   components are where parallel agents collide.
 - If a screen needs a pattern not described here, stop and ask. Do not invent an
   interaction model and leave the human to find it in review.
+- **A Tailwind arbitrary value referencing a token (`text-[var(--...)]`,
+  `font-[var(--...)]`, and any other prefix covering more than one CSS
+  property) needs an explicit type hint** — `text-[length:var(--text-title)]`,
+  `font-[family-name:var(--font-display)]` — never the bare form. Without
+  one, Tailwind guesses the intended property from the value's own syntax,
+  and a `var(...)` reference gives it nothing to guess from: `text-` and
+  `font-` both guessed wrong for every token in this file (`Type`'s own
+  note, above) and it went undetected through an entire pass because
+  every test checked for the class-name string, never what it compiled
+  to. `gap-`, margin/padding, and `rounded-` need no hint — they map to
+  exactly one CSS property each, nothing to disambiguate. When adding a
+  new arbitrary-value class for a token, check what it actually compiles
+  to (`apps/web/src/styles/tailwind-type-hints.unit.test.ts` does this
+  against the real Tailwind compiler, not a guess) before trusting the
+  class name alone.

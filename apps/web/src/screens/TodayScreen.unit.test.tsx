@@ -120,10 +120,10 @@ describe("TodayScreen", () => {
     await screen.findByText("Maths");
 
     const digit = screen.getByText("25");
-    expect(digit.className).toContain("text-[var(--text-display)]");
+    expect(digit.className).toContain("text-[length:var(--text-display)]");
     const qualifier = screen.getByText(/fiches à revoir aujourd'hui/);
-    expect(qualifier.className).toContain("text-[var(--text-label)]");
-    expect(qualifier.className).not.toContain("text-[var(--text-display)]");
+    expect(qualifier.className).toContain("text-[length:var(--text-label)]");
+    expect(qualifier.className).not.toContain("text-[length:var(--text-display)]");
   });
 
   it("ready: a course card's subject colour is a left border on the whole card, not a small dot beside the title (docs/UI.md's Subject colours note)", async () => {
@@ -162,7 +162,7 @@ describe("TodayScreen", () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
     renderScreen();
     const title = await screen.findByText("Maths");
-    expect(title.className).toContain("text-[var(--text-title)]");
+    expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
   it("ready: shows upcoming deadlines as a plain fact, never a countdown widget", async () => {
@@ -449,7 +449,7 @@ describe("TodayScreen", () => {
     renderScreen();
     await screen.findByText(/rien de prévu/i);
 
-    expect(screen.getByText("Todos").className).toContain("text-[var(--text-label)]");
+    expect(screen.getByText("Todos").className).toContain("text-[length:var(--text-label)]");
   });
 
   it("ready: the date and course fields get design-system styling, not the raw native control (docs/UI.md)", async () => {

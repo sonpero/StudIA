@@ -48,7 +48,7 @@ export function LoginScreen() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas p-8">
       <Card className="flex w-full max-w-md flex-col gap-4">
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">StudIA</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">StudIA</h1>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <label htmlFor={usernameId} className="flex flex-col gap-1 text-sm text-text-muted">
             Identifiant

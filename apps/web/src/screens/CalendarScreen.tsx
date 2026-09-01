@@ -135,7 +135,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
       <Button variant="secondary" onClick={goToPreviousMonth}>
         ‹ Mois précédent
       </Button>
-      <h1 className="font-[var(--font-display)] text-2xl font-extrabold">{monthLabel(viewed.year, viewed.month)}</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">{monthLabel(viewed.year, viewed.month)}</h1>
       <Button variant="secondary" onClick={goToNextMonth}>
         Mois suivant ›
       </Button>
@@ -159,7 +159,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Calendrier</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Calendrier</h1>
         <p>Impossible de charger le calendrier. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>

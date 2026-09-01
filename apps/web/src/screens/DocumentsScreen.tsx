@@ -36,7 +36,7 @@ function DocumentCard({
     <Card className="flex flex-col gap-2" data-testid="document-card">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-        <h3 className="font-[var(--font-display)] text-[var(--text-title)] font-extrabold">{document.title}</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h3>
       </div>
       <p className="text-sm text-text-muted">
         {document.pageCount} page{document.pageCount > 1 ? "s" : ""}
@@ -105,7 +105,7 @@ export function DocumentsScreen({
   if (query.status === "pending") {
     return (
       <main className="p-8">
-        <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
         <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
@@ -119,7 +119,7 @@ export function DocumentsScreen({
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
         <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -130,7 +130,7 @@ export function DocumentsScreen({
 
   return (
     <main className="p-8">
-      <h1 className="mb-[var(--space-section)] font-[var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+      <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
 
       {documents.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-12 text-center">

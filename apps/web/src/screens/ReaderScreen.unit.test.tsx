@@ -161,7 +161,7 @@ describe("ReaderScreen", () => {
     renderScreen();
 
     const title = await screen.findByRole("heading", { name: "La photosynthèse" });
-    expect(title.className).toContain("text-[var(--text-title)]");
+    expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
   it("ready: the reading surface is --surface (white), not --canvas — a page of prose reads as a page, not bare canvas with text floating on it (docs/UI.md's Lecteur note)", async () => {
