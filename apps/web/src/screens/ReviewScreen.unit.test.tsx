@@ -329,6 +329,46 @@ describe("ReviewScreen", () => {
     expect(submitCalls[0]?.body).toMatchObject({ rating: 1 });
   });
 
+  it("mcq: the correct answer and the student's wrong pick are distinguished by icon and text, not colour alone (docs/UI.md's own rule)", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/review/sessions") return Promise.resolve(new Response(JSON.stringify({ sessionId: "s1", cards: [mcqCard] }), { status: 200 }));
+        if (url === "/api/review/cards/m1/grade") {
+          return Promise.resolve(new Response(JSON.stringify({ correct: false, feedback: "Incorrect. La bonne réponse était : Oxygène", suggestedRating: 1 }), { status: 200 }));
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Quel gaz la photosynthèse libère-t-elle ?");
+
+    await user.click(screen.getByRole("button", { name: "Azote" }));
+    await screen.findByText(/incorrect/i);
+
+    // Both facts must be readable without colour: which option was
+    // actually correct, and which one the student picked instead.
+    const correctButton = screen.getByRole("button", { name: /oxygène/i });
+    const wrongPickButton = screen.getByRole("button", { name: /azote/i });
+    expect(correctButton).toHaveTextContent(/bonne réponse/i);
+    expect(wrongPickButton).toHaveTextContent(/ta réponse/i);
+
+    for (const button of [correctButton, wrongPickButton]) {
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveAttribute("focusable", "false");
+    }
+
+    // An untouched, unrelated option carries neither signal.
+    const otherButton = screen.getByRole("button", { name: "Hydrogène" });
+    expect(otherButton).not.toHaveTextContent(/bonne réponse|ta réponse/i);
+    expect(otherButton.querySelector("svg")).toBeNull();
+  });
+
   it("mcq: a grading failure shows an error and re-enables the options for a retry", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(

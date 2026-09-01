@@ -128,6 +128,51 @@ one thing this app is for. Moved to `#12B556` (hue 145°, clear of the
 whole `--accent`/turquoise cluster entirely rather than squeezed beside
 it — 19.4° from `--accent`, comfortably past the floor).
 
+**That 19.4° passed the hue-collision test and still failed on screen.** A
+live check of exactly this ReviewScreen state (a QCM graded wrong, both
+rings visible together) found the two rings read as the same green at a
+glance — the two-token distance was measured correctly, but a floor tuned
+for telling *palette* hues apart was never validated against a thin 2px
+ring at these particular lightness/saturation values, and it doesn't hold
+up here. Not fixed by moving either token further apart: flagged for when
+the palette is next reopened, not resolved now, because the real defect
+is one level up, below.
+
+**Two states that can coexist in the same list are never told apart by
+hue alone, however far apart their hues measure.** This is the general
+form of the failure above, and it generalises past this one screen: "this
+option is factually correct" and "this is what you clicked" are two
+different facts, and colour was the only channel carrying that difference
+— exactly the "colour alone" case `Accessibility floor` and `Subject
+colours`' own rules already forbid elsewhere, just not yet named for
+*state*, only for identity. Wherever a screen needs to show two or more
+coexisting outcomes on peers of the same list, at least one of them needs
+a non-hue signal — shape, an icon, a position, text — and colour, if used
+at all, only reinforces it.
+
+**ReviewScreen's own fix: an icon per outcome, not a truer green.** The
+graded MCQ view now pairs each ring with a `lucide-react` icon on that
+same option — `Check` on the factually correct one, `X` on the student's
+wrong pick — so the shape carries the distinction and the ring becomes
+reinforcement, not the sole signal. Verified by turning the same screen
+state to grayscale: both facts still read, because neither ever depended
+on hue.
+
+**These two icons are not decorative, unlike every other icon `Icons`
+(below) places in this app.** `Icons`' own rule — icon `aria-hidden`,
+label carries the accessible name alone — assumes the icon is redundant
+with text already on screen. It isn't here: nothing else attached to
+*this specific option* says "this was the right answer" or "this is what
+you picked" — `grade.feedback` states the correct answer's text once,
+below the whole list, which does not by itself tell a screen-reader user,
+navigating option by option, which button they are currently on. The
+icon SVGs themselves stay `aria-hidden`/`focusable="false"` (their shape
+carries nothing a screen reader can use), but each now sits beside a
+visually-hidden (`sr-only`) text span — "Bonne réponse" / "Ta réponse" —
+so the option's accessible name carries the same fact its icon shows
+sighted users, without printing a second, redundant visible label next to
+an already-labelled option.
+
 **Destructive actions carry no colour of their own, still — settled here so
 it stays a decision, not a gap.** "Supprimer" (a document, a deadline, a
 todo, a staged upload photo) has always rendered as a plain `--text-muted`
@@ -361,6 +406,16 @@ accessible label; this goes further and keeps the label itself always
 visible). Every icon is `aria-hidden="true"` and `focusable="false"`,
 exactly like the mascot: the accessible name of a nav destination or a card
 action is its text label alone, unaffected by the icon beside it.
+
+**One exception, and it stays an exception: ReviewScreen's graded-MCQ
+`Check`/`X`.** Every icon above is redundant with a label already on
+screen — that's what lets it stay purely decorative. Those two are not:
+each marks a fact — "correct answer", "your pick" — attached to one
+specific option, that nothing else on screen says for that option. Their
+SVGs stay `aria-hidden` same as any other icon here (shape alone still
+carries nothing a screen reader can use), but each is paired with its own
+`sr-only` text rather than a second visible label (`Colour`'s own note
+above has the full reasoning).
 
 **Scope for this pass**: one icon per nav destination (`Home` for
 Aujourd'hui, `BookOpen` for Mes cours, `TrendingUp` for Progression,

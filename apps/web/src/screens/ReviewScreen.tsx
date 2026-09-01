@@ -1,9 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { getProgress } from "../lib/notions-api.js";
 import { abandonSession, gradeAnswer, startSession, submitReview, type CardSchedule, type DueCard, type GradeResult, type Rating } from "../lib/review-api.js";
 
@@ -232,7 +234,8 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
             // never before, so the highlight can never race ahead of it.
             const revealCorrectOption = grade !== null && isCorrectOption(option, current.answer);
             const isSelected = mcqSelection === option;
-            const outcomeClass = revealCorrectOption ? "ring-2 ring-success" : chosen && isSelected && grade ? "ring-2 ring-accent" : "";
+            const wrongPick = !revealCorrectOption && chosen && isSelected && grade !== null;
+            const outcomeClass = revealCorrectOption ? "ring-2 ring-success" : wrongPick ? "ring-2 ring-accent" : "";
             return (
               <Button
                 key={option}
@@ -241,6 +244,23 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
                 className={outcomeClass}
                 onClick={() => void selectMcqOption(current, option)}
               >
+                {/* Colour alone doesn't distinguish these two facts
+                    reliably (docs/UI.md's Colour note): the icon carries
+                    the distinction visually, an sr-only span carries it
+                    for assistive tech, since nothing else on screen names
+                    which specific option is which. */}
+                {revealCorrectOption && (
+                  <>
+                    <Check aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                    <span className="sr-only">Bonne réponse.</span>
+                  </>
+                )}
+                {wrongPick && (
+                  <>
+                    <X aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                    <span className="sr-only">Ta réponse.</span>
+                  </>
+                )}
                 {option}
               </Button>
             );
