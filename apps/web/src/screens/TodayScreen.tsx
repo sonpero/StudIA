@@ -83,7 +83,13 @@ function buildCourseCards(view: TodayView): CourseCard[] {
     ensure(entry.documentId, entry.title, null).deadline = { label: entry.deadlineLabel, daysAway: entry.daysAway };
   }
 
-  return [...byId.values()];
+  // Sorted by urgency, nearest deadline first (docs/UI.md's Aujourd'hui
+  // note): a course with no deadline compares as Infinity, so it always
+  // sorts after every course that has one. Array.prototype.sort's own
+  // guaranteed stability (ES2019+) keeps ties — including "no deadline at
+  // all" ties — in the order this Map already produced, with no separate
+  // tie-break key needed.
+  return [...byId.values()].sort((a, b) => (a.deadline?.daysAway ?? Infinity) - (b.deadline?.daysAway ?? Infinity));
 }
 
 function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number]; onToggle: (done: boolean) => void; onDelete: () => void }) {

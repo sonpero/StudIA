@@ -652,9 +652,19 @@ its own, differently-sized column underneath. Grid items keep their own
 height (`items-start`, never the grid's default stretch): a short card next
 to a taller one is never stretched to match it, which would leave dead
 space under its buttons. Course cards fill the grid left to right, top to
-bottom, in whatever order `TodayView` returns them; the todos card is simply
-the next item after the last course card, wherever that lands — not pinned
-to a fixed side.
+bottom, **sorted by urgency, nearest deadline first**: `deadline?.daysAway
+?? Infinity`, ascending — a course three days from its exam sorts ahead of
+one three weeks out, and a course with no deadline at all (`daysAway`
+missing, read as "never", not as "now") sorts after every course that has
+one. Ties — same `daysAway`, or several courses with none at all — keep
+whatever order `buildCourseCards` already produced for them:
+`Array.prototype.sort`'s own guaranteed stability does that, not a second
+explicit tie-break key. Display ordering only: `TodayView`'s three arrays
+(dueCards/notionsBelowTarget/upcomingDeadlines) are untouched, and nothing
+about which course actually has due cards or is below target changes, only
+where its card lands in the grid. The todos card is simply the next item
+after the last course card, wherever that now lands — not pinned to a
+fixed side.
 
 A course's card states, together, whichever of these apply to it — never
 across separate cards, so the same course never appears twice:

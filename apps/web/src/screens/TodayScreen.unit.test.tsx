@@ -300,6 +300,47 @@ describe("TodayScreen", () => {
     expect(grid).toContainElement(todosCard);
   });
 
+  it("ready: course cards are sorted by urgency, nearest deadline first, no-deadline courses last (docs/UI.md's Aujourd'hui note)", async () => {
+    stubFetch({
+      ...emptyView,
+      dueCards: [
+        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
+        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
+        { documentId: "doc-3", documentTitle: "SVT", colour: "#109DA0", count: 2 },
+      ],
+      upcomingDeadlines: [
+        { documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 },
+        { documentId: "doc-2", title: "Histoire", deadlineDate: "2026-03-04", deadlineLabel: "Contrôle", daysAway: 2 },
+        // doc-3 (SVT) has no deadline at all — must sort last, after every
+        // course that has one, however far out.
+      ],
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const cards = screen.getAllByTestId("course-today-card");
+    const titles = cards.map((card) => within(card).getByRole("heading").textContent);
+    expect(titles).toEqual(["Histoire", "Maths", "SVT"]);
+  });
+
+  it("ready: courses tied on urgency (same daysAway, or no deadline at all) keep their original order — a stable sort, not a coincidental one", async () => {
+    stubFetch({
+      ...emptyView,
+      dueCards: [
+        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
+        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
+      ],
+      // Neither has a deadline: both compare equal (Infinity), so a stable
+      // sort must leave them in buildCourseCards's own original order.
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const cards = screen.getAllByTestId("course-today-card");
+    const titles = cards.map((card) => within(card).getByRole("heading").textContent);
+    expect(titles).toEqual(["Maths", "Histoire"]);
+  });
+
   it("ready: the todos card spans both columns on desktop when an even number of course cards would otherwise strand it alone in a row, dead space beside it (docs/UI.md's Grid and spacing note)", async () => {
     // Also a class-name assertion, same exception as the grid-sharing test
     // above: lg:col-span-2 has no accessible trace, it is the whole point.
