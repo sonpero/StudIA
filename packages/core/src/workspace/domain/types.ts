@@ -1,6 +1,4 @@
-// docs/modules/workspace.md. M6 scope only — PomodoroSession is M7, not
-// defined here (CLAUDE.md: no tables, no fields, for data no current
-// milestone stores).
+// docs/modules/workspace.md.
 export type Todo = {
   id: string;
   userId: string;
@@ -55,6 +53,23 @@ export type CalendarView = {
   start: string;
   end: string;
   days: CalendarDay[]; // one per date with >=1 entry, in date order
+};
+
+// Pomodoro (M7, docs/modules/workspace.md's "Pomodoro (M7)" note). No
+// documentId: a pomodoro is for working, not necessarily for reviewing one
+// specific course — add it the day a real use for it exists, not
+// speculatively now. Deliberately not review.Session: that type's own
+// comment states it is "not fixed-length: no target count, no timer",
+// which a pomodoro, by definition, is.
+export const POMODORO_DURATION_SECONDS = 25 * 60; // fixed, not user-configurable this milestone
+
+export type PomodoroSession = {
+  id: string;
+  userId: string;
+  todoId: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number; // captured at creation, never re-read from the constant later
 };
 
 // A photo-extraction job's output, never written directly to `todos`

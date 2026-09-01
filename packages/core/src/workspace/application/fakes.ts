@@ -5,19 +5,21 @@ import type { Deadline, ProgressRepository } from "../../progress/index.js";
 import type { CardSchedule, DueCard, ReviewRepository } from "../../review/index.js";
 import { ok, type Result } from "../../shared/index.js";
 import type { TodoExtractionError, TodoExtractionOutput, TodoExtractor, TodoRepository } from "../domain/ports.js";
-import type { Todo, TodoProposal } from "../domain/types.js";
+import type { PomodoroSession, Todo, TodoProposal } from "../domain/types.js";
 
 // In-memory test double for workspace's own port (CLAUDE.md rule 3), same
 // shape as progress/application/fakes.ts's fakeProgressRepository.
 export function fakeTodoRepository(
-  seed: { todos?: Todo[]; proposals?: TodoProposal[] } = {},
-): TodoRepository & { todos: Todo[]; proposals: TodoProposal[] } {
+  seed: { todos?: Todo[]; proposals?: TodoProposal[]; pomodoroSessions?: PomodoroSession[] } = {},
+): TodoRepository & { todos: Todo[]; proposals: TodoProposal[]; pomodoroSessions: PomodoroSession[] } {
   const todos = [...(seed.todos ?? [])];
   const proposals = [...(seed.proposals ?? [])];
+  const pomodoroSessions = [...(seed.pomodoroSessions ?? [])];
 
   return {
     todos,
     proposals,
+    pomodoroSessions,
     createTodo: (todo) => {
       todos.push(todo);
       return Promise.resolve();
@@ -66,6 +68,22 @@ export function fakeTodoRepository(
         if (proposals[i]!.jobId === jobId && proposals[i]!.userId === userId) proposals.splice(i, 1);
       }
       return Promise.resolve();
+    },
+    createPomodoroSession: (session) => {
+      pomodoroSessions.push(session);
+      return Promise.resolve();
+    },
+    endPomodoroSession: (userId, id, endedAt) => {
+      const index = pomodoroSessions.findIndex((s) => s.id === id && s.userId === userId);
+      if (index === -1) return Promise.resolve(null);
+      pomodoroSessions[index] = { ...pomodoroSessions[index]!, endedAt };
+      return Promise.resolve(pomodoroSessions[index]);
+    },
+    getLatestOpenPomodoroSession: (userId) => {
+      const open = pomodoroSessions.filter((s) => s.userId === userId && s.endedAt === null);
+      if (open.length === 0) return Promise.resolve(null);
+      const latest = open.reduce((a, b) => (a.startedAt > b.startedAt ? a : b));
+      return Promise.resolve(latest);
     },
   };
 }

@@ -278,6 +278,89 @@ ordinary composition. `getCalendar` itself, the route, and the screen
 stay normal regime — same reasoning `getToday` was never mutation-tested
 itself even though pieces it calls are.
 
+### Pomodoro (M7)
+
+```ts
+export const POMODORO_DURATION_SECONDS = 25 * 60; // fixed, not user-configurable this milestone
+
+type PomodoroSession = {
+  id: string;
+  userId: string;
+  todoId: string | null;   // optional link to a todo
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number; // captured at creation, never re-read from the constant later
+};
+```
+
+**No `documentId`.** A pomodoro is for working, not necessarily for
+reviewing one specific course — `review.Session` and `Todo` both carry an
+optional `documentId` for their own reasons, `PomodoroSession` does not
+need one to be useful. A field this module doesn't need yet is a field it
+doesn't have to maintain; add it the day a real use for it exists, not
+speculatively now.
+
+**Not `review.Session`, on purpose.** `review`'s own `Session` type
+already exists (`review/domain/ports.ts`) but its own comment rules it
+out explicitly: "Sessions are not fixed-length: no target count, no
+timer." A pomodoro is defined by having a fixed length — reusing that
+type would contradict its own documented design, not extend it.
+`PomodoroSession` is a new, separate type, living in `workspace` per this
+module's own header ("M7 (pomodoro, music)") and
+`docs/modules/README.md`'s existing table entry.
+
+**"Active" is a pure function of `now`, never a stored flag:**
+```ts
+function isPomodoroActive(session: PomodoroSession, now: Date): boolean {
+  if (session.endedAt !== null) return false;
+  return now.getTime() - new Date(session.startedAt).getTime() < session.durationSeconds * 1000;
+}
+```
+Nothing ever has to close a session for the app to know it is over: one
+whose planned window has elapsed simply stops being reported as active,
+whether or not the client ever called the end route. This is what makes
+closing the tab mid-pomodoro harmless — the row stays `endedAt: null`
+indefinitely, but stops mattering the moment its own duration has passed,
+with no cleanup job, no cron, nothing to run. `docs/MILESTONES.md`'s M7
+acceptance criterion "timer state survives a page reload" becomes this
+function's own property rather than a mechanism the client has to build:
+on reload, the client re-fetches the latest open session and this same
+computation decides whether to resume a countdown or show the idle state.
+
+**`POST /api/pomodoro` refuses a second concurrent session; it does not
+silently close the first one.** The UI only ever offers one "start"
+control (it reflects server state, so a running session hides it), but
+the UI is not a guarantee — a stale tab, a second device, or a second
+browser tab can still call this route while a session is already
+ticking. Two options were considered: silently ending the existing
+session to make room for the new one, or refusing outright. Silent
+closing was rejected — it is an implicit mutation with a real
+consequence (a running timer cut short) performed without anyone asking
+for it, the same kind of surprise `docs/UI.md`'s "the app proposes, the
+person decides" rule already forbids elsewhere. Refusing surfaces the
+conflict instead: the route returns `409` with the still-active session
+in the body, so the caller — which already knows how to render an active
+session, from its own reload-resume path — can resume it rather than
+fail with nothing to show. See API below.
+
+**`TodoRepository.getLatestOpenPomodoroSession`'s "latest" is `startedAt
+DESC LIMIT 1` among rows with `endedAt IS NULL`** — the most recently
+*started* one that has never been explicitly ended, regardless of
+whether its own window has since elapsed. Deciding whether that row
+still counts as active is `isPomodoroActive`'s job, not this query's:
+the repository method answers "what is even a candidate," the domain
+function answers "is it actually still running right now."
+
+**Naming tension, recorded rather than fixed.** `TodoRepository` now
+spans three concerns — todos, todo proposals, and pomodoro sessions —
+none of them named in its own name. Left alone deliberately: renaming it
+would touch every existing call site across the module for a naming
+preference, not a defect, and this module's own precedent (todos and
+proposals already share one interface) means a third addition of the
+same shape is consistent with what the interface already is, not a new
+problem. Recorded here, not in a code comment, so it stays visible
+without being tied to one specific line that could move or be reworded.
+
 ## Ports
 
 ```ts
@@ -408,14 +491,37 @@ resolving weekday names in post-processing cannot recover.
   - Both then call the file-cleanup step below, after their own DB
     transaction commits, never inside it (file I/O does not belong in a
     write transaction any more than an LLM call does).
+- `startPomodoro(userId, now, todoId?)` (M7) — validates `todoId` belongs
+  to `userId` when given (`400` at the route if not, same convention
+  `PATCH /api/todos/:id` already uses for a `documentId` that doesn't),
+  then checks `TodoRepository.getLatestOpenPomodoroSession(userId)`: if
+  one exists and `isPomodoroActive` says it's still running, returns
+  `Err({ kind: 'already-active', session })` rather than creating a
+  second row (see "Domain" above for why refusing, not silently ending
+  the first one). Otherwise creates a new `PomodoroSession` with
+  `durationSeconds: POMODORO_DURATION_SECONDS`.
+  - **Port.** Two new methods on this module's own `TodoRepository`:
+    `createPomodoroSession(session)` and
+    `getLatestOpenPomodoroSession(userId)`.
+- `endPomodoro(userId, sessionId, now)` (M7) — sets `endedAt`, whether the
+  countdown reached zero naturally or the person stopped it early; this
+  type carries no separate "completed vs abandoned" outcome, mirroring
+  `review.Session`'s own single `endedAt`, not a new distinction.
+  `Err('not-found')` if `sessionId` doesn't exist or doesn't belong to
+  `userId` — same convention as `review.abandonSession`.
+  - **Port.** One new method: `endPomodoroSession(userId, id, endedAt)`,
+    returning the updated row or `null` for the same not-found case.
+- `getActivePomodoro(userId, now)` (M7) — reads
+  `getLatestOpenPomodoroSession`, returns it only if `isPomodoroActive`
+  is still true for it, `null` otherwise. Backs the reload-resume route;
+  never writes anything.
 
 ## Persistence
 
-**This milestone (M6) creates two tables.** `pomodoro_sessions` is **not**
-created now — it belongs to M7, per this module's own header and
-`docs/MILESTONES.md`, and CLAUDE.md's top-level rule against tables for data
-no current milestone stores. It ships in a separate, later migration, written
-alongside M7's own spec, not this one.
+**M6 created two tables** (`todos`, `todo_proposals`); **M7 adds a third,
+`pomodoro_sessions`**, below — deferred at the time M6 was written (CLAUDE.md's
+top-level rule against tables for data no current milestone stores), built
+now that M7 is the milestone actually in progress.
 
 ```sql
 CREATE TABLE todos (
@@ -440,6 +546,16 @@ CREATE TABLE todo_proposals (
   created_at TEXT NOT NULL
 );
 CREATE INDEX idx_proposals_job ON todo_proposals(job_id);
+
+CREATE TABLE pomodoro_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  todo_id TEXT REFERENCES todos(id) ON DELETE SET NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  duration_seconds INTEGER NOT NULL
+);
+CREATE INDEX idx_pomodoro_sessions_user ON pomodoro_sessions(user_id, started_at);
 ```
 
 **Every `REFERENCES` above crosses a module boundary** (`users`, `documents`,
@@ -450,6 +566,15 @@ M5 `deadlines`): omit `.references()` in the Drizzle TS schema, generate the
 migration, then hand-edit the generated SQL to add the `REFERENCES` clause.
 Apply it here too, for all three columns above, with the same paired comment
 in both the schema file and the migration.
+
+**`pomodoro_sessions.todo_id` is the exception, and doesn't need that
+workaround.** It references `todos.id` — this module's own table,
+declared in the same `schema.ts` file — so `.references(() => todosTable.id,
+{ onDelete: 'set null' })` works directly in the Drizzle TS schema, and
+drizzle-kit generates the correct `REFERENCES`/`ON DELETE` clause on its
+own. `user_id`'s reference to `identity`'s `users` table is the one column
+on this new table that still needs the hand-edit, same as every other
+table above.
 
 Todos extracted from a photo are **proposals**: the extraction job writes them
 to `todo_proposals`, never directly to `todos`. The jobs table stores no
@@ -562,6 +687,9 @@ was not quite true once the screen exists to dismiss them from.
 | `GET /api/todos/proposals/:jobId` | `{ status, lastError, proposals }` — see below |
 | `POST /api/todos/proposals/:jobId/confirm` | `{ accepted: [...] }` |
 | `POST /api/todos/proposals/:jobId/reject` | No body |
+| `POST /api/pomodoro` | `{ todoId? }` — see M7 below |
+| `POST /api/pomodoro/:id/end` | No body — see M7 below |
+| `GET /api/pomodoro/active` | See M7 below |
 
 **`reject` is missing from the original draft's table entirely**, even
 though its own prose two paragraphs above it says "rejecting deletes it" —
@@ -579,9 +707,32 @@ render its required states — "extraction in progress," "nothing found,"
 "failed with a reason" — without this. Every field the screen needs comes
 from a single call: no separate "job status" endpoint.
 
-Pomodoro's two routes from the original draft (`POST /api/pomodoro` ·
-`PATCH /api/pomodoro/:id`) move to M7's own spec — not built, not routed,
-not tested this milestone.
+**Pomodoro (M7).** The original draft sketched `POST /api/pomodoro` ·
+`PATCH /api/pomodoro/:id`; deferred whole to M7 when M6 was written (see
+Persistence above). Built now, with one deliberate change from that
+draft: ending a session is `POST .../:id/end`, not `PATCH`, matching the
+verb this codebase actually settled on for the identical shape of action
+(`review`'s `POST /api/review/sessions/:id/abandon`) rather than the
+older, no-longer-representative sketch.
+
+```
+POST /api/pomodoro          body: { todoId?: string }
+  -> 201 PomodoroSession
+  -> 409 PomodoroSession    (an existing session is still active — not
+                              created; the body is that session, to resume)
+  -> 400 { error: 'todo-not-found' }  (todoId given but isn't the caller's)
+
+POST /api/pomodoro/:id/end
+  -> 204                    (no body — same convention as review's own
+                              abandon-session; the caller already has
+                              everything it needs to render a "done" state)
+  -> 403 { error: 'not-found' }  (same convention as abandon-session)
+
+GET /api/pomodoro/active
+  -> 200 PomodoroSession
+  -> 404                    (no active session — same convention as
+                              GET /api/documents/:id/deadline)
+```
 
 ## UI
 
@@ -790,9 +941,14 @@ correctly — fixed before the screen was built on top of it, not after.
   struck rather than deleted, since this doc predates that work and a
   reader diffing it should see why the claim changed, not wonder if it
   was ever true.
-- Pomodoro and Spotify: not designed, not built, not routed — M7 in full,
-  per this module's own header and `docs/MILESTONES.md`. Nothing in this
-  milestone's implementation forecloses either.
+- ~~Pomodoro and Spotify: not designed, not built, not routed — M7 in
+  full, per this module's own header and `docs/MILESTONES.md`. Nothing in
+  this milestone's implementation forecloses either.~~ **Pomodoro is now
+  designed** (see "Pomodoro (M7)" under Domain, and the API section
+  above) — this debt is struck for pomodoro specifically, left standing
+  for Spotify, which is a separate, later commit within M7, not this
+  module's own concern at all (it needs no persistence and no route
+  here).
 - **A day cell from an adjacent month (Calendar section above) is inert —
   not a design decision on its own, just where "never claim a day is
   empty when it was never fetched for" left it.** Two ways to resolve

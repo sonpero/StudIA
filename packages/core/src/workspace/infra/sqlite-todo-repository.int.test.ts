@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { freshDb, type Db } from "../../../../../tests/support/db.js";
-import type { Todo, TodoProposal } from "../domain/types.js";
+import type { PomodoroSession, Todo, TodoProposal } from "../domain/types.js";
 import { SqliteTodoRepository } from "./sqlite-todo-repository.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
@@ -264,5 +264,86 @@ describe("SqliteTodoRepository", () => {
 
       expect(result.map((t) => t.id)).toEqual(["t-a", "t-c", "t-b"]);
     });
+  });
+});
+
+describe("SqliteTodoRepository — pomodoro (M7)", () => {
+  let cleanup: (() => void) | undefined;
+  afterEach(() => cleanup?.());
+
+  function setup() {
+    const { db, cleanup: c } = freshDb();
+    cleanup = c;
+    seedUser(db, "u1");
+    seedUser(db, "u2");
+    return { db, repo: new SqliteTodoRepository(db) };
+  }
+
+  function aPomodoroSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
+    return { id: "p1", userId: "u1", todoId: null, startedAt: now.toISOString(), endedAt: null, durationSeconds: 1500, ...overrides };
+  }
+
+  it("createPomodoroSession then getLatestOpenPomodoroSession round-trips", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession());
+
+    expect(await repo.getLatestOpenPomodoroSession("u1")).toEqual(aPomodoroSession());
+  });
+
+  it("getLatestOpenPomodoroSession is null when the user has never started one", async () => {
+    const { repo } = setup();
+
+    expect(await repo.getLatestOpenPomodoroSession("u1")).toBeNull();
+  });
+
+  it("getLatestOpenPomodoroSession is scoped to the caller — another user's open session never leaks in", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-other", userId: "u2" }));
+
+    expect(await repo.getLatestOpenPomodoroSession("u1")).toBeNull();
+  });
+
+  it("getLatestOpenPomodoroSession ignores a session that has already been explicitly ended", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession({ endedAt: now.toISOString() }));
+
+    expect(await repo.getLatestOpenPomodoroSession("u1")).toBeNull();
+  });
+
+  it("getLatestOpenPomodoroSession picks the most recently started among several open ones, not insertion order", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-earlier", startedAt: "2026-01-01T00:00:00.000Z" }));
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-later", startedAt: "2026-01-01T01:00:00.000Z" }));
+
+    expect((await repo.getLatestOpenPomodoroSession("u1"))?.id).toBe("p-later");
+  });
+
+  it("endPomodoroSession sets endedAt and returns the updated row", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession());
+
+    const ended = await repo.endPomodoroSession("u1", "p1", "2026-01-01T00:10:00.000Z");
+
+    expect(ended).toEqual(aPomodoroSession({ endedAt: "2026-01-01T00:10:00.000Z" }));
+    expect(await repo.getLatestOpenPomodoroSession("u1")).toBeNull();
+  });
+
+  it("endPomodoroSession returns null for a session that doesn't exist or belongs to another user", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-mine" }));
+
+    expect(await repo.endPomodoroSession("u1", "nonexistent", now.toISOString())).toBeNull();
+    expect(await repo.endPomodoroSession("u2", "p-mine", now.toISOString())).toBeNull();
+  });
+
+  it("todoId round-trips when set, and the ON DELETE SET NULL constraint actually fires when the linked todo is deleted", async () => {
+    const { repo } = setup();
+    await repo.createTodo({ id: "t1", userId: "u1", label: "Devoir", dueDate: null, documentId: null, done: false, source: "manual", createdAt: now.toISOString() });
+    await repo.createPomodoroSession(aPomodoroSession({ todoId: "t1" }));
+    expect((await repo.getLatestOpenPomodoroSession("u1"))?.todoId).toBe("t1");
+
+    await repo.deleteTodo("u1", "t1");
+
+    expect((await repo.getLatestOpenPomodoroSession("u1"))?.todoId).toBeNull();
   });
 });

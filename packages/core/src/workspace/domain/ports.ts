@@ -1,5 +1,5 @@
 import type { Result } from "../../shared/index.js";
-import type { Todo, TodoProposal } from "./types.js";
+import type { PomodoroSession, Todo, TodoProposal } from "./types.js";
 
 export type ExtractedTodo = { label: string; dueDate: string | null; subject: string | null };
 export type TodoExtractionOutput = { todos: ExtractedTodo[]; legible: boolean; reason?: string };
@@ -53,4 +53,16 @@ export interface TodoRepository {
   confirmProposals(userId: string, jobId: string, todos: Todo[]): Promise<void>;
   // Deletes every proposal for the job. Creates no todos.
   deleteProposals(userId: string, jobId: string): Promise<void>;
+
+  // Pomodoro (M7, docs/modules/workspace.md's "Pomodoro (M7)" note).
+  createPomodoroSession(session: PomodoroSession): Promise<void>;
+  // Returns the updated row, or null if no session with this id belongs
+  // to this user — same convention as updateTodo.
+  endPomodoroSession(userId: string, id: string, endedAt: string): Promise<PomodoroSession | null>;
+  // The most recently *started* session with endedAt still null,
+  // regardless of whether its own window has since elapsed — deciding
+  // whether that still counts as active is isPomodoroActive's job, not
+  // this query's. Null if the user has never started one, or every one
+  // they've started has already been explicitly ended.
+  getLatestOpenPomodoroSession(userId: string): Promise<PomodoroSession | null>;
 }

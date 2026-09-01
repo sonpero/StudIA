@@ -1,8 +1,8 @@
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/better-sqlite3";
 import type { TodoRepository } from "../domain/ports.js";
-import type { Todo, TodoProposal } from "../domain/types.js";
-import { todoProposalsTable, todosTable } from "./schema.js";
+import type { PomodoroSession, Todo, TodoProposal } from "../domain/types.js";
+import { pomodoroSessionsTable, todoProposalsTable, todosTable } from "./schema.js";
 
 export type WorkspaceDb = ReturnType<typeof drizzle>;
 
@@ -28,6 +28,17 @@ function toProposal(row: typeof todoProposalsTable.$inferSelect): TodoProposal {
     dueDate: row.dueDate,
     subjectHint: row.subjectHint,
     createdAt: row.createdAt,
+  };
+}
+
+function toPomodoroSession(row: typeof pomodoroSessionsTable.$inferSelect): PomodoroSession {
+  return {
+    id: row.id,
+    userId: row.userId,
+    todoId: row.todoId,
+    startedAt: row.startedAt,
+    endedAt: row.endedAt,
+    durationSeconds: row.durationSeconds,
   };
 }
 
@@ -128,5 +139,37 @@ export class SqliteTodoRepository implements TodoRepository {
   deleteProposals(userId: string, jobId: string): Promise<void> {
     this.db.delete(todoProposalsTable).where(and(eq(todoProposalsTable.jobId, jobId), eq(todoProposalsTable.userId, userId))).run();
     return Promise.resolve();
+  }
+
+  createPomodoroSession(session: PomodoroSession): Promise<void> {
+    this.db.insert(pomodoroSessionsTable).values(session).run();
+    return Promise.resolve();
+  }
+
+  endPomodoroSession(userId: string, id: string, endedAt: string): Promise<PomodoroSession | null> {
+    const owned = this.db
+      .select()
+      .from(pomodoroSessionsTable)
+      .where(and(eq(pomodoroSessionsTable.id, id), eq(pomodoroSessionsTable.userId, userId)))
+      .get();
+    if (!owned) return Promise.resolve(null);
+
+    this.db.update(pomodoroSessionsTable).set({ endedAt }).where(and(eq(pomodoroSessionsTable.id, id), eq(pomodoroSessionsTable.userId, userId))).run();
+    return Promise.resolve(toPomodoroSession({ ...owned, endedAt }));
+  }
+
+  // Most recently *started* row with endedAt still null — see this
+  // module's own "Pomodoro (M7)" note for why "latest" is startedAt, not
+  // insertion order, and why an elapsed-but-unended row is still a valid
+  // candidate here (isPomodoroActive decides whether it still counts).
+  getLatestOpenPomodoroSession(userId: string): Promise<PomodoroSession | null> {
+    const row = this.db
+      .select()
+      .from(pomodoroSessionsTable)
+      .where(and(eq(pomodoroSessionsTable.userId, userId), isNull(pomodoroSessionsTable.endedAt)))
+      .orderBy(desc(pomodoroSessionsTable.startedAt))
+      .limit(1)
+      .get();
+    return Promise.resolve(row ? toPomodoroSession(row) : null);
   }
 }

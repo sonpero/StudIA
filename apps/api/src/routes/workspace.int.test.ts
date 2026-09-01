@@ -469,4 +469,109 @@ describe("workspace routes", () => {
       expect(res.statusCode).toBe(403);
     });
   });
+
+  type PomodoroBody = { id: string; todoId: string | null; startedAt: string; endedAt: string | null; durationSeconds: number };
+
+  describe("POST /api/pomodoro (M7)", () => {
+    it("starts a session (201) with no todo, not yet ended, the fixed duration", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json<PomodoroBody>();
+      expect(body).toMatchObject({ todoId: null, endedAt: null, durationSeconds: 1500 });
+      expect(typeof body.id).toBe("string");
+    });
+
+    it("attaches a todoId the caller owns", async () => {
+      const todo = await createAliceTodo();
+
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { todoId: todo.id } });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json<PomodoroBody>().todoId).toBe(todo.id);
+    });
+
+    it("rejects a todoId belonging to another user (400), starting no session", async () => {
+      const bobRes = await app.inject({ method: "POST", url: "/api/todos", headers: { cookie: bobCookie }, payload: { label: "Devoir de Bob" } });
+      const bobTodo = bobRes.json<TodoBody>();
+
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { todoId: bobTodo.id } });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: "todo-not-found" });
+    });
+
+    it("refuses a second concurrent session (409), returning the still-active one instead of creating a new row", async () => {
+      const first = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+      const firstBody = first.json<PomodoroBody>();
+
+      const second = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+
+      expect(second.statusCode).toBe(409);
+      expect(second.json<PomodoroBody>().id).toBe(firstBody.id);
+    });
+
+    it("requires authentication (401)", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", payload: {} });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe("POST /api/pomodoro/:id/end (M7)", () => {
+    it("ends the caller's own session (204), which then stops being active", async () => {
+      const started = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+      const { id } = started.json<PomodoroBody>();
+
+      const res = await app.inject({ method: "POST", url: `/api/pomodoro/${id}/end`, headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(204);
+      const active = await app.inject({ method: "GET", url: "/api/pomodoro/active", headers: { cookie: aliceCookie } });
+      expect(active.statusCode).toBe(404);
+    });
+
+    it("rejects another user's session (403), same convention as review's abandon-session", async () => {
+      const started = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+      const { id } = started.json<PomodoroBody>();
+
+      const res = await app.inject({ method: "POST", url: `/api/pomodoro/${id}/end`, headers: { cookie: bobCookie } });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toEqual({ error: "not-found" });
+    });
+
+    it("requires authentication (401)", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro/nonexistent/end" });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe("GET /api/pomodoro/active (M7)", () => {
+    it("returns 404 when the caller has never started a session", async () => {
+      const res = await app.inject({ method: "GET", url: "/api/pomodoro/active", headers: { cookie: aliceCookie } });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("returns the just-started session (200)", async () => {
+      const started = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+      const { id } = started.json<PomodoroBody>();
+
+      const res = await app.inject({ method: "GET", url: "/api/pomodoro/active", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json<PomodoroBody>().id).toBe(id);
+    });
+
+    it("is scoped to the caller — bob's active session never shows up for alice", async () => {
+      await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: bobCookie }, payload: {} });
+
+      const res = await app.inject({ method: "GET", url: "/api/pomodoro/active", headers: { cookie: aliceCookie } });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("requires authentication (401)", async () => {
+      const res = await app.inject({ method: "GET", url: "/api/pomodoro/active" });
+      expect(res.statusCode).toBe(401);
+    });
+  });
 });

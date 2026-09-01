@@ -41,3 +41,22 @@ export const todoProposalsTable = sqliteTable(
   },
   (table) => [index("idx_proposals_job").on(table.jobId)],
 );
+
+// user_id has the same cross-module FK limitation as above (REFERENCES
+// users(id) added by hand in the generated migration). todo_id is the
+// exception: it references this same file's own todosTable, same module,
+// so .references() works directly here and drizzle-kit emits the
+// REFERENCES/ON DELETE clause on its own — no hand-edit needed for this
+// one column (docs/modules/workspace.md's "Pomodoro (M7)" note).
+export const pomodoroSessionsTable = sqliteTable(
+  "pomodoro_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    todoId: text("todo_id").references(() => todosTable.id, { onDelete: "set null" }),
+    startedAt: text("started_at").notNull(),
+    endedAt: text("ended_at"),
+    durationSeconds: integer("duration_seconds").notNull(),
+  },
+  (table) => [index("idx_pomodoro_sessions_user").on(table.userId, table.startedAt)],
+);

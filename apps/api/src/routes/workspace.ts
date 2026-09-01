@@ -2,10 +2,13 @@ import {
   confirmProposals,
   createTodo,
   deleteTodo,
+  endPomodoro,
+  getActivePomodoro,
   getCalendar,
   getProposals,
   getToday,
   rejectProposals,
+  startPomodoro,
   startTodoPhotoExtraction,
   updateTodo,
   type Clock,
@@ -54,6 +57,8 @@ const updateTodoBodySchema = z
   .refine((body) => Object.keys(body).length > 0, { message: "at least one field is required" });
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const startPomodoroBodySchema = z.object({ todoId: z.string().optional() });
 
 export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (app, opts, done) => {
   const deps = { repo: opts.repo, idGenerator: opts.idGenerator };
@@ -164,6 +169,33 @@ export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (a
     const result = await rejectProposals(rejectDeps, request.user!.id, jobId);
     if (!result.ok) return reply.code(403).send({ error: "not-found" });
     return reply.code(204).send();
+  });
+
+  // Pomodoro (M7, docs/modules/workspace.md's "Pomodoro (M7)" note).
+  app.withTypeProvider<ZodTypeProvider>().post(
+    "/api/pomodoro",
+    { schema: { body: startPomodoroBodySchema } },
+    async (request, reply) => {
+      const result = await startPomodoro(deps, request.user!.id, opts.clock.now(), request.body.todoId ?? null);
+      if (!result.ok) {
+        if (result.error.kind === "todo-not-found") return reply.code(400).send({ error: "todo-not-found" });
+        return reply.code(409).send(result.error.session);
+      }
+      return reply.code(201).send(result.value);
+    },
+  );
+
+  app.post("/api/pomodoro/:id/end", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await endPomodoro(deps, request.user!.id, id, opts.clock.now());
+    if (!result.ok) return reply.code(403).send({ error: "not-found" });
+    return reply.code(204).send();
+  });
+
+  app.get("/api/pomodoro/active", async (request, reply) => {
+    const active = await getActivePomodoro(deps, request.user!.id, opts.clock.now());
+    if (!active) return reply.code(404).send();
+    return active;
   });
 
   done();
