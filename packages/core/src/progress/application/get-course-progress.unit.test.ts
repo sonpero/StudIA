@@ -25,11 +25,9 @@ describe("getCourseProgress", () => {
 
     const result = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", NOW);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.deadlineDate).toBe("2026-03-20");
-    expect(result.value.deadlineLabel).toBe("Contrôle");
-    expect(result.value.progress.coverage).toBe(1);
+    expect(result.deadlineDate).toBe("2026-03-20");
+    expect(result.deadlineLabel).toBe("Contrôle");
+    expect(result.progress.coverage).toBe(1);
   });
 
   it("no deadline set: deadlineDate/deadlineLabel are null, status is 'no-deadline'", async () => {
@@ -39,14 +37,12 @@ describe("getCourseProgress", () => {
 
     const result = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", NOW);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.deadlineDate).toBeNull();
-    expect(result.value.deadlineLabel).toBeNull();
-    expect(result.value.progress.status).toBe("no-deadline");
+    expect(result.deadlineDate).toBeNull();
+    expect(result.deadlineLabel).toBeNull();
+    expect(result.progress.status).toBe("no-deadline");
   });
 
-  it("deadline in the past: Err carries that same deadline's date/label, from the one fetch, not a second read", async () => {
+  it("deadline in the past: still carries that same deadline's date/label, from the one fetch, not a second read — progress.status is 'deadline-in-past', not an Err", async () => {
     const notionRepo = fakeNotionRepositoryForProgress([aNotion("n1")]);
     const reviewRepo = fakeReviewRepositoryForProgress([]);
     const repo = fakeProgressRepository({
@@ -55,7 +51,9 @@ describe("getCourseProgress", () => {
 
     const result = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", NOW);
 
-    expect(result).toEqual({ ok: false, error: { kind: "deadline-in-past", deadlineDate: "2026-01-01", deadlineLabel: "Ancien contrôle" } });
+    expect(result.deadlineDate).toBe("2026-01-01");
+    expect(result.deadlineLabel).toBe("Ancien contrôle");
+    expect(result.progress.status).toBe("deadline-in-past");
   });
 
   it("scopes notions and schedules to the requested document, ignoring another document's data", async () => {
@@ -68,11 +66,9 @@ describe("getCourseProgress", () => {
 
     const result = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", NOW);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
     // Only n1 (unreviewed) belongs to doc-1; doc-2's reviewed notion must
     // not leak in and inflate coverage.
-    expect(result.value.progress.coverage).toBe(0);
+    expect(result.progress.coverage).toBe(0);
   });
 });
 
@@ -100,9 +96,7 @@ describe("getCourseProgress — 4b: no deadline, no activity, readiness never in
     far.setUTCDate(far.getUTCDate() + 30);
     const later = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", far);
 
-    expect(near.ok && later.ok).toBe(true);
-    if (!near.ok || !later.ok) return;
-    expect(later.value.progress.readiness).toBeLessThan(near.value.progress.readiness);
+    expect(later.progress.readiness).toBeLessThan(near.progress.readiness);
   });
 
   it("weak form always; strict form once at least one card has been reviewed and a day boundary is crossed", async () => {
@@ -121,14 +115,13 @@ describe("getCourseProgress — 4b: no deadline, no activity, readiness never in
 
         const r1 = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", now1);
         const r2 = await getCourseProgress({ repo, notionRepo, reviewRepo }, "u1", "doc-1", now2);
-        if (!r1.ok || !r2.ok) return;
 
-        expect(r2.value.progress.readiness).toBeLessThanOrEqual(r1.value.progress.readiness);
+        expect(r2.progress.readiness).toBeLessThanOrEqual(r1.progress.readiness);
 
         const day1 = readinessProjectionDate(null, now1).toISOString().slice(0, 10);
         const day2 = readinessProjectionDate(null, now2).toISOString().slice(0, 10);
         if (day1 !== day2) {
-          expect(r2.value.progress.readiness).toBeLessThan(r1.value.progress.readiness);
+          expect(r2.progress.readiness).toBeLessThan(r1.progress.readiness);
         }
       }),
     );

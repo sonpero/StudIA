@@ -13,9 +13,7 @@ export interface ListProgressDeps {
   reviewRepo: ReviewRepository;
 }
 
-export type ProgressListItem =
-  | { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null; kind: "ok"; progress: CourseProgress }
-  | { documentId: string; title: string; colour: string; deadlineDate: string; deadlineLabel: string | null; kind: "error"; error: "deadline-in-past" };
+export type ProgressListItem = { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null; progress: CourseProgress };
 
 function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>();
@@ -33,10 +31,10 @@ function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
 // document. Iterates over documentRepo.listDocuments, never over the
 // grouping Maps below: a document with zero notions/cards/deadline is
 // absent from all three buckets and must still produce a coverage-0/
-// readiness-0 entry, not silently disappear from the list. A document
-// whose computeProgress call errors (deadline-in-past) is kept in the
-// list, flagged, not dropped — a stale exam date is something the person
-// can act on.
+// readiness-0 entry, not silently disappear from the list. A document past
+// its deadline is kept in the list with its own real coverage/readiness,
+// status 'deadline-in-past' — not dropped, and not just flagged with
+// nothing else — a stale exam date is something the person can act on.
 export async function listProgress(deps: ListProgressDeps, userId: string, now: Date): Promise<ProgressListItem[]> {
   const [documents, allNotions, allCardRows, allDeadlines] = await Promise.all([
     deps.documentRepo.listDocuments(userId),
@@ -58,10 +56,7 @@ export async function listProgress(deps: ListProgressDeps, userId: string, now: 
     const projectionDate = readinessProjectionDate(deadlineInput, now);
     const progressNotions = assembleProgressNotions(notions, cardRows, projectionDate);
 
-    const result = computeProgress({ notions: progressNotions, deadline: deadlineInput, now });
-    if (!result.ok) {
-      return { documentId: document.id, title: document.title, colour: document.colour, deadlineDate: deadline!.date, deadlineLabel: deadline!.label, kind: "error", error: "deadline-in-past" };
-    }
-    return { documentId: document.id, title: document.title, colour: document.colour, deadlineDate: deadline?.date ?? null, deadlineLabel: deadline?.label ?? null, kind: "ok", progress: result.value };
+    const progress = computeProgress({ notions: progressNotions, deadline: deadlineInput, now });
+    return { documentId: document.id, title: document.title, colour: document.colour, deadlineDate: deadline?.date ?? null, deadlineLabel: deadline?.label ?? null, progress };
   });
 }

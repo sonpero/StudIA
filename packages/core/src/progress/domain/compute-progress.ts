@@ -63,16 +63,21 @@ function statusFor(readiness: number, target: number): CourseProgress["status"] 
   return readiness < target ? "behind" : gap > PROGRESS_STATUS_MARGIN ? "ahead" : "on-track";
 }
 
-export function computeProgress(input: { notions: ProgressNotion[]; deadline: ProgressDeadlineInput | null; now: Date }): Result<CourseProgress, ProgressInputError> {
+// Cannot fail (docs/modules/progress.md's own note on this signature):
+// coverage/readiness/recentlyAddedUnreviewed never depended on the
+// deadline at all, so a deadline in the past is a normal input, not an
+// error — status becomes 'deadline-in-past' and behindByNotions stays 0,
+// the same "0 outside 'behind'" convention every other non-'behind'
+// status already uses, rather than discarding the whole computation the
+// way the earlier Result-returning design did.
+export function computeProgress(input: { notions: ProgressNotion[]; deadline: ProgressDeadlineInput | null; now: Date }): CourseProgress {
   const { notions, deadline, now } = input;
   const todayKey = toDateKey(now.toISOString());
-
-  if (deadline !== null && deadline.date < todayKey) {
-    return err({ kind: "deadline-in-past" });
-  }
+  const deadlinePast = deadline !== null && deadline.date < todayKey;
 
   if (notions.length === 0) {
-    return ok({ coverage: 0, readiness: 0, status: deadline === null ? "no-deadline" : "on-track", behindByNotions: 0, recentlyAddedUnreviewed: 0 });
+    const status = deadlinePast ? "deadline-in-past" : deadline === null ? "no-deadline" : "on-track";
+    return { coverage: 0, readiness: 0, status, behindByNotions: 0, recentlyAddedUnreviewed: 0 };
   }
 
   const perNotionReadiness = notions.map(notionReadiness);
@@ -81,14 +86,17 @@ export function computeProgress(input: { notions: ProgressNotion[]; deadline: Pr
   const recentlyAddedUnreviewed = notions.filter((n) => !isNotionCovered(n) && daysBetween(n.createdAt, now.toISOString()) <= PROGRESS_RECENTLY_ADDED_DAYS).length;
 
   if (deadline === null) {
-    return ok({ coverage, readiness, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed });
+    return { coverage, readiness, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed };
+  }
+  if (deadlinePast) {
+    return { coverage, readiness, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed };
   }
 
   const target = targetFor(deadline, now, todayKey);
   const status = statusFor(readiness, target);
   const behindByNotions = status === "behind" ? perNotionReadiness.filter((r) => r < target).length : 0;
 
-  return ok({ coverage, readiness, status, behindByNotions, recentlyAddedUnreviewed });
+  return { coverage, readiness, status, behindByNotions, recentlyAddedUnreviewed };
 }
 
 // M6 (docs/modules/progress.md's "notionsBelowTarget" section): the same

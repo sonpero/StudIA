@@ -6,7 +6,7 @@ export { computeProgress, notionsBelowTarget, readinessProjectionDate } from "./
 export { setDeadline, type SetDeadlineDeps } from "./application/set-deadline.js";
 export { deleteDeadline, type DeleteDeadlineDeps } from "./application/delete-deadline.js";
 export { getDeadline, type GetDeadlineDeps } from "./application/get-deadline.js";
-export { getCourseProgress, type GetCourseProgressDeps, type GetCourseProgressOk, type GetCourseProgressErr } from "./application/get-course-progress.js";
+export { getCourseProgress, type GetCourseProgressDeps, type GetCourseProgressResult } from "./application/get-course-progress.js";
 export { listProgress, type ListProgressDeps, type ProgressListItem } from "./application/list-progress.js";
 // New for workspace's TodayView (M6, docs/modules/workspace.md): does no
 // I/O of its own, see its own file comment. NotionCardRow is the shape

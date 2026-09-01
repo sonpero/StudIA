@@ -14,7 +14,7 @@ export type ProgressDeadlineInput = { date: string; setAt: string };
 export type CourseProgress = {
   coverage: number; // 0..1
   readiness: number; // 0..1
-  status: "ahead" | "on-track" | "behind" | "no-deadline";
+  status: "ahead" | "on-track" | "behind" | "no-deadline" | "deadline-in-past";
   behindByNotions: number; // 0 outside 'behind'
   recentlyAddedUnreviewed: number;
 };

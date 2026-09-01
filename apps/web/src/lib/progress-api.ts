@@ -4,18 +4,18 @@ import { todayDateKey } from "./day-boundary.js";
 export type CourseProgress = {
   coverage: number;
   readiness: number;
-  status: "ahead" | "on-track" | "behind" | "no-deadline";
+  status: "ahead" | "on-track" | "behind" | "no-deadline" | "deadline-in-past";
   behindByNotions: number;
   recentlyAddedUnreviewed: number;
 };
 
 // Named ProgressListItem/listProgress to match packages/core/src/progress
 // (docs/modules/progress.md) — a different concept from notions-api.ts's
-// getProgress, which is review's own per-document mastery summary.
-export type ProgressListItem = { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null } & (
-  | { kind: "ok"; progress: CourseProgress }
-  | { kind: "error"; error: "deadline-in-past" }
-);
+// getProgress, which is review's own per-document mastery summary. A
+// lapsed deadline is progress.status === "deadline-in-past", not a
+// separate kind/error branch (revised: computeProgress can't fail, so
+// coverage/readiness are always present, even past the deadline).
+export type ProgressListItem = { documentId: string; title: string; colour: string; deadlineDate: string | null; deadlineLabel: string | null; progress: CourseProgress };
 
 export async function listProgress(): Promise<ProgressListItem[]> {
   const res = await apiFetch(`/api/course-progress?today=${todayDateKey()}`);

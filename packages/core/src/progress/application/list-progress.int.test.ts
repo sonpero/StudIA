@@ -83,10 +83,9 @@ describe("listProgress — cross-document isolation (mandatory integration cover
     const byDocumentId = new Map(items.map((item) => [item.documentId, item]));
     const covered = byDocumentId.get("doc-covered");
     const uncovered = byDocumentId.get("doc-uncovered");
-
-    expect(covered?.kind).toBe("ok");
-    expect(uncovered?.kind).toBe("ok");
-    if (covered?.kind !== "ok" || uncovered?.kind !== "ok") return;
+    expect(covered).toBeDefined();
+    expect(uncovered).toBeDefined();
+    if (!covered || !uncovered) return;
 
     // Direction 1: the covered course must show its own full coverage,
     // not diluted by the other course's zero.
@@ -118,7 +117,7 @@ describe("listProgress — cross-document isolation (mandatory integration cover
   // Two distinct colours, not one repeated, so a leak (wrong document's
   // colour, or a shared default) shows up as a specific wrong value
   // instead of an accidental pass.
-  it("carries each document's own subject colour, in both the ok and error (deadline-in-past) shapes", async () => {
+  it("carries each document's own subject colour, whether or not its deadline is in the past", async () => {
     const { db, deps } = setup();
     seedUser(db, "u1");
     seedDocument(db, "doc-red", "u1", "Cours rouge", "#F87171");
@@ -128,9 +127,9 @@ describe("listProgress — cross-document isolation (mandatory integration cover
     const items = await listProgress(deps, "u1", NOW);
     const byDocumentId = new Map(items.map((item) => [item.documentId, item]));
 
-    expect(byDocumentId.get("doc-red")?.kind).toBe("ok");
+    expect(byDocumentId.get("doc-red")?.progress.status).not.toBe("deadline-in-past");
     expect(byDocumentId.get("doc-red")?.colour).toBe("#F87171");
-    expect(byDocumentId.get("doc-blue")?.kind).toBe("error");
+    expect(byDocumentId.get("doc-blue")?.progress.status).toBe("deadline-in-past");
     expect(byDocumentId.get("doc-blue")?.colour).toBe("#38BDF8");
   });
 });
@@ -172,8 +171,7 @@ describe("listProgress — iterates over listDocuments, never over the notion/sc
     expect(items).toHaveLength(2);
     const empty = items.find((item) => item.documentId === "doc-empty");
     expect(empty).toBeDefined();
-    expect(empty?.kind).toBe("ok");
-    if (empty?.kind !== "ok") return;
+    if (!empty) return;
     expect(empty.progress.coverage).toBe(0);
     expect(empty.progress.readiness).toBe(0);
     expect(empty.title).toBe("Cours vide");

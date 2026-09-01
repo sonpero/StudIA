@@ -85,7 +85,7 @@ describe("ProgressScreen", () => {
 
   it("the progress grid's own gutter is --space-block, cards being distinct blocks within one section (docs/UI.md's Grid and spacing note)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -96,7 +96,7 @@ describe("ProgressScreen", () => {
 
   it("ready state: renders one card per course with its title, coverage, and readiness", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -106,7 +106,7 @@ describe("ProgressScreen", () => {
 
   it("ready state: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass (docs/UI.md's Type note)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     const title = await screen.findByText("Maths");
@@ -115,7 +115,7 @@ describe("ProgressScreen", () => {
 
   it("ready state: a gauge's percentage is the dominant number on its line, --text-display, its label small and muted (docs/UI.md's Type note)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -129,7 +129,7 @@ describe("ProgressScreen", () => {
 
   it("ready state: the two gauges sit --space-block (16px) apart from each other, not the card's own 12px internal rhythm — checked against real sizes before this pass, not the general rule alone (docs/UI.md's Progression note)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -142,8 +142,8 @@ describe("ProgressScreen", () => {
 
   it("ready state: a course card's subject colour is a left border on the whole card (docs/UI.md's Subject colours note) — this screen carried no colour marker before", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, colour: "#F87171", kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
-      { documentId: "doc-2", title: "Histoire", ...okBase, colour: "#38BDF8", kind: "ok", progress: { coverage: 0.1, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, colour: "#F87171", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-2", title: "Histoire", ...okBase, colour: "#38BDF8", progress: { coverage: 0.1, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="progress-card"]') as HTMLElement;
@@ -155,7 +155,7 @@ describe("ProgressScreen", () => {
 
   it("ready state: 'Voir le cours' and 'Définir une échéance' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -171,7 +171,7 @@ describe("ProgressScreen", () => {
 
   it("exposes coverage and readiness as accessible meters carrying the exact value, not just rounded display text", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -181,7 +181,7 @@ describe("ProgressScreen", () => {
 
   it("bar fill width tracks each gauge's own value, never a flat 100% regardless of it (a real regression: a bare-percent width string once failed to parse as CSS and rendered as full-width for every value)", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.71, readiness: 0.32, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.71, readiness: 0.32, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -193,7 +193,7 @@ describe("ProgressScreen", () => {
   });
 
   it("no mascot in the ready state: this is a data-dense list of courses (docs/UI.md)", async () => {
-    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
+    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
     renderScreen();
     await screen.findByText("Maths");
     expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
@@ -201,7 +201,7 @@ describe("ProgressScreen", () => {
 
   it("behind: states the notion count as a plain fact, the same visual weight as the rest of the card — no box, no underline, no --accent", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), progress: { coverage: 0.54, readiness: 0.3, status: "behind", behindByNotions: 7, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     const card = await screen.findByTestId("progress-card");
@@ -226,7 +226,7 @@ describe("ProgressScreen", () => {
 
   it("ahead or on-track: no notion count shown, no warning marker", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), kind: "ok", progress: { coverage: 0.9, readiness: 0.95, status: "ahead", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, deadlineDate: dateOffset(9), progress: { coverage: 0.9, readiness: 0.95, status: "ahead", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     const card = await screen.findByTestId("progress-card");
@@ -236,7 +236,7 @@ describe("ProgressScreen", () => {
 
   it("recentlyAddedUnreviewed > 0: states the present-tense fact about recently added notions, in notions (recentlyAddedUnreviewed counts notions, not cards — the two units coexist elsewhere and must not be confused), never 'la couverture a baissé'", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.2, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 3 } },
+      { documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.2, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 3 } },
     ]);
     renderScreen();
     await screen.findByText(/3 notions ajoutées récemment n'ont pas encore été travaillées/i);
@@ -252,7 +252,6 @@ describe("ProgressScreen", () => {
         title: "Maths",
         ...okBase,
         deadlineDate: todayDateKey(),
-        kind: "ok",
         progress: { coverage: 0.5, readiness: 0.4, status: "behind", behindByNotions: 12, recentlyAddedUnreviewed: 0 },
       },
     ]);
@@ -268,8 +267,15 @@ describe("ProgressScreen", () => {
 
   it("deadline-in-past in the aggregate list: an actionable line, never a disappearing row or a raw error code", async () => {
     stubFetch([
-      { documentId: "doc-1", title: "Maths", colour: "#F87171", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
-      { documentId: "doc-2", title: "Histoire", ...okBase, kind: "ok", progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      {
+        documentId: "doc-1",
+        title: "Maths",
+        colour: "#F87171",
+        deadlineDate: "2020-01-01",
+        deadlineLabel: "Vieux contrôle",
+        progress: { coverage: 0.6, readiness: 0.2, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      },
+      { documentId: "doc-2", title: "Histoire", ...okBase, progress: { coverage: 1, readiness: 1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     renderScreen();
     await screen.findByText("Maths");
@@ -277,10 +283,18 @@ describe("ProgressScreen", () => {
     expect(screen.getByText(/passée/i)).toBeInTheDocument();
     expect(screen.queryByText(/deadline-in-past/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\[object/)).not.toBeInTheDocument();
+    // Contract commit, no visible change: the underlying condition moved
+    // from item.kind === "error" to item.progress.status ===
+    // "deadline-in-past", but the resulting data-status value — and every
+    // other rendered detail — stays exactly what it already was. The
+    // actual redesign (gauges shown, message repositioned, second action)
+    // is a separate commit.
+    const card = screen.getByText("Maths").closest('[data-testid="progress-card"]');
+    expect(card).toHaveAttribute("data-status", "error");
   });
 
   it("no deadline set: the two numbers and an invitation, never a warning about the missing deadline", async () => {
-    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
+    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
     renderScreen();
     const card = await screen.findByTestId("progress-card");
     expect(card).toHaveAttribute("data-status", "no-deadline");
@@ -290,11 +304,18 @@ describe("ProgressScreen", () => {
     expect(screen.queryByText(/aucune échéance.*!/i)).not.toBeInTheDocument();
   });
 
-  it("each card, whatever its kind, offers 'Voir le cours', which opens that course — symmetric to Aujourd'hui's own card action, no label collision with the nav's 'Progression' item", async () => {
+  it("each card, whatever its status, offers 'Voir le cours', which opens that course — symmetric to Aujourd'hui's own card action, no label collision with the nav's 'Progression' item", async () => {
     const onOpenCourse = vi.fn();
     stubFetch([
-      { documentId: "doc-1", title: "Maths", colour: "#F87171", deadlineDate: "2020-01-01", deadlineLabel: "Vieux contrôle", kind: "error", error: "deadline-in-past" },
-      { documentId: "doc-2", title: "Histoire", ...okBase, kind: "ok", progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+      {
+        documentId: "doc-1",
+        title: "Maths",
+        colour: "#F87171",
+        deadlineDate: "2020-01-01",
+        deadlineLabel: "Vieux contrôle",
+        progress: { coverage: 0.6, readiness: 0.2, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      },
+      { documentId: "doc-2", title: "Histoire", ...okBase, progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
     ]);
     const user = userEvent.setup();
     renderScreen({ onOpenCourse });
@@ -312,7 +333,7 @@ describe("ProgressScreen", () => {
   });
 
   it("setting a deadline submits the chosen date and refreshes the list", async () => {
-    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
+    stubFetch([{ documentId: "doc-1", title: "Maths", ...okBase, progress: { coverage: 0.4, readiness: 0.1, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } }]);
     const user = userEvent.setup();
     renderScreen();
     await screen.findByTestId("progress-card");

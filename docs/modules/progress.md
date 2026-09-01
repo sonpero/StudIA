@@ -49,7 +49,7 @@ type ProgressDeadlineInput = { date: string; setAt: string };
 type CourseProgress = {
   coverage: number;                // 0..1
   readiness: number;               // 0..1
-  status: 'ahead' | 'on-track' | 'behind' | 'no-deadline';
+  status: 'ahead' | 'on-track' | 'behind' | 'no-deadline' | 'deadline-in-past';
   behindByNotions: number;         // 0 outside 'behind'
   recentlyAddedUnreviewed: number; // count, see "Coverage" below
 };
@@ -60,8 +60,18 @@ function computeProgress(input: {
   notions: ProgressNotion[];
   deadline: ProgressDeadlineInput | null;
   now: Date;
-}): Result<CourseProgress, ProgressInputError>;
+}): CourseProgress;
 ```
+
+**`computeProgress` cannot fail** (revised: it originally returned
+`Result<CourseProgress, ProgressInputError>`, `Err` exactly when
+`deadline.date` was in the past). That design made the past-deadline case
+disappear from `ProgressScreen`'s own card entirely — coverage and
+readiness are real numbers regardless of the deadline, so discarding them
+alongside the target/status computation that genuinely does stop making
+sense was a bigger blast radius than the defect it was guarding against.
+`ProgressInputError` itself is unchanged and still real: `notionsBelowTarget`
+below still returns it, deliberately, for its own reasons.
 
 ### Why `ProgressCardState`, not a raw FSRS card
 
@@ -365,8 +375,17 @@ export function notionsBelowTarget(input: {
 
 `Result` shares `computeProgress`'s own `ProgressInputError` — a
 `deadline-in-past` course has no meaningful `target` to compare against,
-so this returns `Err` the same way `computeProgress` does, rather than
-inventing a second error shape.
+so this returns `Err`, the same shape `computeProgress` itself used to
+return before `computeProgress` stopped being a `Result` (see Status
+below). The two are allowed to diverge here: `notionsBelowTarget` feeds
+`workspace`'s TodayView, which already degrades an `Err` to `[]` at the
+call site (`notionsBelowTargetForDocument`) — a stale exam date simply
+stops contributing a "notions à consolider" line there, which is already
+correct and was never the defect. `computeProgress` feeds
+`ProgressScreen`'s own card directly, where discarding the whole
+computation on the same condition made coverage and readiness disappear
+too — a different, real defect this revision fixes without touching
+`notionsBelowTarget`'s own contract at all.
 
 **Gated exactly like `behindByNotions`, not a raw per-notion test.** The
 returned array is empty whenever the course's own `status !== 'behind'` —
@@ -475,10 +494,15 @@ deadline branch (it has nothing to do with a deadline) and is `0` exactly
 when no notion both exists and falls inside the `PROGRESS_RECENTLY_ADDED_DAYS`
 window unreviewed — including, trivially, the zero-notions case above.
 
-`deadline-in-past`: `Err({ kind: 'deadline-in-past' })` when
-`deadline.date` is before the start of `now`'s day — same rule and same
-error shape as the old `PlanningInputError.deadline-in-past`, never a
-`CourseProgress`.
+`deadline-in-past`: `status: 'deadline-in-past'` when `deadline.date` is
+before the start of `now`'s day — revised from the original `Err({ kind:
+'deadline-in-past' })` design (see the note under `computeProgress`'s own
+signature above). `coverage`, `readiness`, and `recentlyAddedUnreviewed`
+are still computed exactly as they would be for any other status, since
+none of the three ever depended on the deadline in the first place;
+`target` is never computed for this status and `behindByNotions` is `0`,
+the same "0 outside 'behind'" convention the type already used for every
+other non-`'behind'` status.
 
 ## Ports
 
@@ -594,15 +618,14 @@ N+1 fix.
   own `getProgress` is untouched. Assembles `computeProgress`'s
   input from `content.listNotions`, `review.getCardSchedulesForDocument` +
   `review.projectRetrievability`, and this module's own `getDeadline`
-  (fetched exactly once); calls `computeProgress`; returns a `Result` that
-  also carries that same fetch's `deadlineDate`/`deadlineLabel` alongside
-  the `CourseProgress` or the error, so a caller can render "Maths, contrôle
-  dans 9 jours…" without a second read of the deadline:
+  (fetched exactly once); calls `computeProgress`; returns that same fetch's
+  `deadlineDate`/`deadlineLabel` alongside the `CourseProgress` (revised:
+  no longer a `Result` — see `computeProgress`'s own note above; a
+  `deadline-in-past` course is a normal return with `progress.status ===
+  'deadline-in-past'`, not a separate error branch), so a caller can render
+  "Maths, contrôle dans 9 jours…" without a second read of the deadline:
   ```ts
-  Result<
-    { progress: CourseProgress; deadlineDate: string | null; deadlineLabel: string | null },
-    { kind: 'deadline-in-past'; deadlineDate: string; deadlineLabel: string | null }
-  >
+  { progress: CourseProgress; deadlineDate: string | null; deadlineLabel: string | null }
   ```
   Never persists the computation, same principle as the old `getPlan`. Does
   **not** fetch the document's `title` — the caller already has the
@@ -614,11 +637,13 @@ N+1 fix.
   four batched reads total (`documentRepo.listDocuments`,
   `content.listNotionsForUser`, `review.getCardSchedulesForUser`,
   `progress.getDeadlinesForUser`), grouped in-memory into three `Map`s keyed
-  by `documentId`, never N+N+N reads. A document whose computation errors
-  (`deadline-in-past`) is **not** silently dropped (unlike the old
-  `getToday`, which dropped `PlanningInputError` documents from an
-  aggregate the user never sees per-item) — a stale exam date is something
-  the person can act on.
+  by `documentId`, never N+N+N reads. A document past its deadline is
+  **not** silently dropped (unlike the old `getToday`, which dropped
+  `PlanningInputError` documents from an aggregate the user never sees
+  per-item) — a stale exam date is something the person can act on. This
+  no longer needs a special case to guarantee: since `computeProgress`
+  itself can't fail (see above), every document produces one
+  `ProgressListItem`, uniformly.
 
   **Two failure modes this grouping step can introduce, both covered by a
   dedicated integration test with real repositories, not fakes:**
@@ -633,8 +658,8 @@ N+1 fix.
     document with zero notions is absent from all three `Map`s entirely; if
     the loop walked a `Map`'s keys instead, that document would vanish from
     the list instead of showing a coverage-0/readiness-0 entry. Tested
-    directly: a document with no notions still produces a `kind: 'ok'`
-    entry.
+    directly: a document with no notions still produces a normal
+    `ProgressListItem` entry.
 
   Composes `title` (from `documentRepo`) with `getCourseProgress`'s
   assembly logic (factored into `assembleProgressNotions`, shared by both
@@ -736,37 +761,35 @@ malformed** — identical rule and identical helper
 (`apps/web/src/lib/day-boundary.ts`'s `todayDateKey()`) as before; this part
 of the contract does not change.
 
-**`deadline-in-past` maps to `422`** on the single-document progress route —
-same treatment as the old `PlanningInputError`.
+**`deadline-in-past` maps to `200`, not `422`.** Revised from the original
+design (same `422` treatment as the old `PlanningInputError`): once
+`computeProgress` stopped being able to fail, there was no longer an error
+condition for the route to map at all — a lapsed deadline is a normal,
+successful read whose `progress.status` happens to be `'deadline-in-past'`.
 
 **Both routes carry enough to build the mandatory status phrase**
 ("Maths, contrôle dans 9 jours, 54 % de préparation, 7 notions à consolider
 avant l'échéance") **without a second call.** `CourseProgress` alone cannot:
-it has no course title and no deadline. Every response — success or error,
-single-document or list — carries `title`, `deadlineDate`, and
-`deadlineLabel` alongside the progress data, so the error case (a lapsed
-deadline) can render its own actionable phrase too, not just the happy path.
+it has no course title and no deadline. Every response carries `title`,
+`deadlineDate`, and `deadlineLabel` alongside the progress data, so a
+lapsed deadline can render its own actionable phrase too, not just the
+on-track path.
 
 ```ts
 // GET /api/documents/:id/course-progress?today=
-// 200:
-{ title: string; deadlineDate: string | null; deadlineLabel: string | null; kind: 'ok'; progress: CourseProgress }
-// 422 (deadline-in-past):
-{ title: string; deadlineDate: string; deadlineLabel: string | null; kind: 'error'; error: 'deadline-in-past' }
+// 200, always:
+{ title: string; deadlineDate: string | null; deadlineLabel: string | null; progress: CourseProgress }
 
 // GET /api/course-progress?today= — an array, one entry per document, so a
 // stale deadline is visible rather than silently missing:
-type ProgressListItem =
-  | { documentId: string; title: string; deadlineDate: string | null; deadlineLabel: string | null; kind: 'ok'; progress: CourseProgress }
-  | { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; kind: 'error'; error: 'deadline-in-past' };
+type ProgressListItem = { documentId: string; title: string; deadlineDate: string | null; deadlineLabel: string | null; progress: CourseProgress };
 ```
 
 The single-document body deliberately mirrors `ProgressListItem` minus
 `documentId` (already known from the URL) rather than inventing a
-differently-shaped success/error pair — one rendering component can consume
-either. `deadlineDate`/`deadlineLabel` are `null` only when `kind: 'ok'` and
-no deadline is set at all; the `'error'` branch only exists because a
-deadline is set and in the past, so its `deadlineDate` is always a string.
+differently-shaped body — one rendering component can consume either.
+`deadlineDate`/`deadlineLabel` are `null` only when no deadline is set at
+all, regardless of `progress.status`.
 
 Both `GET` routes on a specific document keep the existing ownership check
 (`403` if the document doesn't belong to the caller) used by the current
@@ -938,8 +961,9 @@ Plus:
   existing deadline's date/label preserves the original `createdAt`;
   delete-then-set produces a fresh `createdAt`
 - Integration: both `GET` progress routes — happy path, `401`, `403` for
-  another user's document, `400` for a missing/malformed `today`, `422` for
-  `deadline-in-past` on the single-document route
+  another user's document, `400` for a missing/malformed `today`, `200`
+  with `progress.status === 'deadline-in-past'` on the single-document
+  route (revised from `422` — see API above)
 - Integration: `GET /api/documents/:id/deadline` — `200` with the stored
   value, `404` when none is set, `403` for another user's document
 - Playwright: set a deadline, see coverage and readiness, review a due

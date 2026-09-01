@@ -84,12 +84,12 @@ export const progressRoutes: FastifyPluginCallback<ProgressRoutesOptions> = (app
   // `review` already owns GET /api/documents/:id/progress (returns
   // {mastered, total}, docs/modules/review.md), a genuine path collision
   // discovered at boot time (Fastify: FST_ERR_DUPLICATED_ROUTE) while
-  // wiring this route in, not a style choice. deadline-in-past maps to
-  // 422 — a well-formed request the current deadline cannot satisfy,
-  // distinct from a normal 200. Both branches carry
-  // title/deadlineDate/deadlineLabel so the mandatory status phrase
-  // renders without a second call, including in the error case
-  // (docs/modules/progress.md).
+  // wiring this route in, not a style choice. Always 200: getCourseProgress
+  // can't fail (docs/modules/progress.md), so a lapsed deadline is a
+  // normal read whose progress.status is 'deadline-in-past', not a 422 —
+  // revised from the original design, which mapped it to 422. Carries
+  // title/deadlineDate/deadlineLabel alongside progress so the mandatory
+  // status phrase renders without a second call.
   app.get("/api/documents/:id/course-progress", async (request, reply) => {
     const { id } = request.params as { id: string };
     const today = parseToday((request.query as { today?: unknown }).today);
@@ -98,20 +98,16 @@ export const progressRoutes: FastifyPluginCallback<ProgressRoutesOptions> = (app
     if (!document) return reply.code(403).send({ error: "not-found" });
 
     const result = await getCourseProgress(progressDeps, request.user!.id, id, today);
-    if (!result.ok) {
-      return reply
-        .code(422)
-        .send({ title: document.title, deadlineDate: result.error.deadlineDate, deadlineLabel: result.error.deadlineLabel, kind: "error", error: result.error.kind });
-    }
-    return reply.send({ title: document.title, deadlineDate: result.value.deadlineDate, deadlineLabel: result.value.deadlineLabel, kind: "ok", progress: result.value.progress });
+    return reply.send({ title: document.title, deadlineDate: result.deadlineDate, deadlineLabel: result.deadlineLabel, progress: result.progress });
   });
 
   // New: every course's progress, one aggregate call — never one request
   // per course (docs/modules/progress.md's N+1 discipline). Always 200: a
-  // per-document error (deadline-in-past) is carried in-band via the
-  // item's own `kind`, never dropped from the array. Named
-  // "course-progress" for symmetry with the single-document route above,
-  // even though a bare /api/progress would not itself have collided.
+  // document past its deadline is carried in-band via its own
+  // progress.status ('deadline-in-past'), never dropped from the array.
+  // Named "course-progress" for symmetry with the single-document route
+  // above, even though a bare /api/progress would not itself have
+  // collided.
   app.get("/api/course-progress", async (request, reply) => {
     const today = parseToday((request.query as { today?: unknown }).today);
     if (!today) return reply.code(400).send({ error: "today-required" });

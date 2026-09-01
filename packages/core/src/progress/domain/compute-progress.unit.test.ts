@@ -73,11 +73,10 @@ describe("computeProgress — bounds and cross-field invariants", () => {
     fc.assert(
       fc.property(validParamsArb, ({ notions, deadline }) => {
         const result = computeProgress({ notions, deadline, now: NOW });
-        if (!result.ok) return;
-        expect(result.value.coverage).toBeGreaterThanOrEqual(0);
-        expect(result.value.coverage).toBeLessThanOrEqual(1);
-        expect(result.value.readiness).toBeGreaterThanOrEqual(0);
-        expect(result.value.readiness).toBeLessThanOrEqual(1);
+        expect(result.coverage).toBeGreaterThanOrEqual(0);
+        expect(result.coverage).toBeLessThanOrEqual(1);
+        expect(result.readiness).toBeGreaterThanOrEqual(0);
+        expect(result.readiness).toBeLessThanOrEqual(1);
       }),
     );
   });
@@ -86,8 +85,7 @@ describe("computeProgress — bounds and cross-field invariants", () => {
     fc.assert(
       fc.property(validParamsArb, ({ notions, deadline }) => {
         const result = computeProgress({ notions, deadline, now: NOW });
-        if (!result.ok) return;
-        expect(result.value.readiness).toBeLessThanOrEqual(result.value.coverage);
+        expect(result.readiness).toBeLessThanOrEqual(result.coverage);
       }),
     );
   });
@@ -112,8 +110,7 @@ describe("computeProgress — monotonicity", () => {
           );
           const after = computeProgress({ notions: raised, deadline, now: NOW });
 
-          if (!before.ok || !after.ok) return;
-          expect(after.value.readiness).toBeGreaterThanOrEqual(before.value.readiness);
+          expect(after.readiness).toBeGreaterThanOrEqual(before.readiness);
         },
       ),
     );
@@ -133,14 +130,13 @@ describe("computeProgress — 4a: readiness and coverage do not depend on now", 
         const r2 = computeProgress({ notions, deadline, now: now2 });
         // deadlineArb's shortest span is 0 days from NOW; the +0..9 day
         // shift here could in principle cross into deadline-in-past for a
-        // deadline generated exactly at NOW's date. When either call hits
-        // that branch there is no readiness/coverage to compare — this
-        // property is about the Ok path only, deadline-in-past is its own
-        // test below.
-        if (!r1.ok || !r2.ok) return;
-
-        expect(r2.value.readiness).toBe(r1.value.readiness);
-        expect(r2.value.coverage).toBe(r1.value.coverage);
+        // deadline generated exactly at NOW's date — no longer a reason to
+        // skip the comparison, since coverage/readiness are computed the
+        // same way regardless of deadline status (the deadline-in-past
+        // block below asserts that directly, this property just relies on
+        // it holding across the `now` shift too).
+        expect(r2.readiness).toBe(r1.readiness);
+        expect(r2.coverage).toBe(r1.coverage);
       }),
     );
   });
@@ -161,6 +157,10 @@ describe("computeProgress — determinism", () => {
 describe("computeProgress — status, 4bis: with a deadline and no activity, status never improves as now advances", () => {
   const STATUS_ORDER = { behind: 0, "on-track": 1, ahead: 2 } as const;
 
+  function isPaced(status: ReturnType<typeof computeProgress>["status"]): status is keyof typeof STATUS_ORDER {
+    return status === "ahead" || status === "on-track" || status === "behind";
+  }
+
   it("status is non-increasing under ahead > on-track > behind as now moves from setAt to the deadline date", () => {
     fc.assert(
       fc.property(
@@ -178,10 +178,13 @@ describe("computeProgress — status, 4bis: with a deadline and no activity, sta
 
           const r1 = computeProgress({ notions, deadline, now: now1 });
           const r2 = computeProgress({ notions, deadline, now: now2 });
-          if (!r1.ok || !r2.ok) return;
-          if (r1.value.status === "no-deadline" || r2.value.status === "no-deadline") return;
+          // deadlineArb's spanDays is >= 1 here and both offsets are capped
+          // at spanDays, so neither now1 nor now2 can actually cross into
+          // deadline-in-past — but guard via a real type guard anyway
+          // rather than assume, since STATUS_ORDER has no entry for it.
+          if (!isPaced(r1.status) || !isPaced(r2.status)) return;
 
-          expect(STATUS_ORDER[r2.value.status]).toBeLessThanOrEqual(STATUS_ORDER[r1.value.status]);
+          expect(STATUS_ORDER[r2.status]).toBeLessThanOrEqual(STATUS_ORDER[r1.status]);
         },
       ),
     );
@@ -196,13 +199,12 @@ describe("computeProgress — behindByNotions", () => {
         deadlineArb.filter((d): d is ProgressDeadlineInput => d !== null),
         (notions, deadline) => {
           const result = computeProgress({ notions, deadline, now: NOW });
-          if (!result.ok) return;
 
-          if (result.value.status !== "behind") {
-            expect(result.value.behindByNotions).toBe(0);
+          if (result.status !== "behind") {
+            expect(result.behindByNotions).toBe(0);
             return;
           }
-          expect(result.value.behindByNotions).toBeGreaterThanOrEqual(1);
+          expect(result.behindByNotions).toBeGreaterThanOrEqual(1);
 
           // Independent recomputation, not just a loose bound: this is
           // what actually distinguishes "count of notions below target"
@@ -211,7 +213,7 @@ describe("computeProgress — behindByNotions", () => {
           // above on their own.
           const target = expectedTarget(deadline, TODAY_KEY);
           const expectedCount = notions.filter((n) => notionReadinessOf(n) < target).length;
-          expect(result.value.behindByNotions).toBe(expectedCount);
+          expect(result.behindByNotions).toBe(expectedCount);
         },
       ),
     );
@@ -231,10 +233,9 @@ describe("computeProgress — recentlyAddedUnreviewed", () => {
             cards: [{ retrievability: spec.reviewed ? 0.5 : 0, reviewed: spec.reviewed }],
           }));
           const result = computeProgress({ notions, deadline, now: NOW });
-          if (!result.ok) return;
 
           const expected = specs.filter((s) => !s.reviewed && s.daysAgo <= PROGRESS_RECENTLY_ADDED_DAYS).length;
-          expect(result.value.recentlyAddedUnreviewed).toBe(expected);
+          expect(result.recentlyAddedUnreviewed).toBe(expected);
         },
       ),
     );
@@ -242,21 +243,36 @@ describe("computeProgress — recentlyAddedUnreviewed", () => {
 
   it("is 0 for zero notions", () => {
     const result = computeProgress({ notions: [], deadline: null, now: NOW });
-    expect(result.ok && result.value.recentlyAddedUnreviewed).toBe(0);
+    expect(result.recentlyAddedUnreviewed).toBe(0);
   });
 });
 
 describe("computeProgress — deadline-in-past", () => {
-  it("returns Err iff deadline.date is strictly before today; today itself is not in the past — boundary included in the generator, not left to a dedicated example alone", () => {
+  it("status is 'deadline-in-past' iff deadline.date is strictly before today; today itself is not in the past — boundary included in the generator, not left to a dedicated example alone", () => {
     fc.assert(
       fc.property(notionsArb(), fc.integer({ min: 0, max: 60 }), (notions, daysInPast) => {
         const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-daysInPast - 10), date: dateKeyOffset(-daysInPast) };
         const result = computeProgress({ notions, deadline, now: NOW });
         if (daysInPast > 0) {
-          expect(result).toEqual({ ok: false, error: { kind: "deadline-in-past" } });
+          expect(result.status).toBe("deadline-in-past");
+          expect(result.behindByNotions).toBe(0);
         } else {
-          expect(result.ok).toBe(true);
+          expect(result.status).not.toBe("deadline-in-past");
         }
+      }),
+    );
+  });
+
+  it("coverage, readiness and recentlyAddedUnreviewed past the deadline equal exactly what they'd be with no deadline at all — the deadline status affects status/behindByNotions only, never these three fields", () => {
+    fc.assert(
+      fc.property(notionsArb(), fc.integer({ min: 1, max: 60 }), (notions, daysInPast) => {
+        const pastDeadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-daysInPast - 10), date: dateKeyOffset(-daysInPast) };
+        const past = computeProgress({ notions, deadline: pastDeadline, now: NOW });
+        const none = computeProgress({ notions, deadline: null, now: NOW });
+
+        expect(past.coverage).toBe(none.coverage);
+        expect(past.readiness).toBe(none.readiness);
+        expect(past.recentlyAddedUnreviewed).toBe(none.recentlyAddedUnreviewed);
       }),
     );
   });
@@ -266,22 +282,26 @@ describe("computeProgress — edge cases, never NaN", () => {
   it("zero notions with a deadline: on-track, not behind", () => {
     const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-10), date: dateKeyOffset(10) };
     const result = computeProgress({ notions: [], deadline, now: NOW });
-    expect(result).toEqual({ ok: true, value: { coverage: 0, readiness: 0, status: "on-track", behindByNotions: 0, recentlyAddedUnreviewed: 0 } });
+    expect(result).toEqual({ coverage: 0, readiness: 0, status: "on-track", behindByNotions: 0, recentlyAddedUnreviewed: 0 });
   });
 
   it("zero notions, no deadline: no-deadline, not on-track", () => {
     const result = computeProgress({ notions: [], deadline: null, now: NOW });
-    expect(result).toEqual({ ok: true, value: { coverage: 0, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } });
+    expect(result).toEqual({ coverage: 0, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 });
+  });
+
+  it("zero notions with a deadline already in the past: deadline-in-past, not behind or on-track", () => {
+    const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-20), date: dateKeyOffset(-10) };
+    const result = computeProgress({ notions: [], deadline, now: NOW });
+    expect(result).toEqual({ coverage: 0, readiness: 0, status: "deadline-in-past", behindByNotions: 0, recentlyAddedUnreviewed: 0 });
   });
 
   it("deadline set for today (spanDays === 0): target is PROGRESS_TARGET_READINESS immediately, no NaN", () => {
     const deadline: ProgressDeadlineInput = { setAt: TODAY_KEY, date: TODAY_KEY };
     const notions: ProgressNotion[] = [{ id: "n1", createdAt: OLD_CREATED_AT, cards: [{ retrievability: 0.5, reviewed: true }] }];
     const result = computeProgress({ notions, deadline, now: NOW });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(Number.isNaN(result.value.readiness)).toBe(false);
-    expect(result.value.status).toBe("behind"); // 0.5 < PROGRESS_TARGET_READINESS
+    expect(Number.isNaN(result.readiness)).toBe(false);
+    expect(result.status).toBe("behind"); // 0.5 < PROGRESS_TARGET_READINESS
   });
 
   it("all notions never seen: coverage 0, readiness 0, no NaN, no thrown error", () => {
@@ -291,10 +311,7 @@ describe("computeProgress — edge cases, never NaN", () => {
       { id: "n2", createdAt: OLD_CREATED_AT, cards: [] },
     ];
     const result = computeProgress({ notions, deadline, now: NOW });
-    expect(result).toEqual({
-      ok: true,
-      value: { coverage: 0, readiness: 0, status: "behind", behindByNotions: 2, recentlyAddedUnreviewed: 0 },
-    });
+    expect(result).toEqual({ coverage: 0, readiness: 0, status: "behind", behindByNotions: 2, recentlyAddedUnreviewed: 0 });
   });
 });
 
@@ -315,26 +332,35 @@ describe("computeProgress — exported constants", () => {
 // Must never disagree with computeProgress, or two screens reading the same
 // computation would show contradictory things for the same course.
 describe("notionsBelowTarget — coherent with computeProgress by construction", () => {
-  it("non-empty iff computeProgress's status is 'behind' for the same input, and always the same length as behindByNotions", () => {
+  it("for a deadline that is not in the past, non-empty iff computeProgress's status is 'behind' for the same input, and always the same length as behindByNotions", () => {
     fc.assert(
       fc.property(validParamsArb, ({ notions, deadline }) => {
+        // deadlineArb never generates a past deadline, so belowTarget.ok is
+        // always true here — the past-deadline case is its own test below,
+        // now that computeProgress and notionsBelowTarget deliberately
+        // diverge on it (docs/modules/progress.md's own note on why).
         const progress = computeProgress({ notions, deadline, now: NOW });
         const belowTarget = notionsBelowTarget({ notions, deadline, now: NOW });
 
-        expect(belowTarget.ok).toBe(progress.ok);
-        if (!progress.ok || !belowTarget.ok) return;
+        expect(belowTarget.ok).toBe(true);
+        if (!belowTarget.ok) return;
 
-        expect(belowTarget.value.length > 0).toBe(progress.value.status === "behind");
-        expect(belowTarget.value.length).toBe(progress.value.behindByNotions);
+        expect(belowTarget.value.length > 0).toBe(progress.status === "behind");
+        expect(belowTarget.value.length).toBe(progress.behindByNotions);
       }),
     );
   });
 
-  it("returns the same Err as computeProgress for a deadline in the past", () => {
+  it("agree that the deadline is in the past without contradicting each other: notionsBelowTarget still errors (unchanged — its own callers already degrade that gracefully), computeProgress reports status 'deadline-in-past' with behindByNotions 0", () => {
     fc.assert(
       fc.property(notionsArb(), fc.integer({ min: 1, max: 60 }), (notions, daysInPast) => {
         const deadline: ProgressDeadlineInput = { setAt: dateKeyOffset(-daysInPast - 10), date: dateKeyOffset(-daysInPast) };
-        expect(notionsBelowTarget({ notions, deadline, now: NOW })).toEqual({ ok: false, error: { kind: "deadline-in-past" } });
+        const progress = computeProgress({ notions, deadline, now: NOW });
+        const belowTarget = notionsBelowTarget({ notions, deadline, now: NOW });
+
+        expect(belowTarget).toEqual({ ok: false, error: { kind: "deadline-in-past" } });
+        expect(progress.status).toBe("deadline-in-past");
+        expect(progress.behindByNotions).toBe(0);
       }),
     );
   });

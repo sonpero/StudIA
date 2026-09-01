@@ -154,15 +154,14 @@ describe("progress routes", () => {
       const res = await app.inject({ method: "GET", url: `/api/documents/doc-1/course-progress?${todayParam()}`, headers: { cookie: aliceCookie } });
 
       expect(res.statusCode).toBe(200);
-      const body = res.json<{ title: string; deadlineDate: string; deadlineLabel: string; kind: string; progress: { coverage: number } }>();
+      const body = res.json<{ title: string; deadlineDate: string; deadlineLabel: string; progress: { coverage: number } }>();
       expect(body.title).toBe("Cours");
       expect(body.deadlineDate).toBe(farFutureDeadline());
       expect(body.deadlineLabel).toBe("Contrôle");
-      expect(body.kind).toBe("ok");
       expect(body.progress.coverage).toBe(1);
     });
 
-    it("returns 422 with the same title/deadline shape when the deadline is in the past", async () => {
+    it("returns 200 (not 422) with progress.status 'deadline-in-past' when the deadline is in the past — coverage/readiness still present, not dropped", async () => {
       const pastDate = "2020-01-01";
       const seedDb = openDatabase(dbPath);
       seedDb.run(sql`INSERT INTO deadlines (id, document_id, user_id, date, label, created_at)
@@ -170,8 +169,14 @@ describe("progress routes", () => {
 
       const res = await app.inject({ method: "GET", url: `/api/documents/doc-1/course-progress?${todayParam()}`, headers: { cookie: aliceCookie } });
 
-      expect(res.statusCode).toBe(422);
-      expect(res.json()).toEqual({ title: "Cours", deadlineDate: pastDate, deadlineLabel: "Ancien contrôle", kind: "error", error: "deadline-in-past" });
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{ title: string; deadlineDate: string; deadlineLabel: string; progress: { status: string; coverage: number; readiness: number } }>();
+      expect(body).toEqual({
+        title: "Cours",
+        deadlineDate: pastDate,
+        deadlineLabel: "Ancien contrôle",
+        progress: { status: "deadline-in-past", coverage: 0, readiness: 0, behindByNotions: 0, recentlyAddedUnreviewed: 0 },
+      });
     });
 
     it("rejects a missing or invalid today (400)", async () => {
@@ -223,10 +228,9 @@ describe("progress routes", () => {
       const res = await app.inject({ method: "GET", url: `/api/course-progress?${todayParam()}`, headers: { cookie: aliceCookie } });
 
       expect(res.statusCode).toBe(200);
-      const items = res.json<{ documentId: string; kind: string; error?: string }[]>();
+      const items = res.json<{ documentId: string; progress: { status: string } }[]>();
       const doc1 = items.find((i) => i.documentId === "doc-1");
-      expect(doc1?.kind).toBe("error");
-      expect(doc1?.error).toBe("deadline-in-past");
+      expect(doc1?.progress.status).toBe("deadline-in-past");
     });
 
     it("rejects a missing or invalid today (400)", async () => {

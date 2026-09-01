@@ -108,8 +108,13 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
   const deleteDeadlineMutation = useMutation({ mutationFn: () => deleteDeadline(item.documentId), onSuccess: refresh });
 
   const todayKey = todayDateKey();
-  const isToday = item.kind === "ok" && item.deadlineDate === todayKey;
-  const dataStatus = item.kind === "error" ? "error" : isToday ? "today" : item.progress.status;
+  const isToday = item.deadlineDate === todayKey;
+  // Contract-only rename: the condition that used to be item.kind ===
+  // "error" is now item.progress.status === "deadline-in-past" (a lapsed
+  // deadline is no longer a separate kind — computeProgress can't fail).
+  // dataStatus's own "error" value is kept as-is on purpose: this commit
+  // changes no rendered output, only the shape feeding it.
+  const dataStatus = item.progress.status === "deadline-in-past" ? "error" : isToday ? "today" : item.progress.status;
 
   return (
     <Card
@@ -120,7 +125,7 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
     >
       <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h3>
 
-      {item.kind === "error" ? (
+      {item.progress.status === "deadline-in-past" ? (
         <>
           <p className="rounded-[var(--radius-button)] border border-warning bg-warning/10 p-3 text-sm text-text">
             Cette échéance est passée. Mets-la à jour pour suivre ta progression.
