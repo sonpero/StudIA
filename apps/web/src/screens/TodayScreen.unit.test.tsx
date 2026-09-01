@@ -114,6 +114,37 @@ describe("TodayScreen", () => {
     expect(screen.getByText(/notions? à consolider avant l'échéance/)).toBeInTheDocument();
   });
 
+  it("ready: a below-target count with no due count on the same card keeps --text-display — a lone count has no conflict to resolve against (docs/UI.md's Aujourd'hui note)", async () => {
+    stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
+    renderScreen();
+    await screen.findByText("Histoire");
+
+    const digit = screen.getByText("2");
+    expect(digit.className).toContain("text-[length:var(--text-display)]");
+  });
+
+  it("ready: when a course has both a due count and a below-target count, only the due count keeps --text-display — it's the one 'Réviser' acts on; the below-target count demotes to the card's plain-fact register instead of fighting it for the same weight (docs/UI.md's Aujourd'hui note)", async () => {
+    stubFetch({
+      ...emptyView,
+      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 5 }],
+      notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 6 }],
+    });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const due = screen.getByText("5");
+    expect(due.className).toContain("text-[length:var(--text-display)]");
+
+    const belowTarget = screen.getByText(/6 notions? à consolider avant l'échéance/);
+    expect(belowTarget.className).not.toMatch(/--text-display/);
+    expect(belowTarget.className).toContain("text-sm");
+
+    // At most one --text-display digit on the whole card (docs/UI.md's
+    // Type note), not just "the due count happens to have it".
+    const card = screen.getByTestId("course-today-card");
+    expect(card.querySelectorAll('[class*="text-\\[length\\:var\\(--text-display\\)\\]"]')).toHaveLength(1);
+  });
+
   it("ready: a course card's due count is the dominant number on its line — --text-display and bold, its qualifier small and muted beside it, never the same size (docs/UI.md's Type note)", async () => {
     stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 25 }] });
     renderScreen();
@@ -182,13 +213,15 @@ describe("TodayScreen", () => {
     await screen.findByText("Maths");
 
     expect(screen.getAllByText("Maths")).toHaveLength(1);
-    // The digit and its qualifier are now separate elements (docs/UI.md's
+    // The due digit and its qualifier stay separate elements (docs/UI.md's
     // Type note: the number dominates, the qualifier stays small beside
-    // it), so each is asserted on its own rather than as one text run.
+    // it). The below-target count, once a due count is also on the card,
+    // demotes to one plain sentence instead (docs/UI.md's Aujourd'hui
+    // note: at most one --text-display digit per card, and the due count
+    // wins it here), so it's asserted as a single text run, not two.
     expect(screen.getByText("25")).toBeInTheDocument();
     expect(screen.getByText(/fiches à revoir aujourd'hui/)).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
-    expect(screen.getByText(/notions à consolider avant l'échéance/)).toBeInTheDocument();
+    expect(screen.getByText(/7 notions à consolider avant l'échéance/)).toBeInTheDocument();
   });
 
   it("ready: a course card offers 'Voir le cours', which opens that course", async () => {

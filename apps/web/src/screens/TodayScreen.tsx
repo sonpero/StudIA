@@ -288,9 +288,14 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
       <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{card.documentTitle}</h3>
 
       <div className="flex flex-col gap-1">
-        {/* The due/below-target counts are the most useful fact on this
-            card (docs/UI.md's Type note): the digit dominates its line,
-            its qualifier stays small and muted beside it. */}
+        {/* At most one --text-display digit per card (docs/UI.md's Type
+            note): the due count wins the display slot whenever it's
+            present, since "Réviser" — this card's own accent action —
+            acts on it directly. The below-target count only demotes to
+            the plain-fact register when the due count is also there to
+            contest it; alone, it keeps --text-display exactly as before —
+            nothing to resolve a conflict against (docs/UI.md's Aujourd'hui
+            note). */}
         {card.dueCount > 0 && (
           <p>
             <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.dueCount}</span>{" "}
@@ -299,12 +304,17 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
             </span>
           </p>
         )}
-        {card.belowTargetCount > 0 && (
+        {card.belowTargetCount > 0 && card.dueCount === 0 && (
           <p>
             <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.belowTargetCount}</span>{" "}
             <span className="text-[length:var(--text-label)] text-text-muted">
               notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
             </span>
+          </p>
+        )}
+        {card.belowTargetCount > 0 && card.dueCount > 0 && (
+          <p className="text-sm text-text-muted">
+            {card.belowTargetCount} notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
           </p>
         )}
         {card.deadline && (

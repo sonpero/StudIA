@@ -331,6 +331,28 @@ same size as the labels beside it — `text-sm` on Notions du cours,
 matching "Lire le cours" and "Voir la progression" — never
 `--text-display`, whatever it counts.
 
+**A card carries at most one `--text-display` number, mirroring the
+one-`--accent`-element invariant above (`Colour`'s own note).** Two
+independent counts can legitimately describe the same card without ever
+being compared to each other — Aujourd'hui's own course card, where a due
+count and a below-target count answer two different questions and can
+both be non-zero at once (`Aujourd'hui`'s own note, below). When that
+happens, only one keeps `--text-display`: the one the card's own primary
+action actually moves — the same digit a reader would expect to change
+after pressing the button right below it. A second, non-actionable count
+joins the card's plain-fact register (`text-sm`, no digit emphasis)
+instead of contesting the first number's weight, the same tier this
+app's other passive facts already use (a deadline, stated plainly, never
+sized up). This ties two hierarchies that used to be decided separately
+— which action is the card's own accent, and which number gets the
+loudest read — into one rule with one criterion, not a fresh visual
+judgement call for every future card. It does not apply to two numbers
+deliberately paired for side-by-side comparison, never meant to be read
+as competing facts about different questions — Progression's own
+Coverage/Readiness gauges (`Progression`'s own note, below) are exactly
+this: both stay `--text-display`, and any imbalance there is a spacing
+question, not a hierarchy one.
+
 **Neither the display face nor any of these four sizes ever actually
 rendered, from the very first commit of this pass until it was found and
 fixed.** `font-[var(--font-display)]` and `text-[var(--text-*)]` both
@@ -846,6 +868,29 @@ A due count and a below-target count for the same course can both be
 non-zero at once. That is not a contradiction — they measure different
 things — and the wording carries that distinction on its own, without naming
 FSRS or the scheduling model to the student.
+
+**When both are non-zero, only the due count keeps `--text-display`**
+(`Type`'s own "at most one `--text-display` number per card" note,
+above): it is the one "Réviser" — this card's own accent action — acts
+on directly, so it stays the card's one headline digit. The below-target
+count then renders as a plain `text-sm` sentence, the same register as
+the deadline line beneath it, still always shown, never dropped, just no
+longer sized to compete with the due count for the same read. Found on
+this exact card: with the Type pass' sizes finally rendering for real
+(`Type`'s own note on the Tailwind bug, above), a course due today and
+also behind its target showed two 32px numbers stacked over its own
+20px title — the card's name stopped being the most prominent thing on
+it.
+
+A lone below-target count, with no due count on the same card at all,
+keeps `--text-display` unchanged. Checked, not assumed: against a static
+mockup built from this file's own real token values, demoting it read as
+burying the one fact on the card — exactly backwards for a screen whose
+job is surfacing what needs attention, since "behind target with nothing
+due today" is often the more important signal to notice, not the
+quieter one. The invariant above only forces a choice when two counts
+would otherwise both claim `--text-display` at once; a lone count has no
+conflict to resolve against.
 
 Each course card carries its subject colour as the left-border treatment
 `Subject colours` describes, replacing the small dot this card used next to
