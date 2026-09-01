@@ -26,7 +26,19 @@ export interface AnswerGrader {
   }): Promise<Result<{ correct: boolean; feedback: string; suggestedRating: Rating }, GradeError>>;
 }
 
-export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };
+// cardsWithEnoughReps/cardsWithEnoughStability each measure one of
+// isMastered's two conditions alone (docs/modules/review.md's "Which of the
+// two criteria is missing" note) — independent counts, not a partition: a
+// card missing both counts in neither, a card missing only one still counts
+// in the other. Never derive stability's own raw value from these; they
+// only ever say whether the day threshold (mastery.ts) was crossed.
+export type NotionProgress = {
+  notionId: string;
+  masteredCards: number;
+  totalCards: number;
+  cardsWithEnoughReps: number;
+  cardsWithEnoughStability: number;
+};
 
 // Not in docs/modules/review.md's Ports section (M3 has no LLM port at all),
 // but required by its own Use cases list, same reasoning as every other

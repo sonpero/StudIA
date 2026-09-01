@@ -152,11 +152,22 @@ export class SqliteReviewRepository implements ReviewRepository {
 
   // Shared by getProgress (aggregated to notion-level mastery) and
   // getNotionsProgress (returned per notion): one join, one threshold.
-  private getNotionCardCounts(userId: string, documentId: string): { notionId: string; activeCount: number; masteredActiveCount: number }[] {
-    return this.db.all<{ notionId: string; activeCount: number; masteredActiveCount: number }>(sql`
+  // repsOkCount/stabilityOkCount each test one of isMastered's two
+  // conditions alone (docs/modules/review.md's "Which of the two criteria
+  // is missing" note) — independent counts, not a partition: a card missing
+  // both is absent from both, a card missing only one still counts in the
+  // other. getProgress ignores them; getNotionsProgress exposes them as
+  // cardsWithEnoughReps/cardsWithEnoughStability.
+  private getNotionCardCounts(
+    userId: string,
+    documentId: string,
+  ): { notionId: string; activeCount: number; masteredActiveCount: number; repsOkCount: number; stabilityOkCount: number }[] {
+    return this.db.all<{ notionId: string; activeCount: number; masteredActiveCount: number; repsOkCount: number; stabilityOkCount: number }>(sql`
       SELECT n.id AS notionId,
         COUNT(CASE WHEN c.state = 'active' THEN 1 END) AS activeCount,
-        COUNT(CASE WHEN c.state = 'active' AND s.stability >= ${MASTERY_STABILITY_DAYS_THRESHOLD} AND s.reps >= ${MASTERY_REPS_THRESHOLD} THEN 1 END) AS masteredActiveCount
+        COUNT(CASE WHEN c.state = 'active' AND s.stability >= ${MASTERY_STABILITY_DAYS_THRESHOLD} AND s.reps >= ${MASTERY_REPS_THRESHOLD} THEN 1 END) AS masteredActiveCount,
+        COUNT(CASE WHEN c.state = 'active' AND s.reps >= ${MASTERY_REPS_THRESHOLD} THEN 1 END) AS repsOkCount,
+        COUNT(CASE WHEN c.state = 'active' AND s.stability >= ${MASTERY_STABILITY_DAYS_THRESHOLD} THEN 1 END) AS stabilityOkCount
       FROM ${notionsTable} AS n
       LEFT JOIN ${cardsTable} AS c ON c.notion_id = n.id AND c.user_id = n.user_id
       LEFT JOIN card_schedules s ON s.card_id = c.id AND s.user_id = c.user_id
@@ -187,7 +198,15 @@ export class SqliteReviewRepository implements ReviewRepository {
 
   getNotionsProgress(userId: string, documentId: string): Promise<NotionProgress[]> {
     const rows = this.getNotionCardCounts(userId, documentId);
-    return Promise.resolve(rows.map((row) => ({ notionId: row.notionId, masteredCards: row.masteredActiveCount, totalCards: row.activeCount })));
+    return Promise.resolve(
+      rows.map((row) => ({
+        notionId: row.notionId,
+        masteredCards: row.masteredActiveCount,
+        totalCards: row.activeCount,
+        cardsWithEnoughReps: row.repsOkCount,
+        cardsWithEnoughStability: row.stabilityOkCount,
+      })),
+    );
   }
 
   createSession(userId: string, session: { id: string; documentId: string | null; startedAt: string }): Promise<void> {

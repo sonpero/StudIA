@@ -48,6 +48,24 @@ notion is mastered when all its active cards are. The course progress ring is
 `masteredNotions / totalNotions`, and that fraction is always shown as a number
 per `docs/UI.md`. Define the threshold in one place; several modules read it.
 
+**Which of the two criteria is missing, per notion.** `getNotionsProgress`
+also reports two counts, each measuring one of `isMastered`'s two conditions
+independently of the other: `cardsWithEnoughReps` (active cards with
+`reps >= 3`, whatever their stability) and `cardsWithEnoughStability` (active
+cards with `stability >= 21 days`, whatever their reps). Independent on
+purpose, not a partition: a card missing both criteria counts in neither, a
+card missing only one still counts in the other. An earlier version of this
+pair counted deficiency instead ("needs more reps" / "needs more time, but
+only once reps is already satisfied") — dropped because a card short on both
+would only ever show up in the reps count, so a stability line built from it
+could read "hasn't crossed 21 days" for a card that actually had, a real
+mismatch between what was displayed and what was counted, not a hypothetical
+one. `NotionsScreen` (`docs/UI.md`) uses these two counts to say which
+criterion is blocking a notion that isn't yet mastered — never `stability`'s
+own raw value, which is an FSRS internal, not something a student needs to
+read as a number; only whether it has crossed the same day threshold named
+above.
+
 **No urgency.** Overdue is a fact, not an alarm. The domain exposes
 `daysOverdue`, and the UI renders it in `--warning`, never `--accent`, and never
 with a countdown. Per `docs/UI.md`, this is a product rule.
@@ -138,6 +156,7 @@ recoverable instead of destructive.
 | `POST /api/review/cards/:id` | `{ rating, elapsedMs }`, returns the new schedule |
 | `POST /api/review/cards/:id/grade` | M4, `{ given }`, mcq and open (never flashcard, which is self-rated) |
 | `GET /api/documents/:id/progress` | `{ mastered, total }` |
+| `GET /api/documents/:id/notions-progress` | `{ notionId, masteredCards, totalCards, cardsWithEnoughReps, cardsWithEnoughStability }[]` — not previously listed here, added alongside this table's neighbour rather than left undocumented any longer |
 
 ## Out of scope
 

@@ -265,19 +265,41 @@ describe("SqliteReviewRepository", () => {
     const progress = await repo.getNotionsProgress("u1", "doc-1");
 
     expect(progress.sort((a, b) => a.notionId.localeCompare(b.notionId))).toEqual([
-      { notionId: "n1", masteredCards: 1, totalCards: 1 },
-      { notionId: "n2", masteredCards: 0, totalCards: 1 },
+      { notionId: "n1", masteredCards: 1, totalCards: 1, cardsWithEnoughReps: 1, cardsWithEnoughStability: 1 },
+      { notionId: "n2", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0 },
     ]);
   });
 
-  it("getNotionsProgress reports a notion with no cards yet as 0/0", async () => {
+  // The regression this pair of counts exists to rule out (docs/modules/
+  // review.md's "Which of the two criteria is missing" note): a card short
+  // on reps but already past the stability threshold must still count in
+  // cardsWithEnoughStability. An earlier, deficiency-shaped version of this
+  // pair only counted a card's stability once its reps were already enough,
+  // so this exact card would have been invisible to the stability count —
+  // read as "hasn't crossed 21 days" when it plainly had.
+  it("getNotionsProgress counts reps and stability independently: a card short on reps but already past the stability threshold still counts toward cardsWithEnoughStability", async () => {
+    const { db, repo } = setup();
+    seedCard(db, "short-on-reps-only", "n1", "u1");
+    await repo.submitReview(
+      "u1",
+      aReview({ id: "r1", cardId: "short-on-reps-only" }),
+      aSchedule({ cardId: "short-on-reps-only", stability: 25, reps: 1 }),
+    );
+
+    const progress = await repo.getNotionsProgress("u1", "doc-1");
+    const n1 = progress.find((p) => p.notionId === "n1");
+
+    expect(n1).toEqual({ notionId: "n1", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 1 });
+  });
+
+  it("getNotionsProgress reports a notion with no cards yet as 0/0, with both criteria counts at 0 too", async () => {
     const { repo } = setup();
 
     const progress = await repo.getNotionsProgress("u1", "doc-1");
 
     expect(progress.sort((a, b) => a.notionId.localeCompare(b.notionId))).toEqual([
-      { notionId: "n1", masteredCards: 0, totalCards: 0 },
-      { notionId: "n2", masteredCards: 0, totalCards: 0 },
+      { notionId: "n1", masteredCards: 0, totalCards: 0, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0 },
+      { notionId: "n2", masteredCards: 0, totalCards: 0, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0 },
     ]);
   });
 
