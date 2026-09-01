@@ -950,6 +950,16 @@ the same day threshold already named in the sentence, expressed as a count
 of fiches over that threshold, the same idiom `masteredCards`/`totalCards`
 already uses.
 
+**"fiche(s)" and its verb agree with the denominator, not the numerator.**
+`X/Y fiches ont …` reads as "X out of Y fiches", so it's `Y` — the
+population the fraction is drawn from — that the noun and verb answer to,
+not `X`. An earlier version agreed with `X` instead, so `0/3 fiche a fait`
+and `1/3 fiche a fait` both read as correct-looking singular when the
+notion actually has three fiches; every one of these lines is wrong except
+when `X` happens to be 1. Plural exactly when `totalCards > 1`, singular
+only when it is exactly 1 (`0/1 fiche a …`, the one case where singular is
+genuinely correct) — one rule, no separate case for `X = 0` or `X = 1`.
+
 **Upload** — Camera first on mobile, file picker first on desktop. Multi-page
 capture is one document: several photos of the same lesson produce one course.
 Thumbnails, reorderable and removable, before confirming.

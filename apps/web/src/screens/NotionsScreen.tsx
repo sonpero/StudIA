@@ -34,10 +34,14 @@ function notionProgressLabel(progress: NotionProgress | undefined): string {
   return `${progress.masteredCards} / ${progress.totalCards} fiches maîtrisées`;
 }
 
-// "fiche(s)" and "a"/"ont" both agree with the count leading the fraction,
-// the same idiom already used for Aujourd'hui's own due-count qualifiers.
+// "fiche(s)" and "a"/"ont" agree with the denominator, not the numerator
+// (docs/UI.md's Notions du cours note): "X/Y fiches ont …" reads as "X out
+// of Y fiches", so it's the population (Y) the noun and verb answer to.
+// Plural whenever the notion has more than one fiche at all, singular only
+// when it has exactly one — never keyed off the numerator, which would
+// make 0/3 and 1/3 both read as a false singular.
 function fractionCountSentence(count: number, total: number, rest: string): string {
-  const plural = count > 1;
+  const plural = total > 1;
   return `${count}/${total} fiche${plural ? "s" : ""} ${plural ? "ont" : "a"} ${rest}`;
 }
 

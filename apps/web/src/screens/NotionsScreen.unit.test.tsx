@@ -354,7 +354,7 @@ describe("NotionsScreen", () => {
     renderScreen();
 
     expect(await screen.findByText("Il te manque encore des révisions sur cette notion.")).toBeInTheDocument();
-    expect(screen.getByText(/1\/3 fiche a fait 3 révisions/)).toBeInTheDocument();
+    expect(screen.getByText(/1\/3 fiches ont fait 3 révisions/)).toBeInTheDocument();
     expect(screen.getByText(/2\/3 fiches ont dépassé 21 jours de stabilité/)).toBeInTheDocument();
   });
 
@@ -399,6 +399,51 @@ describe("NotionsScreen", () => {
     expect(screen.queryByText(/espacer dans le temps/i)).not.toBeInTheDocument();
   });
 
+  // "fiche(s)" and its verb agree with the denominator (docs/UI.md's Notions
+  // du cours note: "X/Y fiches ont …" reads as "X out of Y fiches"), not
+  // the numerator: 0/3 and 1/3 both name a population of 3, so both stay
+  // plural. An earlier version agreed with the numerator instead, so both
+  // of these cases read as a false singular.
+  it("ready state: 'fiche(s)' and its verb agree with the denominator, not the numerator — 0/3 and 1/3 both stay plural", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 0, cardsWithEnoughStability: 1 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText(/0\/3 fiches ont fait 3 révisions/)).toBeInTheDocument();
+    expect(screen.getByText(/1\/3 fiches ont dépassé 21 jours de stabilité/)).toBeInTheDocument();
+  });
+
+  it("ready state: singular is only ever correct when the notion itself has exactly one fiche — 0/1 and 1/1 both stay singular", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 1 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText(/0\/1 fiche a fait 3 révisions/)).toBeInTheDocument();
+    expect(screen.getByText(/1\/1 fiche a dépassé 21 jours de stabilité/)).toBeInTheDocument();
+  });
+
   it("ready state: the mastery-gap explanation is never coloured or larger than its own sentence — a fact, not a warning (docs/UI.md's Colour note)", async () => {
     vi.stubGlobal(
       "fetch",
@@ -419,7 +464,7 @@ describe("NotionsScreen", () => {
     expect(sentence.className).not.toMatch(/warning/);
     expect(sentence.className).toContain("text-sm");
 
-    const detail = screen.getByText(/1\/3 fiche a fait 3 révisions/);
+    const detail = screen.getByText(/1\/3 fiches ont fait 3 révisions/);
     expect(detail.className).not.toMatch(/warning/);
     expect(detail.className).toContain("text-[length:var(--text-label)]");
   });
