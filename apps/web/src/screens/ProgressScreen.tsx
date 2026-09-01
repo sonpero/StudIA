@@ -142,8 +142,16 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
         </>
       ) : (
         <>
-          <Gauge label="Couverture" value={item.progress.coverage} />
-          <Gauge label="Préparation" value={item.progress.readiness} />
+          {/* --space-block (16px) between the two gauges, not the card's
+              own 12px rhythm used everywhere else on it (docs/UI.md's
+              Progression note): title→gauge is buffered by the gauge's own
+              label, but gauge→gauge puts a bar directly against a bare
+              label with nothing between two 32px numbers — checked against
+              real sizes, not assumed from the general rule alone. */}
+          <div className="flex flex-col gap-[var(--space-block)]">
+            <Gauge label="Couverture" value={item.progress.coverage} />
+            <Gauge label="Préparation" value={item.progress.readiness} />
+          </div>
 
           {item.progress.recentlyAddedUnreviewed > 0 && (
             <p className="text-sm text-text-muted">

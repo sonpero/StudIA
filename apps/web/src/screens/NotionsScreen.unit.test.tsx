@@ -115,6 +115,23 @@ describe("NotionsScreen", () => {
     expect(screen.getByText("/ 5 notions maîtrisées")).toBeInTheDocument();
   });
 
+  it("ready state: a notion's title and its difficulty label carry --space-related (8px) between them, not the 0px gap that used to leave them touching (docs/UI.md's Notions du cours note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const difficulty = screen.getByText("Moyen");
+    expect(difficulty.className).toContain("mt-[var(--space-related)]");
+  });
+
   it("ready state: the toolbar's mastered-notions count renders at the same size as the labels beside it, text-sm, not --text-display — it's page chrome, not a card's own number (docs/UI.md's Type note); a notion's own title stays --text-title", async () => {
     vi.stubGlobal(
       "fetch",
@@ -232,6 +249,23 @@ describe("NotionsScreen", () => {
     expect(within(toolbar).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
     expect(within(toolbar).queryByRole("button", { name: /créer les fiches|régénérer les fiches/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Créer les fiches" })).toBeInTheDocument();
+  });
+
+  it("ready state: the 'Créer les fiches' block sits --space-block (16px) above the notion list, tighter than the --space-section (24px) below the header — it acts on the list, not the header (docs/UI.md's Notions du cours note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const generateBlock = screen.getByRole("button", { name: "Créer les fiches" }).closest("div.mb-\\[var\\(--space-block\\)\\]");
+    expect(generateBlock).not.toBeNull();
   });
 
   it("ready state: 'Créer les fiches' sits before 'Types de fiches à créer', not after it", async () => {

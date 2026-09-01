@@ -127,6 +127,19 @@ describe("ProgressScreen", () => {
     expect(label.className).not.toContain("text-[length:var(--text-display)]");
   });
 
+  it("ready state: the two gauges sit --space-block (16px) apart from each other, not the card's own 12px internal rhythm — checked against real sizes before this pass, not the general rule alone (docs/UI.md's Progression note)", async () => {
+    stubFetch([
+      { documentId: "doc-1", title: "Maths", ...okBase, kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },
+    ]);
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const coverage = screen.getByRole("meter", { name: "Couverture" });
+    const readiness = screen.getByRole("meter", { name: "Préparation" });
+    expect(coverage.parentElement).toBe(readiness.parentElement);
+    expect(coverage.parentElement?.className).toContain("gap-[var(--space-block)]");
+  });
+
   it("ready state: a course card's subject colour is a left border on the whole card (docs/UI.md's Subject colours note) — this screen carried no colour marker before", async () => {
     stubFetch([
       { documentId: "doc-1", title: "Maths", ...okBase, colour: "#F87171", kind: "ok", progress: { coverage: 0.54, readiness: 0.3, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 } },

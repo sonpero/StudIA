@@ -164,6 +164,15 @@ describe("ReaderScreen", () => {
     expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
+  it("ready: the document-title row sits --space-section (24px) above the course content, not the 0px gap that used to leave them touching (docs/UI.md's Lecteur note)", async () => {
+    stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
+    renderScreen();
+
+    const title = await screen.findByRole("heading", { name: "La photosynthèse" });
+    const titleRow = title.parentElement;
+    expect(titleRow?.className).toContain("mb-[var(--space-section)]");
+  });
+
   it("ready: the reading surface is --surface (white), not --canvas — a page of prose reads as a page, not bare canvas with text floating on it (docs/UI.md's Lecteur note)", async () => {
     stubFetch({ ...doneBase, status: "done", markdown: "Contenu du cours." });
     renderScreen();

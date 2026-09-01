@@ -138,7 +138,13 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
         <BackButton onBack={onBack} />
       </div>
       <div className="mx-auto w-full max-w-2xl">
-        <div className="flex items-center gap-2">
+        {/* --space-section (24px) below: a page-title-to-content boundary,
+            not a card-internal rhythm (docs/UI.md's Lecteur note) — there
+            was no gap here at all before, invisible while the title
+            rendered as plain text, a real defect once it renders as actual
+            bold 20px display type directly against the content's own first
+            line. */}
+        <div className="mb-[var(--space-section)] flex items-center gap-2">
           <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
           <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h2>
         </div>

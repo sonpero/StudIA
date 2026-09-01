@@ -415,6 +415,40 @@ number's own line and card, not a competition with the screen chrome.
   either — the edge of a container, not the space between siblings inside
   one — and are likewise untouched. Be generous regardless: the reference
   layout breathes, and cramming content is the fastest way to lose the look.
+- **Every gap chosen next to a `--text-title` or `--text-display` element
+  was re-checked against real rendered sizes, not against the three tiers
+  above.** The tiers themselves hold — this recalibration pass didn't
+  touch what `--space-related`/`--space-block`/`--space-section` mean, only
+  which one (or which unnamed value) applies right beside a large type
+  element. The reason: every one of these specific gaps was originally
+  chosen while `Type`'s own sizes were silently failing to render (the
+  Tailwind arbitrary-value bug, `Type`'s own note above) — a title next to
+  a "32px" number was, in the browser that picked the gap, a title next to
+  browser-default text. Four gaps turned out to be wrong once the real
+  sizes were checked on screen, not assumed: a course-progress card's two
+  gauges (`Progression`'s own note, below) sat only 12px apart, the card's
+  ordinary internal rhythm, when two 32px numbers wanted more air between
+  them than a title-to-label step does — now 16px (`--space-block`),
+  title→gauge and gauge→status left at 12px, where a label already
+  buffers the jump. A notion card's own title and difficulty label
+  (`Notions du cours`'s own note, below) had no gap between them at all —
+  invisible when the title rendered as plain text, a visible defect at
+  real 20px bold — now `--space-related` (8px), the "reads as one unit"
+  tier, matching what they actually are: a title and its own descriptor.
+  Lecteur's own document title and the course content beneath it
+  (`Lecteur`'s own note, below) likewise had no gap at all — now
+  `--space-section` (24px), a page-title-to-content boundary, the same
+  relationship every other screen's own `<h1>` already has to what follows
+  it. Notions du cours' own "Régénérer les fiches" block (`Notions du
+  cours`'s own note, below) sat an identical 24px from both the header
+  above it and the notion list below it — two equal distances read as
+  belonging to neither, so the block→list side tightens to `--space-block`
+  (16px), leaving the header→block side at `--space-section` (24px).
+  Checked against a static mockup built from these real token values
+  before any of the four were decided, not assumed from the reasoning
+  alone — the lesson of the four-commit type-hint bug (`Type`'s own note
+  above) is that reasoning about what a rendered size "should" look like,
+  on this codebase, has already been wrong once at real cost.
 - **A list that could grow without bound gets a bounded, scrollable panel
   inside its card, never an ever-taller card.** Concretely: Aujourd'hui's
   own todos checklist (below). Four conditions, together, or it is not
@@ -1043,6 +1077,27 @@ in accent. Tab order follows the layout: "Retour à mes cours" first,
 then the toolbar's own three actions — the natural consequence of where
 it now sits, not a separate decision.
 
+**A notion card's own title and its difficulty label carry `--space-related`
+(8px) between them, not the plain block flow that used to leave them with
+no gap at all.** No gap class was ever applied to this pairing — invisible
+while the title rendered as unstyled plain text (the Tailwind arbitrary-
+value bug, `Type`'s own note above), a real defect once it renders as
+actual bold 20px display type: the difficulty label sat flush against the
+title's own descenders, reading as broken rather than as a title next to
+its own qualifier. `--space-related` is the right tier for what these two
+actually are — a title and its own descriptor, the same relationship the
+token's own definition names.
+
+**"Créer les fiches" / "Régénérer les fiches" and its type checkboxes sit
+`--space-section` (24px) below the header, `--space-block` (16px) above
+the notion list.** Both sides used to be `--space-section`, an identical
+24px on both neighbours — two equal distances read as belonging to
+neither (`Shape and depth`'s own recalibration note, above), and this
+block is the one that acts on the list below it, not on the header above.
+Tightening only the list-facing side is what makes that ownership legible
+without touching the header/chrome boundary, which stays exactly what it
+already was.
+
 **Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
 just its two raw numbers.** Each notion's own card already shows
 `masteredCards / totalCards fiches maîtrisées`; on its own that number tells
@@ -1101,6 +1156,18 @@ One card per course, no day list, no calendar. Each card carries two gauges
 and one status line, and, like Aujourd'hui's own course cards, its course's
 subject colour as a left border (`Subject colours` above) — this screen
 carried no colour marker of any kind before.
+
+**The two gauges stack vertically, one above the other — the card carries
+no row wrapper to sit them side by side.** Worth stating plainly since
+nothing else on the page suggests it either way. The gap between them is
+`--space-block` (16px), not the card's own 12px internal rhythm every
+other gap on this card still uses (title→first gauge, second gauge→status
+line): title→gauge stays at 12px because the gauge's own label (12px)
+already buffers the jump to its 32px number, but gauge→gauge puts a bar
+directly followed by a bare label with no such buffer in between, and two
+32px numbers wanted more air than that — checked on a real-token mockup
+before the value was picked (`Shape and depth`'s own recalibration note,
+above), not assumed from the general rule alone.
 
 - **Coverage** — the neutral progress device (`--primary` over `--border`,
   real percentage always shown), answering "how much of this course have I
@@ -1239,6 +1306,19 @@ to wherever the screen was opened from — Mes cours, or Notions du cours
 when opened from there — the same `fromDocumentId`-shaped mechanic
 ProgressScreen already uses for its own two entry paths, and a label
 naming one specific destination would lie on the other path.
+
+**The document-title row and the course content beneath it carry
+`--space-section` (24px), not the 0px gap that used to sit between
+them.** Neither the title row nor the content wrapper ever had a gap or
+margin between them — invisible while the title rendered as unstyled
+plain text (`Type`'s own Tailwind-bug note, above), a real defect once it
+renders as actual bold 20px display type directly against the first line
+of body text, reading as though the title and the content had run
+together by mistake. `--space-section` is the right tier: this is a
+page-title-to-content boundary, the same relationship every other
+screen's own `<h1>` already has to what follows it (`NotionsScreen`'s own
+header, for one), not a card-internal rhythm — nothing here is wrapped in
+a `Card`.
 
 **Renders the course's extracted markdown, never its notions strung
 together, and this is a deliberate distinction, not an oversight.** A

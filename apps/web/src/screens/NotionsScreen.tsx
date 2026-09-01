@@ -301,7 +301,13 @@ export function NotionsScreen({
         </div>
       </div>
 
-      <div className="mb-[var(--space-section)] flex flex-wrap items-center gap-4">
+      {/* --space-block (16px) below, not the --space-section (24px) this
+          used to share with the header above (docs/UI.md's Notions du
+          cours note): identical distances on both sides read as belonging
+          to neither, and this block acts on the list below it, not the
+          header. The header side stays --space-section unchanged — that
+          boundary was already correct. */}
+      <div className="mb-[var(--space-block)] flex flex-wrap items-center gap-4">
         <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
           {generateLabel}
         </Button>
@@ -331,7 +337,12 @@ export function NotionsScreen({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{notion.title}</h3>
-                  <p className="text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
+                  {/* --space-related (8px): a title and its own descriptor
+                      read as one unit (docs/UI.md's Notions du cours note)
+                      — there was no gap class here at all before, invisible
+                      while the title rendered as plain text, a real defect
+                      once it renders as actual bold 20px display type. */}
+                  <p className="mt-[var(--space-related)] text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-text-muted">{notionProgressLabel(notionProgress)}</p>
