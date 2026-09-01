@@ -263,6 +263,93 @@ describe("NotionsScreen", () => {
     expect(screen.queryByText(/^0 \/ 0/)).not.toBeInTheDocument();
   });
 
+  it("ready state: a notion at 0 / 3 fiches maîtrisées still explains why — the most common case, not an edge case (docs/UI.md's Notions du cours note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 1, cardsWithEnoughStability: 2 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText("Il te manque encore des révisions sur cette notion.")).toBeInTheDocument();
+    expect(screen.getByText(/1\/3 fiche a fait 3 révisions/)).toBeInTheDocument();
+    expect(screen.getByText(/2\/3 fiches ont dépassé 21 jours de stabilité/)).toBeInTheDocument();
+  });
+
+  it("ready state: once every card has enough reps, a notion still short of mastery explains the stability gap instead, stating the mechanism rather than inviting inaction", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 2, totalCards: 3, cardsWithEnoughReps: 3, cardsWithEnoughStability: 2 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText("Tu l'as révisée assez souvent, il faut maintenant l'espacer dans le temps.")).toBeInTheDocument();
+    expect(screen.queryByText(/il te manque encore des révisions/i)).not.toBeInTheDocument();
+  });
+
+  it("ready state: a fully mastered notion shows no mastery-gap explanation at all", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 3, totalCards: 3, cardsWithEnoughReps: 3, cardsWithEnoughStability: 3 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 1, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    await screen.findByText("3 / 3 fiches maîtrisées");
+    expect(screen.queryByText(/il te manque encore des révisions/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/espacer dans le temps/i)).not.toBeInTheDocument();
+  });
+
+  it("ready state: the mastery-gap explanation is never coloured or larger than its own sentence — a fact, not a warning (docs/UI.md's Colour note)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) {
+          return Promise.resolve(
+            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 1, cardsWithEnoughStability: 2 }]), { status: 200 }),
+          );
+        }
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+
+    const sentence = await screen.findByText("Il te manque encore des révisions sur cette notion.");
+    expect(sentence.className).not.toMatch(/warning/);
+    expect(sentence.className).toContain("text-sm");
+
+    const detail = screen.getByText(/1\/3 fiche a fait 3 révisions/);
+    expect(detail.className).not.toMatch(/warning/);
+    expect(detail.className).toContain("text-[var(--text-label)]");
+  });
+
   it("ready state: the notion's body is hidden by default and revealed on demand", async () => {
     vi.stubGlobal(
       "fetch",

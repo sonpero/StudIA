@@ -817,6 +817,40 @@ link, so both homes stay reachable from any screen.
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 
+**Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
+just its two raw numbers.** Each notion's own card already shows
+`masteredCards / totalCards fiches maîtrisées`; on its own that number tells
+a student nothing about what to actually do next, and `isMastered`
+(`docs/modules/review.md`) is two independent conditions — `stability >= 21
+days` and `reps >= 3` — so "you need more reviews" and "this just needs time
+to settle" are two different facts, not one. Shown whenever
+`masteredCards < totalCards` **and** `totalCards > 0` — deliberately not
+`masteredCards > 0` as well: `0 / 3` is the single most common case this
+exists for, the one where the question "why" is loudest, and an earlier
+draft of this condition excluded it by mistake.
+
+One sentence, reps first:
+- `cardsWithEnoughReps < totalCards` → *"Il te manque encore des révisions
+  sur cette notion."* — immediately actionable, so it wins even when some
+  cards are also short on stability.
+- otherwise, `cardsWithEnoughStability < totalCards` → *"Tu l'as révisée
+  assez souvent, il faut maintenant l'espacer dans le temps."* — states the
+  actual mechanism (stability only grows through reviews already spaced
+  further apart) rather than reading as an invitation to do nothing, which
+  an earlier draft of this sentence ("laisse-lui un peu de temps") did.
+
+Both raw counts (`review.NotionProgress`'s `cardsWithEnoughReps` and
+`cardsWithEnoughStability`, `docs/modules/review.md`) are shown together
+regardless of which one picked the sentence above, in `--text-label`, one
+size down from the sentence's own `text-sm` — smaller, never larger, per
+`Colour`'s own rule that this kind of state is a fact, not an alert: no
+`--warning`, no colour of any kind, a notion short of mastery is not a
+failure. Never `stability`'s own numeric value (an FSRS internal, not
+something a student needs to read as a number) — only whether it crossed
+the same day threshold already named in the sentence, expressed as a count
+of fiches over that threshold, the same idiom `masteredCards`/`totalCards`
+already uses.
+
 **Upload** — Camera first on mobile, file picker first on desktop. Multi-page
 capture is one document: several photos of the same lesson produce one course.
 Thumbnails, reorderable and removable, before confirming.

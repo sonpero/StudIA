@@ -47,7 +47,16 @@ export async function getProgress(documentId: string): Promise<{ mastered: numbe
   return res.json() as Promise<{ mastered: number; total: number; nextDueDate: string | null }>;
 }
 
-export type NotionProgress = { notionId: string; masteredCards: number; totalCards: number };
+// cardsWithEnoughReps/cardsWithEnoughStability each measure one of
+// isMastered's two conditions alone (docs/modules/review.md's "Which of the
+// two criteria is missing" note) — independent counts, not a partition.
+export type NotionProgress = {
+  notionId: string;
+  masteredCards: number;
+  totalCards: number;
+  cardsWithEnoughReps: number;
+  cardsWithEnoughStability: number;
+};
 
 export async function getNotionsProgress(documentId: string): Promise<NotionProgress[]> {
   const res = await apiFetch(`/api/documents/${documentId}/notions-progress`);

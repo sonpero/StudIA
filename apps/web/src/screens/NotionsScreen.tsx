@@ -34,6 +34,47 @@ function notionProgressLabel(progress: NotionProgress | undefined): string {
   return `${progress.masteredCards} / ${progress.totalCards} fiches maîtrisées`;
 }
 
+// "fiche(s)" and "a"/"ont" both agree with the count leading the fraction,
+// the same idiom already used for Aujourd'hui's own due-count qualifiers.
+function fractionCountSentence(count: number, total: number, rest: string): string {
+  const plural = count > 1;
+  return `${count}/${total} fiche${plural ? "s" : ""} ${plural ? "ont" : "a"} ${rest}`;
+}
+
+type MasteryGap = { sentence: string; detail: string };
+
+// isMastered (docs/modules/review.md) is two independent conditions, so
+// "not yet mastered" can mean either is missing — this decides which single
+// sentence to show, and never re-derives the thresholds themselves (21
+// days, 3 reps): it only compares the two pre-computed counts to
+// totalCards, both already measured against mastery.ts's own constants on
+// the server (review's own NotionProgress).
+function notionMasteryGap(progress: NotionProgress | undefined): MasteryGap | null {
+  if (!progress) return null;
+  const { totalCards, masteredCards, cardsWithEnoughReps, cardsWithEnoughStability } = progress;
+  // Deliberately not masteredCards > 0 as well: 0 / N is the single most
+  // common case this exists to explain, not an edge case to exclude
+  // (docs/UI.md's Notions du cours note).
+  if (totalCards === 0 || masteredCards >= totalCards) return null;
+
+  const detail = `${fractionCountSentence(cardsWithEnoughReps, totalCards, "fait 3 révisions")} · ${fractionCountSentence(cardsWithEnoughStability, totalCards, "dépassé 21 jours de stabilité")}`;
+
+  // Reps first: immediately actionable (réviser), whereas a stability gap
+  // needs spacing, not a fresh review right now — the priority docs/UI.md's
+  // Notions du cours note settles.
+  if (cardsWithEnoughReps < totalCards) {
+    return { sentence: "Il te manque encore des révisions sur cette notion.", detail };
+  }
+  if (cardsWithEnoughStability < totalCards) {
+    return { sentence: "Tu l'as révisée assez souvent, il faut maintenant l'espacer dans le temps.", detail };
+  }
+  // Both counts already meet totalCards while masteredCards doesn't:
+  // contradicts isMastered's own definition (mastery.ts), so this should
+  // never actually happen. Say nothing rather than show a sentence that
+  // wouldn't match what was counted.
+  return null;
+}
+
 // Splitting into notions runs automatically after extraction
 // (docs/modules/content.md), asynchronously — never block the UI on a job
 // (docs/UI.md). Poll while there is nothing to show yet, backing off after
@@ -270,6 +311,20 @@ export function NotionsScreen({
                   </Button>
                 </div>
               </div>
+              {(() => {
+                const gap = notionMasteryGap(notionProgress);
+                if (!gap) return null;
+                // A fact, not a warning (docs/UI.md's Colour note): no
+                // --warning, no colour of any kind. The detail is one size
+                // down from the sentence (--text-label vs text-sm) — it
+                // accompanies, it never dominates.
+                return (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm text-text-muted">{gap.sentence}</p>
+                    <p className="text-[var(--text-label)] text-text-muted">{gap.detail}</p>
+                  </div>
+                );
+              })()}
               <button
                 type="button"
                 className="self-start text-sm text-primary underline"
