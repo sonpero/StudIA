@@ -239,35 +239,42 @@ export function NotionsScreen({
 
   return (
     <main className="p-8">
-      <div className="mb-[var(--space-section)] flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="mb-[var(--space-section)] flex flex-wrap items-start justify-between gap-4">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+        {/* "Retour à mes cours" sits below the toolbar, right-aligned with
+            it, not beside the title (docs/UI.md's Notions du cours note):
+            a navigation back to the parent list isn't the same kind of
+            thing as the screen's own name, and sitting next to it used to
+            suggest otherwise. Stays a plain underlined link, a step below
+            the toolbar's own Button-weight actions — tab order follows
+            this layout, the three toolbar actions then this link last. */}
+        <div className="flex flex-col items-end gap-[var(--space-related)]">
+          {/* The screen's common actions — reading, checking progress,
+              reviewing. "Créer les fiches" / "Régénérer les fiches" lives
+              apart from this toolbar, not in it (below, by its own type
+              checkboxes): rare, and destructive once it reads "Régénérer"
+              (it destroys the existing cards and starts over), so it does
+              not belong at the same visual level as three routine actions. */}
+          <div className="flex items-center gap-3" data-testid="notions-toolbar">
+            {progress && (
+              <p>
+                <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
+                <span className="text-[length:var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
+              </p>
+            )}
+            <Button variant="secondary" onClick={onOpenReader}>
+              Lire le cours
+            </Button>
+            <Button variant="secondary" onClick={onOpenProgress}>
+              Voir la progression
+            </Button>
+            <Button variant="secondary" onClick={() => onReview()}>
+              Réviser
+            </Button>
+          </div>
           <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
             Retour à mes cours
           </button>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
-        </div>
-        {/* The screen's common actions — reading, checking progress,
-            reviewing. "Créer les fiches" / "Régénérer les fiches" lives
-            apart from this toolbar, not in it (below, by its own type
-            checkboxes): rare, and destructive once it reads "Régénérer"
-            (it destroys the existing cards and starts over), so it does
-            not belong at the same visual level as three routine actions. */}
-        <div className="flex items-center gap-3" data-testid="notions-toolbar">
-          {progress && (
-            <p>
-              <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
-              <span className="text-[length:var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
-            </p>
-          )}
-          <Button variant="secondary" onClick={onOpenReader}>
-            Lire le cours
-          </Button>
-          <Button variant="secondary" onClick={onOpenProgress}>
-            Voir la progression
-          </Button>
-          <Button variant="secondary" onClick={() => onReview()}>
-            Réviser
-          </Button>
         </div>
       </div>
 

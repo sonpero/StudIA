@@ -904,6 +904,18 @@ link, so both homes stay reachable from any screen.
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 
+**Notions du cours (`NotionsScreen`)'s own header: the title stands alone,
+top left; "Retour à mes cours" sits under the toolbar, right-aligned with
+it, not beside the title.** Previously placed directly in front of the
+title, reading as though the two were paired — a navigation back to the
+parent list is not the same kind of thing as a screen's own name, and
+sitting next to it suggested otherwise. It stays a plain underlined link,
+never a `Button`: still a step down in weight from "Lire le cours" / "Voir
+la progression" / "Réviser" above it, which stay the screen's own peer
+actions, not a link's. Tab order follows this: the three toolbar actions,
+then "Retour à mes cours" last — the natural consequence of where it now
+sits in the layout, not a separate decision.
+
 **Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
 just its two raw numbers.** Each notion's own card already shows
 `masteredCards / totalCards fiches maîtrisées`; on its own that number tells

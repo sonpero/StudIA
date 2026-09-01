@@ -87,7 +87,10 @@ describe("NotionsScreen", () => {
     );
     renderScreen();
     await screen.findByText("Photosynthèse");
-    const headerRow = screen.getByRole("heading", { name: "Notions du cours" }).closest("div")?.parentElement;
+    // The title is now a direct child of the header row (no longer wrapped
+    // with "Retour à mes cours" in its own inner div, docs/UI.md's Notions
+    // du cours note), so the row is one closest("div") away, not two.
+    const headerRow = screen.getByRole("heading", { name: "Notions du cours" }).closest("div");
     expect(headerRow?.className).toMatch(/mb-\[var\(--space-section\)\]/);
   });
 
@@ -252,6 +255,55 @@ describe("NotionsScreen", () => {
     await user.click(screen.getByRole("button", { name: /retour à mes cours/i }));
 
     expect(onBack).toHaveBeenCalled();
+  });
+
+  it("ready state: 'Retour à mes cours' sits after the toolbar's own actions (Lire le cours / Voir la progression / Réviser), not in front of the title (docs/UI.md's Notions du cours note)", async () => {
+    // Same exception as the 'Créer les fiches' position test above:
+    // document position is the only way to assert "after", nothing
+    // accessible distinguishes it.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const back = screen.getByRole("button", { name: /retour à mes cours/i });
+    const reviser = within(screen.getByTestId("notions-toolbar")).getByRole("button", { name: "Réviser" });
+
+    expect(reviser.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("ready state: tab order visits the toolbar's three actions, then 'Retour à mes cours' last", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    const toolbar = screen.getByTestId("notions-toolbar");
+    within(toolbar).getByRole("button", { name: "Lire le cours" }).focus();
+    expect(within(toolbar).getByRole("button", { name: "Lire le cours" })).toHaveFocus();
+
+    await user.tab();
+    expect(within(toolbar).getByRole("button", { name: "Voir la progression" })).toHaveFocus();
+
+    await user.tab();
+    expect(within(toolbar).getByRole("button", { name: "Réviser" })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toHaveFocus();
   });
 
   it("ready state: shows each notion's own mastery progress, with a distinct label when it has no cards yet", async () => {
