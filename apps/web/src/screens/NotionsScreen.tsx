@@ -265,10 +265,15 @@ export function NotionsScreen({
               and depth note): what actually closes the 375px gap this
               toolbar used to overflow, not a wrap or a shorter label. */}
           <div className="flex items-center gap-3" data-testid="notions-toolbar">
+            {/* --text-display is a card's own number, never page chrome
+                (docs/UI.md's Type note): this count sits in the toolbar
+                between the page title and the toolbar's own actions, so it
+                renders at the same size as the labels beside it, text-sm,
+                not the 32px display size that used to make it outweigh the
+                page's own <h1>. */}
             {progress && (
-              <p>
-                <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{progress.mastered}</span>{" "}
-                <span className="text-[length:var(--text-label)] text-text-muted">/ {progress.total} notions maîtrisées</span>
+              <p className="text-sm text-text-muted">
+                <span className="text-sm tabular-nums">{progress.mastered}</span> / {progress.total} notions maîtrisées
               </p>
             )}
             <button type="button" className="text-sm text-text-muted underline" onClick={onOpenReader}>

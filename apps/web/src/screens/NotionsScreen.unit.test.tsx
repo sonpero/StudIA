@@ -115,7 +115,7 @@ describe("NotionsScreen", () => {
     expect(screen.getByText("/ 5 notions maîtrisées")).toBeInTheDocument();
   });
 
-  it("ready state: the mastered-notions count is the dominant number on its line, --text-display, its qualifier small and muted; a notion's own title is --text-title (docs/UI.md's Type note)", async () => {
+  it("ready state: the toolbar's mastered-notions count renders at the same size as the labels beside it, text-sm, not --text-display — it's page chrome, not a card's own number (docs/UI.md's Type note); a notion's own title stays --text-title", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -129,9 +129,11 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const count = screen.getByText("2");
-    expect(count.className).toContain("text-[length:var(--text-display)]");
+    expect(count.className).toContain("text-sm");
+    expect(count.className).not.toMatch(/--text-display/);
+    expect(count.className).not.toMatch(/font-\[family-name:var\(--font-display\)\]/);
     const qualifier = screen.getByText("/ 5 notions maîtrisées");
-    expect(qualifier.className).toContain("text-[length:var(--text-label)]");
+    expect(qualifier.className).toContain("text-sm");
     const title = screen.getByText("Photosynthèse");
     expect(title.className).toContain("text-[length:var(--text-title)]");
   });

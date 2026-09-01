@@ -313,6 +313,24 @@ regardless of role before this pass:
 | `--text-title` | 20px | Card and course titles — Aujourd'hui's course cards, Progression's, a notion's own, the reader's course heading. One step up from the 16px they shared with plain body text before. |
 | `--text-display` | 32px | The one dominant number on its line: a due count, a gauge percentage, a mastered-notions count. Display face (Plus Jakarta Sans, 800, `tabular-nums`), its unit and qualifier beside it in `--text-label` and `--text-muted` — never the reverse, and never both the same size. |
 
+**`--text-display` marks a card's own number, never a page's chrome.** The
+table above names "a mastered-notions count" as one dominant-number
+example among the others — true for one drawn inside a card (Progression's
+own gauges, Aujourd'hui's own due count), where the number is that card's
+one piece of information and nothing else on it competes for the same
+attention. It stops being true the moment the same count sits in a
+screen's own toolbar, between the page title and the toolbar's own
+actions: there the count is chrome, one fact among several on the same
+row, not a card's single dominant content, so display weight does not
+clarify the row, it competes with the `<h1>` beside it for attention.
+Found on Notions du cours' own toolbar count ("0 / 34 notions
+maîtrisées"): its "0" rendered at 32px next to a 24px page title, and
+read as the loudest thing in the row even though it answers a secondary
+question, not the screen's own name. A page-chrome count renders at the
+same size as the labels beside it — `text-sm` on Notions du cours,
+matching "Lire le cours" and "Voir la progression" — never
+`--text-display`, whatever it counts.
+
 **Neither the display face nor any of these four sizes ever actually
 rendered, from the very first commit of this pass until it was found and
 fixed.** `font-[var(--font-display)]` and `text-[var(--text-*)]` both
