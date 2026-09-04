@@ -240,7 +240,7 @@ recorded. Open a course, read it as formatted text on mobile.
 **Acceptance**
 - [x] Timer state survives a page reload
 - [ ] Spotify is an embedded playlist, no OAuth, no Premium requirement
-- [ ] A course's extracted markdown renders as formatted text (not raw
+- [x] A course's extracted markdown renders as formatted text (not raw
       preformatted), replacing `DocumentsScreen`'s "Voir le texte"
 
 **Out of scope** — Web Playback SDK. Revisit only if the embed proves
