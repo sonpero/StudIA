@@ -1125,6 +1125,73 @@ reload-resume path above (a reload is expected to show whatever is already
 running; a fresh "Démarrer" click landing on someone else's countdown is
 the surprising case this line exists to explain).
 
+**Aujourd'hui — Spotify (M7).** A second full-width block, below the
+Pomodoro block above — same reasoning, same place in the page: it
+accompanies work already chosen, it is not what a student comes to this
+screen looking for first. No mascot here either, for the same "one per
+screen" reason the Pomodoro note already gives.
+
+**One fixed playlist, no per-user preference, no persistence.** The
+embed URL is a hardcoded constant
+(`https://open.spotify.com/embed/playlist/37i9dQZF1DX3PFzdbtx1Us`) —
+nothing in this block is stored, so a reload always shows the collapsed
+state again, the same "nothing to remember this milestone" choice
+Pomodoro's own "juste terminée" already makes for the same reason.
+
+**No `<iframe>` element exists in the DOM at all until the person
+clicks "Écouter" — not an `<iframe>` with an empty or placeholder `src`
+swapped out later.** An iframe with no `src` can still cause a browser
+to navigate it to `about:blank`; never mounting the element at all is
+what actually guarantees zero request and zero third-party cookie
+before that click, not merely an unset attribute that happens to look
+empty. Collapsed state: a short line ("Écoute de la musique pendant que
+tu travailles.") and "Écouter" (`--secondary` — this is a revealed-content
+trigger, the same idiom as "Ajouter un todo"/"Ajouter depuis une photo"
+above, not the single-action `--accent` exception Pomodoro's own
+"Démarrer" earns, since listening is optional accompaniment, never the
+thing this app is steering the student toward). Clicking it mounts the
+real `<iframe>`, pointed at the fixed embed URL above, with a visible
+"Fermer" button beside it — same closable-without-consequence idiom as
+every other revealed section on this screen, even though there is no
+draft to lose here: closing it unmounts the iframe, which is also how
+this stops any audio still playing.
+
+**No OAuth, no Spotify Premium requirement, by construction, not by
+policy statement.** The embed URL above is Spotify's own public,
+unauthenticated iframe embed format — no token, no login flow, nothing
+this app could gate content behind even if it wanted to. Listening past
+the first ~30 seconds of *playback* does need the *visitor's own*
+Spotify account/Premium on Spotify's side, same as any other Spotify
+embed anywhere on the web — outside this app's control and outside
+`docs/MILESTONES.md`'s own acceptance line, which is about what this app
+requires, not what Spotify's playback still requires of the listener.
+
+**The embed URL is hardcoded, not discovered via a live call to
+Spotify's oEmbed endpoint at click time.** oEmbed exists to resolve an
+arbitrary, caller-supplied URL into embeddable markup — valuable when
+the source URL varies per request. Here it never does: one fixed
+playlist, chosen once, so the embed URL it resolves to is exactly as
+fixed. Calling oEmbed on every click would add a network round-trip, a
+second failure mode distinct from the iframe's own (opaque, cross-origin)
+load, and a dependency on Spotify's oEmbed endpoint staying reachable —
+for a value that cannot change without a code change either way. This
+also keeps the CSP change below to exactly `frame-src`: no `connect-src`
+grant is needed for a request this block never makes.
+
+**CSP.** `apps/web/index.html` gets its first
+`Content-Security-Policy` meta tag, scoped to exactly one directive:
+`frame-src https://open.spotify.com;` — no `'self'`, since nothing else
+in this app embeds a same-origin iframe today. A meta tag, not a
+response header from `apps/api`: this app has no header-setting plugin
+at all yet (`apps/api/src/plugins/`), and a meta tag is enforced
+identically in `pnpm dev` (Vite serves `index.html` directly) and in
+production (the same file, built), where a header set only by `apps/api`
+would not reach the page at all in dev — Vite's own dev server, not
+Fastify, serves the HTML there. Scoped to `frame-src` only, exactly what
+was asked: every other resource type (`script-src`, `connect-src`,
+`style-src`, ...) stays unrestricted, since a CSP with no `default-src`
+restricts only the directives it actually names.
+
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 

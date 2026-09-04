@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Scoped to exactly one directive (docs/UI.md's Aujourd'hui — Spotify
+         note): no default-src, so every other resource type stays
+         unrestricted. Meta tag, not an apps/api response header — this app
+         has no header-setting plugin yet, and a header-only CSP would not
+         reach the page during `pnpm dev` (Vite serves this file directly,
+         not Fastify). -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src https://open.spotify.com;" />
     <title>StudIA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

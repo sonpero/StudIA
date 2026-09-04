@@ -13,7 +13,7 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M7 — Focus tools.** See `docs/MILESTONES.md` for the full plan and
+**M8 — Tutor.** See `docs/MILESTONES.md` for the full plan and
 acceptance criteria.
 
 Read the current milestone before starting any work. **Build only what the

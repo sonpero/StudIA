@@ -12,6 +12,7 @@ import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
 import { PomodoroCard } from "./PomodoroCard.js";
+import { SpotifyCard } from "./SpotifyCard.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
@@ -521,6 +522,11 @@ export function TodayScreen({
           because it accompanies work already chosen above, it is not what
           a student comes to this screen looking for first. */}
       <PomodoroCard todos={view.todos} />
+
+      {/* Same reasoning as PomodoroCard above (docs/UI.md's Aujourd'hui —
+          Spotify note): full width, below the grid, accompanies work
+          already chosen rather than competing with it. */}
+      <SpotifyCard />
     </main>
   );
 }

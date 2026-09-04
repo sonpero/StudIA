@@ -897,4 +897,16 @@ describe("TodayScreen", () => {
     expect(grid).not.toContainElement(pomodoroCard);
     expect(screen.getByRole("button", { name: "Démarrer" })).toBeInTheDocument();
   });
+
+  it("ready: the Spotify block renders below the grid too, not inside it (docs/UI.md's Aujourd'hui — Spotify note)", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const spotifyCard = screen.getByTestId("spotify-card");
+    const grid = screen.getByTestId("content-grid");
+    expect(grid).not.toContainElement(spotifyCard);
+    expect(screen.getByRole("button", { name: "Écouter" })).toBeInTheDocument();
+    expect(document.querySelector("iframe")).not.toBeInTheDocument();
+  });
 });
