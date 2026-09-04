@@ -1043,6 +1043,88 @@ This screen has no "Retour": it is the destination the sidebar/header's
 elsewhere and backs out of. The same header carries a symmetric "Mes cours"
 link, so both homes stay reachable from any screen.
 
+**Aujourd'hui — pomodoro (M7).** One more block, full width, below the grid
+above (course cards and the todos card) — not one more item inside it:
+`items-stretch`'s row-matching is for cards competing for the same row, and
+a pomodoro has nothing to align its height against. It comes after
+everything else for the same reason it exists at all: it accompanies work
+already chosen above, it is not what a student comes to this screen looking
+for first. No mascot on this block, on any of its three states — this
+screen already spends its one mascot (`The mascot`'s own "one per screen"
+rule) on its own empty state, `sleeping`.
+
+Three states, one `GET /api/pomodoro/active` call on mount to decide which
+one to render — this is also what makes "timer state survives a page
+reload" (`docs/MILESTONES.md`'s M7 acceptance criterion) a fact about this
+block's own mount effect, not a separate mechanism:
+
+- **Repos** — an optional `<select>` of today's todos, the same
+  chevron-and-`FIELD_CLASS` treatment as the add-todo form's own course
+  picker, filtered to `done: false` (a checked-off todo needs no focus
+  session), then "Démarrer" (`--accent` — this state's only button, the
+  same single-action-screen exception `Colour`'s own note above already
+  grants Connexion's "Se connecter" and UploadCard's "Confirmer").
+- **En cours** — a countdown (`--text-display`, the one number this block
+  is about), derived fresh from `startedAt` on every one-second tick, never
+  accumulated client-side; "sur « {todo} »" underneath, only when the
+  session's `todoId` still resolves inside the same todos list the select
+  above reads from — see "A todo deleted mid-session" below. One button,
+  "Terminer" (`--accent`, same exception as "Démarrer" above — this state
+  shows exactly one action too).
+- **Juste terminée** — a confirmation line built from the session object
+  already in hand (whichever call returned it: the start response, the
+  reload-resume read, or the 409 body below), never a client guess shown
+  before the end call actually succeeds. Reload returns to **repos**:
+  `GET /api/pomodoro/active` reports nothing once a session's own duration
+  has passed or it has been explicitly ended (`isPomodoroActive`,
+  `docs/modules/workspace.md`), and this milestone keeps no history to show
+  instead.
+
+**Not the countdown `Forbidden` (below) bans.** That entry targets
+urgency-through-time-pressure copy elsewhere in this app — "plus que 2
+jours", a colour that shifts as a deadline nears. A pomodoro's countdown is
+the feature itself, the one place in this app where counting down is the
+actual tool, not a persuasion device layered onto one. It keeps the same
+neutrality every other time-based fact here already has: no colour
+escalation, no sound, nothing that accelerates as it nears zero — reaching
+zero is styled exactly like 24:59 was.
+
+**Reaching zero freezes the display at 00:00; ending stays an explicit
+click, never the block's own initiative.** `isPomodoroActive` already makes
+closing the tab at this point harmless (`docs/modules/workspace.md`), so
+nothing here should end the session on its own either — the same
+"the app proposes, the person decides" rule this document opens with.
+Checked live against the real running block, not assumed: a frozen 00:00
+next to a still-live "Terminer" button reads as a stopwatch waiting to be
+stopped, not as a hang, because the button itself stays obviously
+clickable throughout — no separate "temps écoulé" line was needed once
+that was actually on screen.
+
+**A todo deleted mid-session shows exactly as if none had ever been
+linked.** `pomodoro_sessions.todo_id` is `ON DELETE SET NULL`
+(`docs/modules/workspace.md`'s Persistence section) — the database itself
+stops distinguishing "never selected" from "selected, then deleted" the
+moment that happens. This block's own lookup does the same thing for the
+same reason: the todo's label comes from the same todos list the
+repos-state select already reads (the current `today` query, invalidated
+the moment a todo is deleted anywhere on this screen), matched by id; a
+deleted todo simply isn't in that list any more, so "sur « ... »" doesn't
+render, with nothing special-cased and nothing that can throw on a missing
+lookup.
+
+**`POST /api/pomodoro`'s 409 is a resync, not an error — but not a silent
+one either.** The route only refuses because a session is genuinely
+already running (`docs/modules/workspace.md`); the person did nothing
+wrong, so this never takes the `Required states`' error treatment: no
+`--warning`, no `role="alert"`, no retry button. But landing straight on a
+countdown already short of 25:00, with no visible reason, would read as
+broken. A discreet fact line — "Une séance est déjà en cours." — same
+plain register as a deadline's day-count, printed once, only when **en
+cours** is entered from a 409 body specifically, never on the ordinary
+reload-resume path above (a reload is expected to show whatever is already
+running; a fresh "Démarrer" click landing on someone else's countdown is
+the surprising case this line exists to explain).
+
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 

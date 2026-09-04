@@ -31,6 +31,12 @@ function stubFetch(view: TodayView | (() => Response)) {
     "fetch",
     vi.fn().mockImplementation((url: string) => {
       if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      // PomodoroCard's own mount fetch (docs/UI.md's Aujourd'hui — pomodoro
+      // note): no active session by default, so it never falls through to
+      // the branch below and gets misparsed as a PomodoroSession — the
+      // gap that let a malformed session slip through silently before this
+      // stub named the route explicitly.
+      if (typeof url === "string" && url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
       if (typeof view === "function") return Promise.resolve(view());
       return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
     }),
@@ -418,9 +424,11 @@ describe("TodayScreen", () => {
       ],
     });
     renderScreen();
-    await screen.findByText("Un");
-
-    const list = screen.getByText("Un").closest("ul");
+    // A todo not yet done also appears as an <option> in PomodoroCard's own
+    // select (docs/UI.md's Aujourd'hui — pomodoro note); scoped to
+    // todos-card so this stays unambiguous rather than matching both.
+    const todosCard = await screen.findByTestId("todos-card");
+    const list = within(todosCard).getByText("Un").closest("ul");
     expect(list?.className).toMatch(/gap-\[var\(--space-block\)\]/);
   });
 
@@ -436,9 +444,10 @@ describe("TodayScreen", () => {
     }));
     stubFetch({ ...emptyView, todos });
     renderScreen();
-    await screen.findByText("Todo 0");
-
-    const list = screen.getByText("Todo 0").closest("ul");
+    // Scoped for the same reason as the --space-block test above: every
+    // one of these todos is also a PomodoroCard select option.
+    const todosCard = await screen.findByTestId("todos-card");
+    const list = within(todosCard).getByText("Todo 0").closest("ul");
     expect(list?.className).toMatch(/overflow-y-auto/);
     expect(list?.className).toMatch(/max-h-/);
     // A capped height is a viewport onto the list, not a smaller list:
@@ -451,9 +460,11 @@ describe("TodayScreen", () => {
   it("ready: the checklist, the add-todo trigger and the photo trigger live in one todos card, not three separate pieces (docs/UI.md)", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     renderScreen();
-    await screen.findByText("Réviser le chapitre 3");
-
-    const todosCard = screen.getByTestId("todos-card");
+    // Not screen.findByText: an undone todo's label is also a PomodoroCard
+    // select option (docs/UI.md's Aujourd'hui — pomodoro note), so a plain
+    // text match here is ambiguous. todos-card's own existence is enough
+    // to know the ready state has loaded.
+    const todosCard = await screen.findByTestId("todos-card");
     expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
     expect(within(todosCard).getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
     expect(within(todosCard).getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
@@ -489,7 +500,11 @@ describe("TodayScreen", () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     const user = userEvent.setup();
     renderScreen();
-    await screen.findByText("x");
+    // Not screen.findByText("x"): that label is also a PomodoroCard select
+    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
+    // note), so a plain text match is ambiguous. todos-card's presence is
+    // enough to know the ready state has loaded.
+    await screen.findByTestId("todos-card");
     await openAddTodoForm(user);
 
     expect(screen.getByLabelText(/date/i).className).toMatch(/appearance-none/);
@@ -541,7 +556,9 @@ describe("TodayScreen", () => {
       todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
     });
     renderScreen();
-    await screen.findByText("Réviser le chapitre 3");
+    // Not screen.findByText: this label is also a PomodoroCard select
+    // option (docs/UI.md's Aujourd'hui — pomodoro note).
+    await screen.findByTestId("todos-card");
     expect(screen.getByRole("checkbox", { name: "Réviser le chapitre 3" })).not.toBeChecked();
   });
 
@@ -621,8 +638,11 @@ describe("TodayScreen", () => {
       ],
     });
     renderScreen();
-    const done = await screen.findByText("Fait");
-    const pending = await screen.findByText("À faire");
+    // Scoped to todos-card: "À faire" (not done) is also a PomodoroCard
+    // select option (docs/UI.md's Aujourd'hui — pomodoro note).
+    const todosCard = await screen.findByTestId("todos-card");
+    const done = within(todosCard).getByText("Fait");
+    const pending = within(todosCard).getByText("À faire");
     expect(done).toHaveClass("line-through");
     expect(pending).not.toHaveClass("line-through");
   });
@@ -630,7 +650,11 @@ describe("TodayScreen", () => {
   it("no mascot in the ready state: this is a data-dense view (docs/UI.md)", async () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     renderScreen();
-    await screen.findByText("x");
+    // Not screen.findByText("x"): that label is also a PomodoroCard select
+    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
+    // note), so a plain text match is ambiguous. todos-card's presence is
+    // enough to know the ready state has loaded.
+    await screen.findByTestId("todos-card");
     expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
@@ -638,7 +662,11 @@ describe("TodayScreen", () => {
     stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
     const user = userEvent.setup();
     renderScreen();
-    await screen.findByText("x");
+    // Not screen.findByText("x"): that label is also a PomodoroCard select
+    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
+    // note), so a plain text match is ambiguous. todos-card's presence is
+    // enough to know the ready state has loaded.
+    await screen.findByTestId("todos-card");
     await openAddTodoForm(user);
 
     const labelInput = screen.getByLabelText(/nouveau todo/i);
@@ -828,15 +856,18 @@ describe("TodayScreen", () => {
       ],
     });
     renderScreen();
-    await screen.findByText("Avec échéance");
+    // Not screen.findByText: both labels are also PomodoroCard select
+    // options (docs/UI.md's Aujourd'hui — pomodoro note), so subsequent
+    // lookups are scoped to todos-card.
+    const todosCard = await screen.findByTestId("todos-card");
 
-    const datedRow = screen.getByText("Avec échéance").closest('[data-testid="todo-row"]') as HTMLElement;
+    const datedRow = within(todosCard).getByText("Avec échéance").closest('[data-testid="todo-row"]') as HTMLElement;
     const dateText = within(datedRow).getByText(/20 mars 2026/);
     const deleteButton = within(datedRow).getByRole("button", { name: /supprimer/i });
     const rowChildren = Array.from(datedRow.children);
     expect(rowChildren.indexOf(dateText)).toBe(rowChildren.indexOf(deleteButton) - 1);
 
-    const undatedRow = screen.getByText("Sans échéance").closest('[data-testid="todo-row"]') as HTMLElement;
+    const undatedRow = within(todosCard).getByText("Sans échéance").closest('[data-testid="todo-row"]') as HTMLElement;
     expect(within(undatedRow).queryByText(/\d/)).not.toBeInTheDocument();
     expect(within(undatedRow).queryByText("-")).not.toBeInTheDocument();
     expect(within(undatedRow).queryByText(/sans date/i)).not.toBeInTheDocument();
@@ -848,9 +879,22 @@ describe("TodayScreen", () => {
       todos: [{ id: "t1", label: "En retard", dueDate: "2020-01-05", documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
     });
     renderScreen();
-    await screen.findByText("En retard");
+    // Not screen.findByText: "En retard" is also a PomodoroCard select
+    // option (docs/UI.md's Aujourd'hui — pomodoro note).
+    await screen.findByTestId("todos-card");
 
     const dateText = screen.getByText(/5 janvier 2020/);
     expect(dateText.className).not.toMatch(/warning/);
+  });
+
+  it("ready: the Pomodoro block renders below the grid, not as one more item inside it (docs/UI.md's Aujourd'hui — pomodoro note)", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const pomodoroCard = screen.getByTestId("pomodoro-card");
+    const grid = screen.getByTestId("content-grid");
+    expect(grid).not.toContainElement(pomodoroCard);
+    expect(screen.getByRole("button", { name: "Démarrer" })).toBeInTheDocument();
   });
 });

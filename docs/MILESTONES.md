@@ -238,7 +238,7 @@ already exposed by `GET /api/documents/:id`.
 recorded. Open a course, read it as formatted text on mobile.
 
 **Acceptance**
-- [ ] Timer state survives a page reload
+- [x] Timer state survives a page reload
 - [ ] Spotify is an embedded playlist, no OAuth, no Premium requirement
 - [ ] A course's extracted markdown renders as formatted text (not raw
       preformatted), replacing `DocumentsScreen`'s "Voir le texte"

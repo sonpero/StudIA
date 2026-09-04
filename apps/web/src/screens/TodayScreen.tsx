@@ -6,24 +6,12 @@ import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { FIELD_CLASS, SELECT_CHEVRON } from "../components/ui/field-styles.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
-
-// A design-system chevron replacing <select>'s native arrow (--color-text-muted,
-// #667085, matched by hand — tokens.css's @theme values aren't reachable from
-// a plain string literal). appearance-none removes the browser's own arrow;
-// this is its token-coloured replacement, not a decoration on top of it.
-const SELECT_CHEVRON =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23667085'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")";
-
-// Shared by every field in AddTodoForm. appearance-none plus the two
-// [&::-webkit-calendar-picker-indicator] rules are what actually stop the
-// date field from reading as an unstyled native control (docs/UI.md's
-// Shape and depth) — width alone, tried in the previous pass, did not.
-const FIELD_CLASS =
-  "w-full appearance-none rounded-[var(--radius-button)] border border-border bg-surface p-2 text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60";
+import { PomodoroCard } from "./PomodoroCard.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
@@ -525,6 +513,14 @@ export function TodayScreen({
           onPhotoUploaded={onOpenProposals}
         />
       </div>
+
+      {/* Full width, below the grid above — not one more grid item
+          (docs/UI.md's Aujourd'hui — pomodoro note): items-stretch's
+          row-matching is for cards competing for the same row, and a
+          pomodoro has nothing to align its height against. It comes last
+          because it accompanies work already chosen above, it is not what
+          a student comes to this screen looking for first. */}
+      <PomodoroCard todos={view.todos} />
     </main>
   );
 }
