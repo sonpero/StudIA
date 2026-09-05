@@ -37,7 +37,13 @@ export async function ask(deps: AskDeps, userId: string, question: string, conve
 
   const document = await getDocument({ repo: deps.documentRepo, jobQueue: deps.jobQueue }, userId, conversation.documentId);
   if (!document.ok) return err("document-not-found");
-  if (document.value.status !== "done" || document.value.markdown === null) return err("document-not-ready");
+  // Blank, not just null: "done" with nothing readable is one of the reader
+  // screen's own four states (docs/UI.md), and an empty markdown would
+  // otherwise reach splitIntoSections as zero sections -- nothing to build
+  // a citation index's upper bound from.
+  if (document.value.status !== "done" || document.value.markdown === null || document.value.markdown.trim() === "") {
+    return err("document-not-ready");
+  }
 
   const history = await deps.conversationRepo.listMessages(userId, conversationId);
   const sections: Section[] = splitIntoSections(document.value.markdown).map((text, index) => ({ index, text }));

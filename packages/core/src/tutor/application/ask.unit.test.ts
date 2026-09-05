@@ -169,6 +169,19 @@ describe("ask", () => {
     expect(result).toEqual({ ok: false, error: "document-not-ready" });
   });
 
+  it("refuses when the document is done but nothing readable came out of it (blank markdown)", async () => {
+    const deps = baseDeps({
+      documentRepo: fakeDocumentRepositoryForTutor({
+        documents: [aDocument({ status: "done" })],
+        extractions: [{ documentId: "doc-1", markdown: "   ", extractedAt: now.toISOString() }],
+      }),
+    });
+
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
+
+    expect(result).toEqual({ ok: false, error: "document-not-ready" });
+  });
+
   it("sets the conversation's title from the first question, truncated, only once", async () => {
     const conversationRepo = fakeConversationRepository({ conversations: [aConversation({ title: null })] });
     const deps = baseDeps({ conversationRepo });
