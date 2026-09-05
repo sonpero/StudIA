@@ -33,7 +33,7 @@ that ticks its last acceptance criterion.
 |---|---|
 | API | Fastify 5 + TypeScript (Node 22), `fastify-type-provider-zod` |
 | Front | React 19 + Vite + Tailwind + shadcn/ui + TanStack Query |
-| DB | SQLite (`better-sqlite3`) + Drizzle ORM, FTS5, sqlite-vec |
+| DB | SQLite (`better-sqlite3`) + Drizzle ORM, FTS5 |
 | Auth | argon2 + signed session cookie, accounts seeded by CLI |
 | Files | Railway volume at `DATA_DIR` |
 | Jobs | `jobs` table + in-process polling worker |

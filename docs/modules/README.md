@@ -13,7 +13,7 @@ Do not read the others unless you need to understand a boundary you are calling.
 | [`review`](./review.md) | M3, M4 | Scheduling, FSRS, sessions |
 | [`progress`](./progress.md) | M5 | Deadlines, per-course coverage/readiness |
 | [`workspace`](./workspace.md) | M6, M7 | Today view, todos, pomodoro |
-| [`tutor`](./tutor.md) | M8 | RAG chat over a course |
+| [`tutor`](./tutor.md) | M8 | Chat grounded on a course's full source text |
 
 ---
 

@@ -257,15 +257,17 @@ why it wasn't treated as one.
 
 ## M8 — Tutor
 
-**Scope** — Chatbot scoped to one document: sqlite-vec embeddings, FTS5 hybrid
-retrieval, streamed answers, citations pointing back to notions.
+**Scope** — Chatbot scoped to one document: the full source markdown as
+context, no retrieval index (the course fits comfortably in the model's
+context window), streamed answers, citations resolved against sections of the
+source text.
 
 **Demo** — Ask a question about the uploaded course, get an answer citing the
 right passage.
 
 **Acceptance**
-- [ ] Retrieval is filtered by `user_id` and `document_id`
-- [ ] Questions the course does not cover are refused, by retrieval threshold, and the refusal says so
+- [ ] Loading the course is filtered by `user_id` and `document_id`
+- [ ] Questions the course does not cover are refused, by system-prompt instruction verified on the golden set, and the refusal says so
 - [ ] Eval measures answer groundedness on the golden set
 - [ ] Playwright: ask a question, receive a streamed answer with a citation
 

@@ -120,7 +120,7 @@ with a reversal of the full list.
 
 ## Out of scope
 
-Cards, questions, quizzes. Scheduling. Embeddings, which belong to `tutor`.
+Cards, questions, quizzes. Scheduling.
 
 ## Key tests
 
