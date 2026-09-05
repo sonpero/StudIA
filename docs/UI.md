@@ -625,7 +625,10 @@ above has the full reasoning).
 
 **Scope for this pass**: one icon per nav destination (`Home` for
 Aujourd'hui, `BookOpen` for Mes cours, `TrendingUp` for Progression,
-`Calendar` for Calendrier — Tuteur gets its own once it has a screen), and
+`Calendar` for Calendrier, `MessageCircle` for Tuteur — plain and literal,
+matching the other four, not `Bot`: the mascot section's own "Fiche is a
+tool, not a friend, never a chat persona" already argues against a nav icon
+that reads as an anthropomorphic AI), and
 on each card's own primary, forward-moving actions — the ones docs/UI.md
 already calls "a path to action" on Aujourd'hui's own course card:
 `BookOpen` for "Voir le cours"/"Voir les notions" (both land on the same
@@ -746,12 +749,12 @@ single column.
   row currently holds only the user chip (greeting and sign-out).
 - **The secondary group.** Mes notes and Réglages have no screen at all
   yet (no module built past its own spec in `docs/modules/`). The
-  persistent nav — sidebar and bottom bar alike — renders only the four
+  persistent nav — sidebar and bottom bar alike — renders only the five
   real destinations below (Aujourd'hui, Mes cours, Progression,
-  Calendrier); there is no divider, no secondary group, and no
-  placeholder standing in for what isn't built. Tuteur is the one primary
-  item still missing a screen — five destinations is the target, four is
-  what exists.
+  Calendrier, Tuteur); there is no divider, no secondary group, and no
+  placeholder standing in for what isn't built. Five destinations is now
+  both the target and what exists — Tuteur's own note (`Screen notes`,
+  below) is the last primary item to reach it.
 
 ### Navigation
 
@@ -1607,9 +1610,102 @@ defined:
 - `done` with real content: the actual reader — course title and subject
   colour dot, then the rendered markdown
 
-**Tuteur** — Standard chat, scoped to one selected course, streamed answers with
-citations back to notions. Fiche in `thinking` while it streams, and gone once the
-answer starts.
+**Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
+own note above). Reachable two ways, the same dual-entry shape `Progression`
+already has (`Navigation`'s own note above): directly from the nav, with no
+course chosen yet, and from within a course, via a new toolbar entry on
+`NotionsScreen` ("Discuter du cours", next to "Lire le cours"/"Voir la
+progression"/"Réviser") that arrives with a course already set.
+
+**Entered without a course**: a picker reusing `Mes cours`' own list and its
+own four states, unmodified, each row now routing into Tuteur instead of
+Notions. Not the aggregate, every-course-at-once shape `Progression` uses
+when entered the same way: a conversation is scoped to exactly one document
+(`docs/modules/tutor.md`), so picking one first is unavoidable here, not
+optional the way it is for a screen that shows every course regardless of
+how it was entered.
+
+**No conversation-list route exists** — `docs/modules/tutor.md`'s API has
+Start, History, Ask and Delete, never "list this document's conversations" —
+so the screen does not offer a history of past conversations to resume, and
+does not need to: the client keeps at most one active conversation id per
+document, in `localStorage`, written once `POST .../conversations` succeeds
+and read back on the next visit to the same course. A per-viewer
+convenience, not the record of truth — losing it (a private window, cleared
+site data, a different device) starts a new conversation, not a lost one:
+the old row still exists server-side, just unreachable from this screen
+without a route this milestone has no acceptance criterion asking for.
+
+**Document readiness gates the composer, not a failed request.** Before
+showing it, the screen reads the same document detail
+(`GET /api/documents/:id`, already used by `Lecteur` and `NotionsScreen` —
+no new route) and, for anything short of `done` with real markdown, renders
+exactly `Lecteur`'s own three non-ready states in the composer's place
+(`Lecteur`'s own note above), word for word: still extracting is `reading`
+with the same wait message and the same 30-second poll, `failed` is
+`confused` with the same "mets-à-jour depuis Mes cours" and no duplicate
+retry button, done-but-blank is `idle` with the same "ne contient pas
+encore de texte lisible." One fact drives both this screen's gate and
+Lecteur's own states, worded identically on purpose, rather than asking the
+student to send a question just to learn the course was never readable.
+
+**Four states once the document is ready:**
+- No cached conversation id for this document: nothing to fetch, so no
+  loading state — the screen opens straight on **empty**, below.
+- A cached id exists: **loading** while `GET /api/conversations/:id`
+  resolves — skeleton message bubbles (`Required states`'s own shape rule),
+  no mascot (a plain data fetch, the same call `Lecteur`'s own loading state
+  already makes).
+- **Empty** — no messages yet, whether freshly started or an existing empty
+  conversation: `idle`, "Pose ta première question sur ce cours." The
+  action is the composer itself, already on screen, satisfying `Required
+  states`'s "the action right there" without a separate button.
+- **Error** — fetching the conversation failed: `confused`, retry, the same
+  wording register as everywhere else. Distinct from document readiness
+  above, which is not an error and never renders `confused` for a course
+  that is simply still being read.
+- **Ready** — the conversation, oldest message first, composer pinned at
+  the foot of the screen.
+
+**Streaming.** Sending a question appends it to the list immediately (not
+the optimistic UI `Asynchronous work` forbids for generated content — the
+student's own words are not generated) and opens the assistant's reply as a
+streaming bubble: Fiche in `thinking` while chunks arrive, gone the moment
+the first chunk renders (kept from this note's earlier, shorter version).
+Chunks append to that one bubble as each `event: chunk` arrives; the bubble
+is finalised by whichever terminal event closes it.
+
+**`event: done` — a complete answer.** Citations render as a short list
+beneath the bubble, each one the actual cited text (`citation.text`, sliced
+server-side from a real section — `docs/modules/tutor.md`'s Ports section),
+never a model-generated summary of what it cited. A `grounded: false`
+complete answer — a refusal — gets no distinct treatment at all: same
+bubble, same colour, no mascot, no border. The only difference from a
+grounded answer is that the citation list beneath it is simply absent,
+because there is nothing honest to put there; the model's own prose already
+states plainly that the course does not cover the question, in the same
+French, tutoiement, sentence-case register as everything else (`Copy`,
+below). A distinct visual treatment on top would make a legitimate answer
+read as a degraded one — exactly what `docs/modules/tutor.md`'s design set
+out to avoid by dropping a retrieval threshold in the first place.
+
+**`event: partial` — a stream cut short.** The text that already arrived
+stays exactly where it rendered, never discarded, never retried
+automatically. Directly beneath that bubble, one `--text-muted` line, no
+icon, no mascot, no colour: "La réponse s'est arrêtée avant la fin." — text
+alone, the same register `Required states`'s own Error row already uses
+(what happened, no apology, no raw code), not the two-coexisting-states
+icon device `Colour`'s own ReviewScreen note reserves for peers competing
+inside one list, which a single message's own completeness marker is not.
+The composer pre-fills with the question that was just asked, so resending
+it is one tap, not a retype — a genuine one-tap "regenerate" would mean
+deciding whether it replaces the partial message or appends a new pair, a
+real design question this milestone does not need to answer, so it stays
+unbuilt rather than guessed at. Rendered by a component whose `partial` prop
+is required, not optional, with no branch shared between the two outcomes:
+there is no code path that renders a message bubble without having decided
+which of the two it is, the same discriminated-union shape `Answer` already
+has server-side (`docs/modules/tutor.md`).
 
 ---
 
