@@ -25,5 +25,12 @@ export interface ConversationRepository {
   findConversation(userId: string, conversationId: string): Promise<Conversation | null>;
   deleteConversation(userId: string, conversationId: string): Promise<void>;
   listMessages(userId: string, conversationId: string): Promise<Message[]>;
-  appendMessage(userId: string, conversationId: string, message: Message): Promise<void>;
+  // Both messages of one exchange, written together: appendMessage
+  // (singular) would open two short transactions instead of one, making it
+  // possible to persist a student's question with no answer if the process
+  // died between the two writes (docs/modules/tutor.md).
+  appendMessages(userId: string, conversationId: string, messages: Message[]): Promise<void>;
+  // A separate, later, equally short write, not folded into appendMessages:
+  // titling happens at most once and is unrelated to the exchange itself.
+  setConversationTitle(userId: string, conversationId: string, title: string): Promise<void>;
 }
