@@ -188,4 +188,41 @@ describe("tutor routes", () => {
     expect(historyBody.messages[0]).toMatchObject({ role: "user", partial: false });
     expect(historyBody.messages[1]).toMatchObject({ role: "assistant", partial: false });
   });
+
+  // Not a red-then-green cycle: this locks in a guarantee ask.ts's slicing
+  // (packages/core/src/tutor/application/ask.ts) already provides -- server
+  // code is unchanged by the frontend markdown-rendering work this test
+  // accompanies, so it is expected to pass on its own from the start.
+  // Written now, explicitly, so a later change to the display layer -- the
+  // only thing that pass is actually meant to touch -- cannot silently
+  // start mutating citation.text itself instead of just how it renders
+  // (docs/UI.md's Tuteur note: "the underlying string is untouched by
+  // that").
+  it("citation.text is always an exact substring of the course's own source markdown, on the wire and in the database", async () => {
+    const conversation = (await startConversation(aliceCookie)).json<{ id: string }>();
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/conversations/${conversation.id}/messages`,
+      headers: { cookie: aliceCookie },
+      payload: { question: "Explique-moi le titre." },
+    });
+
+    const events = parseSse(res.payload);
+    const done = events.find((e) => e.event === "done")!;
+    const citationsOnTheWire = (done.data as { citations: { text: string }[] }).citations;
+    expect(citationsOnTheWire.length).toBeGreaterThan(0);
+    for (const citation of citationsOnTheWire) {
+      expect(MARKDOWN).toContain(citation.text);
+    }
+
+    const history = await app.inject({ method: "GET", url: `/api/conversations/${conversation.id}`, headers: { cookie: aliceCookie } });
+    const messages = history.json<{ messages: { role: string; citations: { text: string }[] | null }[] }>().messages;
+    const assistantMessage = messages.find((m) => m.role === "assistant")!;
+    expect(assistantMessage.citations).not.toBeNull();
+    expect(assistantMessage.citations!.length).toBeGreaterThan(0);
+    for (const citation of assistantMessage.citations!) {
+      expect(MARKDOWN).toContain(citation.text);
+    }
+  });
 });

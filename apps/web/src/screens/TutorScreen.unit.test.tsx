@@ -39,6 +39,13 @@ function sseResponse(body: string): Response {
   return new Response(stream, { status: 200 });
 }
 
+// Builds a valid SSE body from real objects via JSON.stringify, rather than
+// hand-typing escaped JSON in a template literal -- safer once the payload
+// text itself contains markdown syntax (newlines, brackets, asterisks).
+function sseEvents(events: { event: string; data: unknown }[]): Response {
+  return sseResponse(events.map((e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`).join(""));
+}
+
 function stubFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
   vi.stubGlobal(
     "fetch",
@@ -365,5 +372,136 @@ describe("TutorScreen — conversation, document ready", () => {
     await screen.findByText("Voici le début de la réponse");
     await screen.findByText(/la réponse s'est arrêtée avant la fin/i);
     expect(screen.getByRole("textbox")).toHaveValue("Une longue question ?");
+  });
+
+  it("renders the answer as markdown: bold text becomes a real <strong>, a heading is readable text, not literal '#' or '**'", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1/messages")) {
+        return sseEvents([
+          { event: "chunk", data: { text: "# Titre\n\nCeci est **important**." } },
+          { event: "done", data: { citations: [], grounded: false } },
+        ]);
+      }
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(JSON.stringify({ conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: null, createdAt: "2026-01-01T00:00:00Z" }, messages: [] }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByRole("textbox");
+    await user.type(screen.getByRole("textbox"), "Une question ?");
+    await user.click(screen.getByRole("button", { name: /envoyer/i }));
+
+    const strong = await screen.findByText("important");
+    expect(strong.tagName).toBe("STRONG");
+    expect(screen.queryByText(/\*\*important\*\*/)).not.toBeInTheDocument();
+    const titre = screen.getByText("Titre");
+    expect(titre).toBeInTheDocument();
+    // Not H1-H6: the screen's own "Tuteur" heading is a real <h1> too, so
+    // this checks the specific element the markdown "# Titre" produced, not
+    // the whole document.
+    expect(/^H[1-6]$/.test(titre.tagName)).toBe(false);
+    expect(screen.queryByText(/^#\s?Titre/)).not.toBeInTheDocument();
+  });
+
+  it("a markdown link in the answer never becomes a clickable <a>: only its own text is shown", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1/messages")) {
+        return sseEvents([
+          { event: "chunk", data: { text: "Regarde [ce site](https://evil.example.com/phish) pour en savoir plus." } },
+          { event: "done", data: { citations: [], grounded: false } },
+        ]);
+      }
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(JSON.stringify({ conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: null, createdAt: "2026-01-01T00:00:00Z" }, messages: [] }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByRole("textbox");
+    await user.type(screen.getByRole("textbox"), "Une question ?");
+    await user.click(screen.getByRole("button", { name: /envoyer/i }));
+
+    await screen.findByText(/ce site/);
+    // Both halves matter: real markdown parsing did strip the [text](url)
+    // syntax (not just "nothing renders at all", which would also leave no
+    // <a> but for the wrong reason), and no real link was produced from it.
+    expect(screen.queryByText(/\[ce site\]/)).not.toBeInTheDocument();
+    expect(document.querySelector("a")).not.toBeInTheDocument();
+  });
+
+  it("a markdown image in the answer never becomes an <img>: only its alt text is shown, no external URL can ever load", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1/messages")) {
+        return sseEvents([
+          { event: "chunk", data: { text: "![Texte alternatif](https://evil.example.com/pixel.png)" } },
+          { event: "done", data: { citations: [], grounded: false } },
+        ]);
+      }
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(JSON.stringify({ conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: null, createdAt: "2026-01-01T00:00:00Z" }, messages: [] }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByRole("textbox");
+    await user.type(screen.getByRole("textbox"), "Une question ?");
+    await user.click(screen.getByRole("button", { name: /envoyer/i }));
+
+    await screen.findByText("Texte alternatif");
+    expect(document.querySelector("img")).not.toBeInTheDocument();
+  });
+
+  it("a citation also renders as markdown, readable and not raw, with the same link/image neutralisation", async () => {
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(
+          JSON.stringify({
+            conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: "Q", createdAt: "2026-01-01T00:00:00Z" },
+            messages: [
+              {
+                id: "m1",
+                conversationId: "c1",
+                role: "assistant",
+                content: "Réponse.",
+                citations: [{ text: "# Titre\n\nVoir [la source](https://evil.example.com) et ![img](https://evil.example.com/x.png)." }],
+                partial: false,
+                createdAt: "2026-01-01T00:00:01Z",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const user = userEvent.setup();
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Réponse.");
+    await user.click(screen.getByRole("button", { name: "Voir les sources (1)" }));
+
+    const titre = screen.getByText("Titre");
+    expect(titre).toBeInTheDocument();
+    expect(/^H[1-6]$/.test(titre.tagName)).toBe(false);
+    expect(screen.queryByText(/^#\s?Titre/)).not.toBeInTheDocument();
+    expect(screen.getByText(/la source/)).toBeInTheDocument();
+    expect(screen.getByText(/img/)).toBeInTheDocument();
+    expect(document.querySelector("a")).not.toBeInTheDocument();
+    expect(document.querySelector("img")).not.toBeInTheDocument();
   });
 });

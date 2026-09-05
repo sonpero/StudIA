@@ -2,6 +2,7 @@ import type { ExtractionStatus } from "@studia/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Reading } from "../components/mascot/Reading.js";
@@ -78,6 +79,40 @@ function TutorPickerScreen({ onSelectDocument }: { onSelectDocument: (documentId
   );
 }
 
+// Shared by the answer bubble and its citations (docs/UI.md's Tuteur note),
+// not Lecteur's or NotionsScreen's own components tables: headings and
+// paragraphs render but stay the size of the surrounding bubble, never a
+// Lecteur-sized block heading inside a small citation. Links and images are
+// neutralised -- rendered as their own text/alt text, never a real <a href>
+// or <img> -- because this is the first place in the app rendering markdown
+// a model produced, from a prompt that necessarily includes text a student
+// uploaded, not markdown ingestion extracted directly from that document:
+// nothing stops that uploaded text from trying to steer the model into
+// echoing back a link or image pointing at an arbitrary URL. Applied to
+// citations too, even though their own source is the same trusted extracted
+// markdown Lecteur already renders unrestricted, for one table instead of
+// two that would differ only for a case that has not happened yet.
+const TUTOR_MARKDOWN_COMPONENTS: Components = {
+  p: (props) => <p className="mt-2 text-sm first:mt-0" {...props} />,
+  h1: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  h2: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  h3: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  h4: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  h5: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  h6: (props) => <span className="mt-2 block font-semibold first:mt-0" {...props} />,
+  ul: (props) => <ul className="mt-1 list-disc pl-5 text-sm" {...props} />,
+  ol: (props) => <ol className="mt-1 list-decimal pl-5 text-sm" {...props} />,
+  li: (props) => <li {...props} />,
+  strong: (props) => <strong className="font-semibold" {...props} />,
+  em: (props) => <em {...props} />,
+  code: (props) => <code className="rounded bg-canvas px-1 text-sm" {...props} />,
+  // Neither ever a real element: a link keeps only its own visible text, an
+  // image only its alt text -- no href, no src, nothing this app would ever
+  // navigate to or fetch on the model's or the course's say-so.
+  a: ({ children }) => <>{children}</>,
+  img: ({ alt }) => <>{alt}</>,
+};
+
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
@@ -97,17 +132,17 @@ function MessageBubble({ message }: { message: TutorMessage }) {
 
   return (
     <div className={`flex flex-col gap-2 rounded-[var(--radius-card)] border border-border p-4 ${isUser ? "self-end bg-primary-soft" : "self-start bg-surface"}`}>
-      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+      <Markdown components={TUTOR_MARKDOWN_COMPONENTS}>{message.content}</Markdown>
       {hasCitations && (
         <div className="border-t border-border pt-2">
           <button type="button" className="text-sm text-text-muted underline" aria-expanded={expanded} onClick={() => setExpanded((prev) => !prev)}>
             {expanded ? "Masquer les sources" : `Voir les sources (${String(message.citations!.length)})`}
           </button>
           {expanded && (
-            <ul className="mt-2 flex flex-col gap-1">
+            <ul className="mt-2 flex flex-col gap-1 text-text-muted">
               {message.citations!.map((citation, index) => (
-                <li key={index} className="text-sm text-text-muted">
-                  {citation.text}
+                <li key={index} className="text-sm">
+                  <Markdown components={TUTOR_MARKDOWN_COMPONENTS}>{citation.text}</Markdown>
                 </li>
               ))}
             </ul>
