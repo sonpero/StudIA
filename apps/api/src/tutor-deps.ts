@@ -1,7 +1,10 @@
 import {
+  ClaudeChatModel,
+  ClaudeCitationExtractor,
   FixtureChatModel,
   FixtureCitationExtractor,
   SqliteConversationRepository,
+  createLanguageModel,
   type ChatModel,
   type CitationExtractor,
   type ConversationRepository,
@@ -14,19 +17,18 @@ export interface TutorDeps {
   citationExtractor: CitationExtractor;
 }
 
-// No llmAdapter branch yet, unlike buildContentDeps/buildReviewDeps: this
-// module's real adapters (ClaudeChatModel, ClaudeCitationExtractor) do not
-// exist until M8's next commit. Always fixtures until then -- including
-// with LLM_ADAPTER=real, so a real deploy today still boots (buildApp
-// constructs every module's deps eagerly at startup, not lazily per
-// request; a throw here would take down the whole API process, not just
-// this route). Once the real adapters exist, this function grows the same
-// llmAdapter/anthropicApiKey options those two already take, no other
-// shape change.
-export function buildTutorDeps(db: Db): TutorDeps {
+export interface BuildTutorDepsOptions {
+  db: Db;
+  llmAdapter: "fixture" | "real";
+  anthropicApiKey?: string;
+}
+
+export function buildTutorDeps(opts: BuildTutorDepsOptions): TutorDeps {
+  const model = opts.llmAdapter === "real" ? createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }) : undefined;
+
   return {
-    conversationRepo: new SqliteConversationRepository(db),
-    chatModel: new FixtureChatModel("valid"),
-    citationExtractor: new FixtureCitationExtractor("valid"),
+    conversationRepo: new SqliteConversationRepository(opts.db),
+    chatModel: model ? new ClaudeChatModel(model) : new FixtureChatModel("valid"),
+    citationExtractor: model ? new ClaudeCitationExtractor(model) : new FixtureCitationExtractor("valid"),
   };
 }

@@ -61,7 +61,7 @@ export function buildApp(opts: BuildAppOptions) {
   const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const progressDeps = buildProgressDeps(db);
   const workspaceDeps = buildWorkspaceDeps({ db, dataDir: opts.dataDir, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
-  const tutorDeps = buildTutorDeps(db);
+  const tutorDeps = buildTutorDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
 
   const app = Fastify({ logger: true });
 
