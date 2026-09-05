@@ -38,15 +38,29 @@ type Answer = {
   grounded: boolean; // true iff citations is non-empty
 };
 
+type Conversation = {
+  id: string;
+  userId: string;
+  documentId: string;
+  title: string;
+  createdAt: string;
+};
+
 type Message = {
   id: string;
   conversationId: string;
   role: 'user' | 'assistant';
   content: string;
-  citationsJson: string | null; // Citation[] snapshot, resolved once, never recomputed
+  citations: Citation[] | null; // resolved once at write time, never recomputed
   createdAt: string;
 };
 ```
+
+`Conversation` was missing from an earlier pass of this file; adding it here
+because `ConversationRepository` below needs it. Storage detail (a
+`citations_json` TEXT column, `JSON.stringify`/`JSON.parse` at the SQLite
+boundary) belongs to `infra/`, not to this type — same split as `generation`'s
+`Card.options` / `options_json` column.
 
 **Splitting, in `domain/`, pure and testable:**
 
@@ -116,6 +130,21 @@ interface CitationExtractor {
     answer: string;
     sections: Section[];
   }): Promise<Result<{ sectionIndexes: number[] }, ExtractError>>;
+}
+```
+
+Not listed above (only the two model-facing ports are), but required by the
+Use cases list below, same reasoning as `content`'s `NotionRepository`: every
+method takes `userId` and filters on it.
+
+```ts
+interface ConversationRepository {
+  createConversation(userId: string, documentId: string, conversation: Conversation): Promise<void>;
+  listConversations(userId: string, documentId: string): Promise<Conversation[]>;
+  findConversation(userId: string, conversationId: string): Promise<Conversation | null>;
+  deleteConversation(userId: string, conversationId: string): Promise<void>;
+  listMessages(userId: string, conversationId: string): Promise<Message[]>;
+  appendMessage(userId: string, conversationId: string, message: Message): Promise<void>;
 }
 ```
 
