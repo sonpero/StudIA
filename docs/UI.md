@@ -1676,18 +1676,66 @@ Chunks append to that one bubble as each `event: chunk` arrives; the bubble
 is finalised by whichever terminal event closes it.
 
 **`event: done` — a complete answer.** Citations render as a short list
-beneath the bubble, each one the actual cited text (`citation.text`, sliced
+beneath the bubble, collapsed by default: a single trigger, "Voir les
+sources (N)" / "Masquer les sources", the same mechanism `NotionsScreen`'s
+own "Voir le contenu" already uses — the trigger becomes the close action,
+`aria-expanded` carries the state, per message, never persisted (a `Set` of
+expanded message ids in component state, not `localStorage`: a reload
+always shows every citation list collapsed again, same as a reload already
+shows every notion's own content collapsed). Styled `--text-muted`, not
+`NotionsScreen`'s own `--primary`: a citation is not content worth inviting
+someone to explore, it is a justification consulted on demand, closer to
+"Retour"/"Lire le cours"'s own chrome register than to a genuine content
+reveal. Nothing actionable hides behind it — the list is plain text, never
+a control. Each citation is the actual cited text (`citation.text`, sliced
 server-side from a real section — `docs/modules/tutor.md`'s Ports section),
-never a model-generated summary of what it cited. A `grounded: false`
-complete answer — a refusal — gets no distinct treatment at all: same
-bubble, same colour, no mascot, no border. The only difference from a
-grounded answer is that the citation list beneath it is simply absent,
-because there is nothing honest to put there; the model's own prose already
-states plainly that the course does not cover the question, in the same
-French, tutoiement, sentence-case register as everything else (`Copy`,
-below). A distinct visual treatment on top would make a legitimate answer
-read as a degraded one — exactly what `docs/modules/tutor.md`'s design set
-out to avoid by dropping a retrieval threshold in the first place.
+never a model-generated summary of what it cited — rendered through
+markdown (below) for readability, but the underlying string is untouched by
+that: `citation.text`, both stored and returned by the API, stays an exact
+substring of the course's own source markdown, character for character.
+Rendering is a presentation-layer concern only; it never touches the string
+the whole anchoring mechanism actually depends on.
+
+A `grounded: false` complete answer — a refusal — gets no distinct
+treatment at all: same bubble, same colour, no mascot, no border. The only
+difference from a grounded answer is that the citation list beneath it is
+simply absent, because there is nothing honest to put there; the model's
+own prose already states plainly that the course does not cover the
+question, in the same French, tutoiement, sentence-case register as
+everything else (`Copy`, below). A distinct visual treatment on top would
+make a legitimate answer read as a degraded one — exactly what
+`docs/modules/tutor.md`'s design set out to avoid by dropping a retrieval
+threshold in the first place.
+
+**Both the answer and its citations render through markdown, not plain
+text** — `react-markdown`, the same dependency `Lecteur` and
+`NotionsScreen` already use, through a components table of its own
+(`TUTOR_MARKDOWN_COMPONENTS`), not either of theirs: headings and
+paragraphs render but are held to the size of the surrounding bubble, never
+a `Lecteur`-sized heading inside a small citation. This was previously
+plain text (`whitespace-pre-wrap`) — an oversight found late, not a
+decision: literal `#` and `**` were visible on screen.
+
+**Links and images are neutralised in this one table, deliberately, and
+only here.** `Lecteur`'s and `NotionsScreen`'s own components tables render
+a real, clickable `<a href>` and a real `<img>` by `react-markdown`'s own
+default, because their source is always the student's own uploaded
+document. Tuteur is the first place in this app that renders markdown a
+*model* produced, not markdown ingestion extracted from that document — and
+the course content feeding that model is not the model's own trusted words
+either, it is text a student uploaded, which the model reads as part of
+every prompt. Nothing stops that text from trying to steer the model into
+echoing back a markdown link or image pointing at an arbitrary URL, an
+indirect prompt injection the ingestion pipeline was never exposed to,
+because it never asks a model to produce prose that this app then renders
+as a clickable surface. `TUTOR_MARKDOWN_COMPONENTS` renders a link's own
+text and an image's own alt text as plain text, never a real `<a>` or
+`<img>`: nothing in a tutor answer or a citation can become a clickable
+link or an externally-loaded image, regardless of what the course content
+or the model produced. Applied uniformly to citations too, even though
+their source is the same trusted extracted markdown `Lecteur` already
+renders unrestricted — one table is simpler to reason about than two that
+differ only for a case that has not actually happened yet.
 
 **`event: partial` — a stream cut short.** The text that already arrived
 stays exactly where it rendered, never discarded, never retried
