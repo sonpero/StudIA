@@ -178,7 +178,11 @@ interface ConversationRepository {
   createConversation(userId: string, documentId: string, conversation: Conversation): Promise<void>;
   listConversations(userId: string, documentId: string): Promise<Conversation[]>;
   findConversation(userId: string, conversationId: string): Promise<Conversation | null>;
-  deleteConversation(userId: string, conversationId: string): Promise<void>;
+  // Reports whether a row was actually owned and deleted, matching every
+  // other module's delete method (e.g. workspace's TodoRepository.deleteTodo)
+  // — the route needs this to answer 403 vs 204, the same as every other
+  // delete route in the app.
+  deleteConversation(userId: string, conversationId: string): Promise<boolean>;
   listMessages(userId: string, conversationId: string): Promise<Message[]>;
   // Both messages of one exchange, written together: appendMessage (singular)
   // would open two short transactions instead of the one this module needs,

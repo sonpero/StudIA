@@ -13,16 +13,18 @@ describe("deleteConversation", () => {
   it("removes the caller's conversation", async () => {
     const conversationRepo = fakeConversationRepository({ conversations: [aConversation()] });
 
-    await deleteConversation({ conversationRepo }, "u1", "c1");
+    const result = await deleteConversation({ conversationRepo }, "u1", "c1");
 
+    expect(result).toEqual({ ok: true, value: undefined });
     expect(conversationRepo.conversations).toHaveLength(0);
   });
 
-  it("does not remove another user's conversation", async () => {
+  it("fails with not-found for another user's conversation, without removing it", async () => {
     const conversationRepo = fakeConversationRepository({ conversations: [aConversation({ userId: "u2" })] });
 
-    await deleteConversation({ conversationRepo }, "u1", "c1");
+    const result = await deleteConversation({ conversationRepo }, "u1", "c1");
 
+    expect(result).toEqual({ ok: false, error: "not-found" });
     expect(conversationRepo.conversations).toHaveLength(1);
   });
 });

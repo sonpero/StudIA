@@ -118,10 +118,10 @@ describe("SqliteConversationRepository", () => {
     await repo.createConversation("u1", "doc-1", aConversation());
     await repo.appendMessages("u1", "c1", [aMessage()]);
 
-    await repo.deleteConversation("u2", "c1");
+    expect(await repo.deleteConversation("u2", "c1")).toBe(false);
     expect(await repo.findConversation("u1", "c1")).not.toBeNull();
 
-    await repo.deleteConversation("u1", "c1");
+    expect(await repo.deleteConversation("u1", "c1")).toBe(true);
     expect(await repo.findConversation("u1", "c1")).toBeNull();
     expect(db.all(sql`SELECT * FROM messages WHERE conversation_id = 'c1'`)).toEqual([]);
   });

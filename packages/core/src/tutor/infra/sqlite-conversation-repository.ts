@@ -69,12 +69,12 @@ export class SqliteConversationRepository implements ConversationRepository {
     return Promise.resolve(row ? toConversation(row) : null);
   }
 
-  deleteConversation(userId: string, conversationId: string): Promise<void> {
-    this.db
-      .delete(conversationsTable)
-      .where(and(eq(conversationsTable.id, conversationId), eq(conversationsTable.userId, userId)))
-      .run();
-    return Promise.resolve();
+  async deleteConversation(userId: string, conversationId: string): Promise<boolean> {
+    const owned = await this.findConversation(userId, conversationId);
+    if (!owned) return false;
+
+    this.db.delete(conversationsTable).where(and(eq(conversationsTable.id, conversationId), eq(conversationsTable.userId, userId))).run();
+    return true;
   }
 
   async listMessages(userId: string, conversationId: string): Promise<Message[]> {

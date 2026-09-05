@@ -29,8 +29,9 @@ export function fakeConversationRepository(
     findConversation: (userId, conversationId) => Promise.resolve(own(userId, conversationId) ?? null),
     deleteConversation: (userId, conversationId) => {
       const index = conversations.findIndex((c) => c.id === conversationId && c.userId === userId);
-      if (index !== -1) conversations.splice(index, 1);
-      return Promise.resolve();
+      if (index === -1) return Promise.resolve(false);
+      conversations.splice(index, 1);
+      return Promise.resolve(true);
     },
     listMessages: (userId, conversationId) => {
       if (!own(userId, conversationId)) return Promise.resolve([]);
