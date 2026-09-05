@@ -230,16 +230,22 @@ name a passage that was not literally there.
   `ingestion.getDocument` — creating an empty conversation shell does not
   need extraction to be finished, only `ask` does), then inserts a row with
   `title: null`. Backs `POST /api/documents/:id/conversations`.
-- `ask(userId, documentId, question, conversationId, now)`: resolves quickly
+- `ask(userId, question, conversationId, now)`: resolves quickly
   to `Result<AskSession, AskError>` — `AskError` covers only pre-flight
-  failures (document not found/not owned, document not ready, conversation
-  not found/not owned); it never covers a stream that starts and then fails,
+  failures (conversation not found/not owned, document not found/not owned,
+  document not ready); it never covers a stream that starts and then fails,
   which is not a pre-flight error but the `partial` outcome above. On `ok`,
   `AskSession` is an async generator: the caller (the SSE route, `POST
   /api/conversations/:id/messages`) iterates it to relay each streamed chunk,
-  and its final return value is the `Answer`.
-  1. Load the document via `ingestion.getDocument(userId, documentId)` (the
-     full use case, not a direct repository read: this is a live,
+  and its final return value is the `Answer`. Takes no `documentId` of its
+  own: the route has none in its URL either, and a second, independently
+  supplied `documentId` could disagree with the one the conversation already
+  belongs to — `documentId` is read from the conversation once found, never
+  taken on faith from a caller.
+  1. Confirm the conversation exists and belongs to the caller — first, so a
+     `documentId` is available at all before anything else runs.
+  2. Load the document via `ingestion.getDocument(userId, conversation.documentId)`
+     (the full use case, not a direct repository read: this is a live,
      user-triggered check and must agree with what the reader screen shows
      for the same document at the same moment, including a job whose live
      status has not yet reached the stored row — `createConversation` above
@@ -249,31 +255,30 @@ name a passage that was not literally there.
      there is nothing else that could leak another user's content. `content`
      is not consulted at all: notions are a reformulated, lossy view of the
      course, kept for revision, not a substitute for the source text.
-  2. If extraction is not `done` or `markdown` is null, refuse the same way
+  3. If extraction is not `done` or `markdown` is null, refuse the same way
      the reader screen already does for that state (`docs/UI.md`) — reuse its
      copy, do not invent a tutor-specific "préparation du cours" state. There
      is no async prep job in this module: splitting is pure and cheap enough
      to run inline on every call, so nothing needs to run ahead of time.
-  3. Confirm the conversation exists and belongs to the caller. Read its
-     message history (for `ChatModel`'s `history` input) before the stream
-     starts — an empty history at this point is what tells step 6 this is the
-     conversation's first exchange.
-  4. `splitIntoSections` the markdown.
-  5. Return `ok(...)` wrapping the generator described above. Everything past
+  4. Read the conversation's message history (for `ChatModel`'s `history`
+     input) before the stream starts — an empty history at this point is
+     what tells step 9 this is the conversation's first exchange.
+  5. `splitIntoSections` the markdown.
+  6. Return `ok(...)` wrapping the generator described above. Everything past
      this point runs as the caller iterates it, not before.
-  6. `ChatModel.stream` with the question, the sections, and the history from
-     step 3; accumulate chunks in memory as they arrive and yield each one to
+  7. `ChatModel.stream` with the question, the sections, and the history from
+     step 4; accumulate chunks in memory as they arrive and yield each one to
      the caller. A stream that throws partway is caught inside the generator,
      never propagated to the caller as a rejected iteration: it ends the
      accumulation with whatever text arrived and produces a `partial` Answer.
      Nothing is written to the database per token — accumulation is in-memory
-     only, exactly one write happens later, in step 8.
-  7. If the stream completed (not `partial`), `CitationExtractor.extract` the
+     only, exactly one write happens later, in step 9.
+  8. If the stream completed (not `partial`), `CitationExtractor.extract` the
      answer against the same sections; slice snippets server-side from the
      returned indexes. Skipped entirely for a `partial` answer.
-  8. Persist both messages in one short write transaction
+  9. Persist both messages in one short write transaction
      (`appendMessages`), opened only after every model call above has
-     returned — never across an `await` on either. If step 3's history was
+     returned — never across an `await` on either. If step 4's history was
      empty, also call `setConversationTitle` with `truncateTitle(question)`.
      Return the `Answer` as the generator's final value.
 - `listConversations`, `getConversation`, `deleteConversation` — unchanged,
@@ -353,10 +358,10 @@ that decides what a citation points to; that stays `sections[i].text`, always.
 - Unit: `truncateTitle` — a short question returned verbatim; a long one cut
   at a word boundary with "…" appended, never mid-word; a blank question
   falls back to the fixed placeholder
-- Unit: `ask` never reads another user's document or conversation —
-  seed two users with identical course text under different `documentId`s and
-  assert a `documentId` or `conversationId` owned by a different user fails
-  with `AskError`, never a leaked answer
+- Unit: `ask` never reads another user's document or conversation — a
+  `conversationId` owned by a different user fails with `AskError`, and so
+  does a conversation whose own `documentId` no longer belongs to the
+  caller, never a leaked answer
 - Unit: a stream that throws mid-way yields a `partial` Answer, the
   persisted message has `partial: true` and `citations: null`, and
   `CitationExtractor` is never called for it

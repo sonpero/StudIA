@@ -77,7 +77,10 @@ function countingCitationExtractor(): CitationExtractor & { calls: number } {
 }
 
 describe("ask", () => {
-  it("never reads another user's document: a documentId owned by someone else fails, not a leaked answer", async () => {
+  it("never reads a document the caller does not own, even one their own conversation points to, not a leaked answer", async () => {
+    // u1 owns the conversation, but the document it points to is bob's --
+    // documentId is read from the conversation, never taken from the
+    // caller, so there is no separate argument to attack here either.
     const deps = baseDeps({
       documentRepo: fakeDocumentRepositoryForTutor({
         documents: [aDocument({ userId: "bob" })],
@@ -85,7 +88,7 @@ describe("ask", () => {
       }),
     });
 
-    const result = await ask(deps, "alice", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
 
     expect(result).toEqual({ ok: false, error: "document-not-found" });
   });
@@ -95,7 +98,7 @@ describe("ask", () => {
       conversationRepo: fakeConversationRepository({ conversations: [aConversation({ userId: "bob" })] }),
     });
 
-    const result = await ask(deps, "u1", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
 
     expect(result).toEqual({ ok: false, error: "conversation-not-found" });
   });
@@ -104,7 +107,7 @@ describe("ask", () => {
     const extractor = countingCitationExtractor();
     const deps = baseDeps({ chatModel: new FixtureChatModel("mid-stream-failure"), citationExtractor: extractor });
 
-    const result = await ask(deps, "u1", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -122,7 +125,7 @@ describe("ask", () => {
   it("a complete, grounded answer persists both messages with real section text as citations", async () => {
     const deps = baseDeps();
 
-    const result = await ask(deps, "u1", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -144,7 +147,7 @@ describe("ask", () => {
   it("a complete answer with no supporting section is grounded:false, not partial", async () => {
     const deps = baseDeps({ citationExtractor: new FixtureCitationExtractor("empty") });
 
-    const result = await ask(deps, "u1", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -161,7 +164,7 @@ describe("ask", () => {
       }),
     });
 
-    const result = await ask(deps, "u1", "doc-1", "Une question ?", "c1", now);
+    const result = await ask(deps, "u1", "Une question ?", "c1", now);
 
     expect(result).toEqual({ ok: false, error: "document-not-ready" });
   });
@@ -171,12 +174,12 @@ describe("ask", () => {
     const deps = baseDeps({ conversationRepo });
     const firstQuestion = "Explique-moi la dérivée en un point précis, stp";
 
-    const firstResult = await ask(deps, "u1", "doc-1", firstQuestion, "c1", now);
+    const firstResult = await ask(deps, "u1", firstQuestion, "c1", now);
     if (!firstResult.ok) throw new Error("expected ok");
     await drain(firstResult.value);
     expect(conversationRepo.conversations[0]?.title).toBe(firstQuestion);
 
-    const secondResult = await ask(deps, "u1", "doc-1", "Et la seconde question ?", "c1", now);
+    const secondResult = await ask(deps, "u1", "Et la seconde question ?", "c1", now);
     if (!secondResult.ok) throw new Error("expected ok");
     await drain(secondResult.value);
 
@@ -203,7 +206,7 @@ describe("ask", () => {
     });
     const deps = baseDeps({ chatModel, conversationRepo });
 
-    const result = await ask(deps, "u1", "doc-1", "Deuxième question", "c1", now);
+    const result = await ask(deps, "u1", "Deuxième question", "c1", now);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     await drain(result.value);

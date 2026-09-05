@@ -24,20 +24,20 @@ export type AskSession = AsyncGenerator<string, Answer, void>;
 // Resolves fast on pre-flight checks only; a stream that starts and then
 // fails is not a pre-flight error, it is the 'partial' branch of Answer,
 // produced from inside the returned session (docs/modules/tutor.md).
-export async function ask(
-  deps: AskDeps,
-  userId: string,
-  documentId: string,
-  question: string,
-  conversationId: string,
-  now: Date,
-): Promise<Result<AskSession, AskError>> {
-  const document = await getDocument({ repo: deps.documentRepo, jobQueue: deps.jobQueue }, userId, documentId);
-  if (!document.ok) return err("document-not-found");
-  if (document.value.status !== "done" || document.value.markdown === null) return err("document-not-ready");
-
+//
+// Takes no documentId of its own: the conversation already belongs to
+// exactly one document (conversations.document_id), so a second,
+// independently supplied documentId could disagree with it -- the route
+// (POST /api/conversations/:id/messages) has no documentId in its URL to
+// pass anyway. documentId is read from the conversation once it is found,
+// never taken on faith from a caller.
+export async function ask(deps: AskDeps, userId: string, question: string, conversationId: string, now: Date): Promise<Result<AskSession, AskError>> {
   const conversation = await deps.conversationRepo.findConversation(userId, conversationId);
   if (!conversation) return err("conversation-not-found");
+
+  const document = await getDocument({ repo: deps.documentRepo, jobQueue: deps.jobQueue }, userId, conversation.documentId);
+  if (!document.ok) return err("document-not-found");
+  if (document.value.status !== "done" || document.value.markdown === null) return err("document-not-ready");
 
   const history = await deps.conversationRepo.listMessages(userId, conversationId);
   const sections: Section[] = splitIntoSections(document.value.markdown).map((text, index) => ({ index, text }));
