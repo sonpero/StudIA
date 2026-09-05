@@ -158,7 +158,8 @@ describe("TutorScreen — conversation, document ready", () => {
 
     await screen.findByText("Une question ?");
     expect(screen.getByText("Une réponse.")).toBeInTheDocument();
-    expect(screen.getByText("Un passage cité.")).toBeInTheDocument();
+    expect(screen.queryByText("Un passage cité.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voir les sources (1)" })).toBeInTheDocument();
   });
 
   it("a cached conversation that fails to load: confused mascot and retry", async () => {
@@ -196,8 +197,90 @@ describe("TutorScreen — conversation, document ready", () => {
 
     await screen.findByText("Qu'est-ce que la photosynthèse ?");
     await screen.findByText("La photosynthèse.");
-    expect(screen.getByText("Un passage cité.")).toBeInTheDocument();
+    expect(screen.queryByText("Un passage cité.")).not.toBeInTheDocument();
     expect(getCachedConversationId("doc-1")).toBe("c1");
+  });
+
+  it("citations are collapsed by default, with a count in the trigger; expanding and collapsing again toggles them and aria-expanded", async () => {
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(
+          JSON.stringify({
+            conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: "Une question ?", createdAt: "2026-01-01T00:00:00Z" },
+            messages: [
+              { id: "m1", conversationId: "c1", role: "user", content: "Une question ?", citations: null, partial: false, createdAt: "2026-01-01T00:00:00Z" },
+              {
+                id: "m2",
+                conversationId: "c1",
+                role: "assistant",
+                content: "Une réponse.",
+                citations: [{ text: "Premier passage." }, { text: "Second passage." }],
+                partial: false,
+                createdAt: "2026-01-01T00:00:01Z",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const user = userEvent.setup();
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Une réponse.");
+    const trigger = screen.getByRole("button", { name: "Voir les sources (2)" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Premier passage.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Second passage.")).not.toBeInTheDocument();
+
+    await user.click(trigger);
+
+    const collapseTrigger = screen.getByRole("button", { name: "Masquer les sources" });
+    expect(collapseTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Premier passage.")).toBeInTheDocument();
+    expect(screen.getByText("Second passage.")).toBeInTheDocument();
+
+    await user.click(collapseTrigger);
+
+    expect(screen.getByRole("button", { name: "Voir les sources (2)" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Premier passage.")).not.toBeInTheDocument();
+  });
+
+  it("each message's citations expand independently: expanding one leaves the other collapsed", async () => {
+    localStorage.setItem("studia:tutor:conversation:doc-1", "c1");
+    stubFetch((url) => {
+      if (url.includes("/api/documents/doc-1")) return new Response(JSON.stringify(aDocument), { status: 200 });
+      if (url.includes("/api/conversations/c1")) {
+        return new Response(
+          JSON.stringify({
+            conversation: { id: "c1", userId: "u1", documentId: "doc-1", title: "Q1", createdAt: "2026-01-01T00:00:00Z" },
+            messages: [
+              { id: "m1", conversationId: "c1", role: "user", content: "Première question ?", citations: null, partial: false, createdAt: "2026-01-01T00:00:00Z" },
+              { id: "m2", conversationId: "c1", role: "assistant", content: "Première réponse.", citations: [{ text: "Source A." }], partial: false, createdAt: "2026-01-01T00:00:01Z" },
+              { id: "m3", conversationId: "c1", role: "user", content: "Seconde question ?", citations: null, partial: false, createdAt: "2026-01-01T00:00:02Z" },
+              { id: "m4", conversationId: "c1", role: "assistant", content: "Seconde réponse.", citations: [{ text: "Source B." }], partial: false, createdAt: "2026-01-01T00:00:03Z" },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const user = userEvent.setup();
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Première réponse.");
+    const triggers = screen.getAllByRole("button", { name: "Voir les sources (1)" });
+    expect(triggers).toHaveLength(2);
+
+    await user.click(triggers[0]!);
+
+    expect(screen.getByText("Source A.")).toBeInTheDocument();
+    expect(screen.queryByText("Source B.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voir les sources (1)" })).toBeInTheDocument();
   });
 
   it("the thinking mascot shows while streaming and is gone once the answer is complete", async () => {

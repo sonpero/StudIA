@@ -88,17 +88,31 @@ function BackButton({ onBack }: { onBack: () => void }) {
 
 function MessageBubble({ message }: { message: TutorMessage }) {
   const isUser = message.role === "user";
+  // Per message, never persisted: a plain component-state boolean, local to
+  // this one bubble instance (docs/UI.md's Tuteur note) -- a reload always
+  // shows every citation list collapsed again, same as NotionsScreen's own
+  // "Voir le contenu" already resets on reload.
+  const [expanded, setExpanded] = useState(false);
+  const hasCitations = !isUser && !!message.citations && message.citations.length > 0;
+
   return (
     <div className={`flex flex-col gap-2 rounded-[var(--radius-card)] border border-border p-4 ${isUser ? "self-end bg-primary-soft" : "self-start bg-surface"}`}>
       <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-      {!isUser && message.citations && message.citations.length > 0 && (
-        <ul className="flex flex-col gap-1 border-t border-border pt-2">
-          {message.citations.map((citation, index) => (
-            <li key={index} className="text-sm text-text-muted">
-              {citation.text}
-            </li>
-          ))}
-        </ul>
+      {hasCitations && (
+        <div className="border-t border-border pt-2">
+          <button type="button" className="text-sm text-text-muted underline" aria-expanded={expanded} onClick={() => setExpanded((prev) => !prev)}>
+            {expanded ? "Masquer les sources" : `Voir les sources (${String(message.citations!.length)})`}
+          </button>
+          {expanded && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {message.citations!.map((citation, index) => (
+                <li key={index} className="text-sm text-text-muted">
+                  {citation.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       {!isUser && message.partial && <p className="text-sm text-text-muted">La réponse s'est arrêtée avant la fin.</p>}
     </div>
