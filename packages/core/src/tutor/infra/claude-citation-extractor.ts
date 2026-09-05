@@ -22,7 +22,10 @@ function assertDistinctIndexes(sectionIndexes: number[]): void {
 const PROMPT_PREFIX =
   "Voici une réponse donnée à un élève, et les sections du cours qui lui ont été fournies pour y répondre. " +
   "Indique les numéros des sections qui soutiennent réellement cette réponse — seulement celles dont le contenu " +
-  "est effectivement utilisé, jamais une section au hasard. S'il n'y en a aucune, renvoie une liste vide.";
+  "est effectivement utilisé pour répondre à la question posée, jamais une section au hasard. Si la réponse " +
+  "indique que le cours n'aborde pas le sujet demandé (un refus), renvoie toujours une liste vide, même si le " +
+  "refus mentionne en passant le vrai sujet du cours : mentionner de quoi parle le cours n'est pas s'appuyer " +
+  "dessus pour répondre. S'il n'y a aucune section réellement utilisée, renvoie une liste vide.";
 
 function sectionsBlock(sections: Section[]): string {
   return sections.map((section) => `[${section.index}] ${section.text}`).join("\n\n");

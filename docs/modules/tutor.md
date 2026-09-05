@@ -223,6 +223,19 @@ generated text: it is `sections[i].text` (or a bounded prefix of it), sliced
 server-side from what was actually sent to the model, so a citation cannot
 name a passage that was not literally there.
 
+The M8 eval's first run caught a real failure mode here, not eval noise: a
+refusal that mentions the course's actual subject in passing ("Ce cours
+n'aborde pas ce sujet, il traite de la photosynthèse") got cited anyway —
+`CitationExtractor`, asked which sections "support the answer," correctly
+found that the photosynthesis section supports the claim "this course is
+about photosynthesis," which is technically true and completely wrong for
+this purpose. `grounded = citations.length > 0` cannot fix this on its own:
+the extractor has to be told explicitly that mentioning the course's topic
+is not the same as answering from it. `ClaudeCitationExtractor`'s prompt
+now says so; refusal rate went from 7/10 to 10/10 on the same golden set
+after that one change, which is the entire reason this eval exists rather
+than trusting the mechanism on paper.
+
 ## Use cases
 
 - `createConversation(userId, documentId, now)`: checks the document exists

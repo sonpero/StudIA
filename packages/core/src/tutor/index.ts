@@ -1,5 +1,13 @@
 export type { Answer, Citation, Conversation, Message, Section } from "./domain/types.js";
 export type { ChatModel, CitationExtractor, ConversationRepository, ExtractError } from "./domain/ports.js";
+// Exported for evals/run-tutor.eval.test.ts: it calls ClaudeChatModel and
+// ClaudeCitationExtractor directly (same shape as the M3/M4 eval calling
+// ClaudeNotionSplitter directly), which needs the same section-building
+// step ask() uses internally, without pulling in a full AskDeps/database
+// setup just to measure model behaviour. content's equivalent
+// (chunkByTopLevelHeadings) stays internal because nothing outside content
+// ever needs it; this one has an external, legitimate caller.
+export { splitIntoSections } from "./domain/split-into-sections.js";
 
 export { ask, type AskDeps, type AskError, type AskSession } from "./application/ask.js";
 export { createConversation, type CreateConversationDeps } from "./application/create-conversation.js";
