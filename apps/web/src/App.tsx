@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BookOpen, Calendar, Home, TrendingUp } from "lucide-react";
+import { BookOpen, Calendar, Home, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
@@ -12,6 +12,7 @@ import { ProposalsScreen } from "./screens/ProposalsScreen.js";
 import { ReaderScreen } from "./screens/ReaderScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
 import { TodayScreen } from "./screens/TodayScreen.js";
+import { TutorScreen } from "./screens/TutorScreen.js";
 
 // No router dependency for M3's small navigation surface (a handful of
 // screens, linear flow): a state machine is enough, and adding a router
@@ -35,7 +36,13 @@ type View =
   | { name: "today" }
   | { name: "calendar" }
   | { name: "reader"; documentId: string; fromNotions?: boolean }
-  | { name: "proposals"; jobId: string };
+  | { name: "proposals"; jobId: string }
+  // documentId absent: the picker (docs/UI.md's Tuteur note). fromNotions
+  // mirrors reader's own field: only meaningful once documentId is set, and
+  // decides whether "Retour" leaves for that course's NotionsScreen or for
+  // the picker (the same view with documentId cleared) — the picker itself
+  // has no course to return to, the same shape DocumentsScreen has none.
+  | { name: "tutor"; documentId?: string; fromNotions?: boolean };
 
 function AppShell() {
   const auth = useAuth();
@@ -72,6 +79,7 @@ function AppShell() {
     },
     { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
     { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
+    { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
   ];
 
   return (
@@ -101,6 +109,7 @@ function AppShell() {
               onReview={(notionId) => setView({ name: "review", documentId: view.documentId, notionId })}
               onOpenProgress={() => setView({ name: "progress", fromDocumentId: view.documentId })}
               onOpenReader={() => setView({ name: "reader", documentId: view.documentId, fromNotions: true })}
+              onOpenTutor={() => setView({ name: "tutor", documentId: view.documentId, fromNotions: true })}
             />
           )}
           {view.name === "review" && (
@@ -131,6 +140,13 @@ function AppShell() {
             />
           )}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}
+          {view.name === "tutor" && (
+            <TutorScreen
+              documentId={view.documentId}
+              onSelectDocument={(documentId) => setView({ name: "tutor", documentId })}
+              onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "tutor" }))}
+            />
+          )}
         </div>
       </div>
     </div>

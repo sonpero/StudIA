@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotionsScreen } from "./NotionsScreen.js";
 
-function renderScreen(overrides: Partial<{ onOpenReader: () => void }> = {}) {
+function renderScreen(overrides: Partial<{ onOpenReader: () => void; onOpenTutor: () => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -16,6 +16,7 @@ function renderScreen(overrides: Partial<{ onOpenReader: () => void }> = {}) {
         onReview={() => undefined}
         onOpenProgress={() => undefined}
         onOpenReader={overrides.onOpenReader ?? (() => undefined)}
+        onOpenTutor={overrides.onOpenTutor ?? (() => undefined)}
       />
     </QueryClientProvider>,
   );
@@ -230,6 +231,26 @@ describe("NotionsScreen", () => {
     expect(onOpenReader).toHaveBeenCalled();
   });
 
+  it("ready state: offers 'Discuter du cours', opening the tutor for this document", async () => {
+    const onOpenTutor = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderScreen({ onOpenTutor });
+    await screen.findByText("Photosynthèse");
+
+    await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
+
+    expect(onOpenTutor).toHaveBeenCalled();
+  });
+
   it("ready state: 'Créer les fiches' (or 'Régénérer les fiches' once cards exist) sits apart from the common toolbar actions — rare, and destructive once it reads 'Régénérer', so not the same visual level as Lire le cours / Voir la progression / Réviser", async () => {
     vi.stubGlobal(
       "fetch",
@@ -304,7 +325,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");
@@ -336,7 +357,7 @@ describe("NotionsScreen", () => {
     expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("ready state: tab order visits 'Retour à mes cours' first, then the toolbar's three actions", async () => {
+  it("ready state: tab order visits 'Retour à mes cours' first, then the toolbar's four actions", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -359,6 +380,9 @@ describe("NotionsScreen", () => {
 
     await user.tab();
     expect(within(toolbar).getByRole("button", { name: "Voir la progression" })).toHaveFocus();
+
+    await user.tab();
+    expect(within(toolbar).getByRole("button", { name: "Discuter du cours" })).toHaveFocus();
 
     await user.tab();
     expect(within(toolbar).getByRole("button", { name: "Réviser" })).toHaveFocus();
@@ -613,7 +637,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");

@@ -109,12 +109,14 @@ export function NotionsScreen({
   onReview,
   onOpenProgress,
   onOpenReader,
+  onOpenTutor,
 }: {
   documentId: string;
   onBack: () => void;
   onReview: (notionId?: string) => void;
   onOpenProgress: () => void;
   onOpenReader: () => void;
+  onOpenTutor: () => void;
 }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
@@ -286,6 +288,9 @@ export function NotionsScreen({
             </button>
             <button type="button" className="text-sm text-text-muted underline" onClick={onOpenProgress}>
               Voir la progression
+            </button>
+            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenTutor}>
+              Discuter du cours
             </button>
             {/* Accent, matching every notion card's own "Réviser cette
                 notion" below (docs/UI.md's Colour note): the same word

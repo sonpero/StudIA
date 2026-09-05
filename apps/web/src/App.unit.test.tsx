@@ -62,7 +62,7 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the nav offers all four real destinations, Aujourd'hui, Mes cours, Progression and Calendrier, from anywhere", async () => {
+  it("authenticated: the nav offers all five real destinations, Aujourd'hui, Mes cours, Progression, Calendrier and Tuteur, from anywhere", async () => {
     stubAuthenticatedFetch();
 
     render(<App />);
@@ -72,6 +72,47 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Mes cours" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Progression" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calendrier" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tuteur" })).toBeInTheDocument();
+  });
+
+  it("Tuteur is reachable directly from the nav (a course picker) and from within a course via NotionsScreen's 'Discuter du cours'", async () => {
+    const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+    const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Notion 1", body: "Corps.", difficulty: "medium", position: 0, createdAt: "2026-01-01T00:00:00Z" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (/\/api\/documents\/doc-1$/.test(url)) return Promise.resolve(new Response(JSON.stringify({ ...aDocument, lastError: null, markdown: "Contenu du cours." }), { status: 200 }));
+        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    // Directly from the nav: a picker, not a specific course's chat yet.
+    await user.click(screen.getByRole("button", { name: "Tuteur" }));
+    await screen.findByRole("heading", { name: "Tuteur" });
+    await screen.findByText("Cours test");
+    expect(screen.getByRole("button", { name: /discuter/i })).toBeInTheDocument();
+
+    // From within a course instead: NotionsScreen's own entry.
+    await user.click(screen.getByRole("button", { name: "Mes cours" }));
+    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
+    await screen.findByRole("heading", { name: "Notions du cours" });
+
+    await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
+    await screen.findByRole("heading", { name: "Tuteur" });
+    await screen.findByRole("textbox");
+
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Notions du cours" });
   });
 
   it("authenticated: the content area reserves space for the now-fixed desktop sidebar, so a long page's content never renders underneath it", async () => {
