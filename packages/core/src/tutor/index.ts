@@ -9,3 +9,6 @@ export { deleteConversation, type DeleteConversationDeps } from "./application/d
 
 export { FixtureChatModel, type ChatFixtureCase } from "./infra/fixture-chat-model.js";
 export { FixtureCitationExtractor, type ExtractFixtureCase } from "./infra/fixture-citation-extractor.js";
+export { SqliteConversationRepository, type TutorDb } from "./infra/sqlite-conversation-repository.js";
+// For apps/api/drizzle.config.ts's glob (same reason as content/ingestion/identity/jobs).
+export { conversationsTable, messagesTable } from "./infra/schema.js";

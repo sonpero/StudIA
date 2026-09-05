@@ -285,6 +285,7 @@ CREATE TABLE conversations (
   title TEXT, -- null until the first question is asked (truncateTitle)
   created_at TEXT NOT NULL
 );
+CREATE INDEX idx_conversations_scope ON conversations(user_id, document_id);
 
 CREATE TABLE messages (
   id TEXT PRIMARY KEY,
@@ -299,6 +300,7 @@ CREATE TABLE messages (
                                        -- 'partial' branch)
   created_at TEXT NOT NULL
 );
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 ```
 
 No `chunks`, no vector table, no FTS virtual table, no embedding-dimension
