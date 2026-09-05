@@ -273,6 +273,89 @@ right passage.
 
 ---
 
+## M9 — Redesign
+
+Not the next vertical slice — a visual and navigational pass over what M0–M8
+already shipped, requested directly from a reference screenshot rather than
+derived from a new capability. Written as its own milestone rather than a
+loose set of commits so it gets the same acceptance discipline as everything
+before it, per `CLAUDE.md`'s "no work outside a milestone" rule.
+
+Two of `docs/UI.md`'s own long-standing rules are deliberately reversed here,
+not rediscovered as wrong: the streak counter and the relative-countdown
+badge, both previously named in `Forbidden` and in `Who this is for`'s "never
+counts down" product rule. `docs/UI.md` itself carries the reasoning for the
+reversal; this section only carries what must be true for it to count as done.
+
+**Scope**
+- A single merged colour token, `--primary`, replacing today's separate
+  `--primary` (indigo, nav/links) and `--accent` (green, single CTA) — one
+  green for both roles, everywhere in the app, not just on the redesigned
+  screen. `tokens.colour-collision.unit.test.ts` updated to the new token
+  set, not deleted.
+- A streak: the count of consecutive calendar days, ending today or
+  yesterday, with at least one FSRS review (`reviews.reviewed_at`) —
+  computed, not stored. No new table: derived from data `review` already
+  persists, via a new `workspace`-owned pure function (`workspace` composes
+  `review`, never the reverse — `docs/modules/workspace.md`'s own existing
+  rule for exactly this shape of read).
+- A relative countdown badge on Aujourd'hui's own course cards
+  ("Examen dans 9 jours"), replacing the current plain-fact deadline
+  sentence that spelled out both the absolute date and the day count
+  together.
+- Navigation grows from five destinations to seven: **Notions** and
+  **Lecteur** become reachable directly from the persistent nav, each with
+  the same dual-entry shape `Tuteur` already has — a picker, reusing `Mes
+  cours`' own list and its four states, when entered with no course chosen.
+- Aujourd'hui's screen rebuilt around the above: greeting, course cards
+  (due count, below-target count, the new countdown badge), the streak
+  card, the existing todo list, pomodoro and Spotify blocks unchanged.
+
+**Demo** — Open Aujourd'hui, see a streak card and a relative countdown
+badge on a course with a deadline. From the nav, reach Notions and Lecteur
+directly, pick a course from each one's own picker, without going through
+Mes cours first.
+
+**Acceptance**
+- [ ] `computeStreak` is a pure function taking a set of calendar days with
+      activity and `now`, property-tested: a gap of a full calendar day
+      with no activity, anywhere before yesterday, caps the count at the
+      run ending closest to `now`; activity today is not required to keep
+      yesterday's count; deterministic on repeated calls
+- [ ] The streak's day list comes from one new `ReviewRepository` method,
+      scoped by `user_id` like every other repository method here — no new
+      table, no new module
+- [ ] `tokens.colour-collision.unit.test.ts` passes against the merged
+      token set (one semantic token fewer than before), still checking
+      every remaining pair, not weakened to fewer checks than it ran before
+- [ ] Every existing screen that used `--accent` or the old `--primary`
+      renders with the merged green — checked live, not just by grep, on at
+      least: Notions du cours, Révision, Progression, Calendrier, Tuteur
+- [ ] `ReviewScreen`'s graded-MCQ view still tells a correct pick from a
+      wrong one without relying on hue alone (`docs/UI.md`'s own icon-based
+      fix, predating this milestone, is not to be undone by the merge)
+- [ ] Notions and Lecteur are reachable from the nav with no course
+      preselected, land on a picker reusing `Mes cours`' own four states,
+      and existing entry points (from a course, from Notions) are unchanged
+- [ ] Aujourd'hui's countdown badge shows only the relative form ("dans N
+      jours"), never invented urgency wording beyond what `docs/UI.md`'s
+      copy register already allows elsewhere
+- [ ] Playwright: a course with a deadline shows the countdown badge; a
+      user with at least one review today or yesterday sees a non-zero
+      streak; Notions and Lecteur are each reachable from the nav via their
+      own picker
+
+**Out of scope** — a configurable streak goal, a streak notification or
+reminder, a per-course streak, freezing/protecting a streak, any new
+"daily activity" table broader than reviews (todos and pomodoro sessions
+are not counted — considered and set aside: it would need its own
+cross-module read no screen has asked for yet, when `review` alone already
+answers what the reference screenshot shows), the tablet 72px icon-only nav
+collapse, and the secondary nav group (Mes notes, Réglages — still no
+screen behind either).
+
+---
+
 ## Parallelisation
 
 M4 to M8 each get their own git worktree and their own agent. Rules:

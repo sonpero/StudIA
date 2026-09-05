@@ -13,9 +13,10 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M8 — Tutor. Accepted** (all four acceptance boxes in `docs/MILESTONES.md`
-ticked). No milestone beyond M8 is currently planned — read
-`docs/MILESTONES.md` in full and ask before starting anything past its scope.
+**M9 — Redesign.** See `docs/MILESTONES.md` for the full plan and
+acceptance criteria. M8 is accepted; M9 deliberately reverses two of
+`docs/UI.md`'s own rules (the streak and countdown bans below) — read
+`docs/UI.md`'s own note on the reversal before assuming this file is stale.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,
@@ -225,8 +226,11 @@ The four rules broken most often:
   is incomplete.
 - **Nothing blocks on a job.** Extraction takes a minute; the user must be able to
   navigate away and come back.
-- **No urgency.** No countdowns, no streaks, no "you are behind". The app proposes;
-  the person decides.
+- **No "you are behind".** The app proposes, the person decides — still true
+  everywhere, including the streak and the countdown badge M9 (`docs/UI.md`)
+  deliberately adds on Aujourd'hui: neither says or implies a person is late,
+  only what is true (a day count, a date). Read `docs/UI.md`'s own Colour
+  and Forbidden notes before assuming either one is still banned outright.
 
 The app is embodied by a mascot, Fiche, used in empty, loading and error states.
 Poses are flat SVG in `apps/web/src/components/mascot/`.
