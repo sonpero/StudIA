@@ -10,10 +10,24 @@ Students of any age: a teenager revising for a school test, a university student
 preparing an exam, an adult learning something new. Assume competence, assume no
 prior knowledge of the app.
 
-**They take the time they need.** StudIA is not a habit-loop app. It never rushes
-anyone, never counts down at them, never implies they are behind. The interface
-proposes; the person decides. This is a product rule, not a style preference, and
-it constrains the progress and review screens directly.
+**They take the time they need.** StudIA is not a habit-loop app. It never
+rushes anyone and never implies they are behind. The interface proposes; the
+person decides. This is a product rule, not a style preference, and it
+constrains the progress and review screens directly: neither ever says
+"you are behind" or "you are late", only what is true.
+
+**M9 narrows "never counts down", it does not drop it.** A blanket ban on any
+day count read as a habit-loop reflex worth avoiding by default, not as the
+one line separating this app from one. Aujourd'hui's own streak card and its
+course cards' relative countdown badge (`Colour` and `Screen notes`, below)
+are a deliberate, requested exception, scoped to that one screen: a day count
+stated once, as a fact, is not the same thing as a ticking timer or a
+red "3 jours restants" pressuring a specific action. Progress and review
+keep the stricter rule exactly as written above — no status word ever
+implies lateness, no colour turns urgent on a deadline's own day
+(`Progression`'s own note, below) — because unlike Aujourd'hui's badge, both
+screens attach a day count to an evaluative judgement, which is the part
+this rule was always actually protecting against.
 
 ---
 
@@ -38,25 +52,38 @@ a token.** No arbitrary Tailwind palette values, no gradients, no coloured shado
 | `--text` | `#101828` | Primary text |
 | `--text-muted` | `#667085` | Secondary text, labels, metadata |
 | `--border` | `#EAECF0` | Card borders, dividers, table rules |
-| `--primary` | `#2563EB` | Active nav, links, selected state, progress |
-| `--primary-soft` | `#DCEAF7` | Filled info cards (the pale blue lesson cards) |
-| `--accent` | `#0F7B5F` | The single primary call to action. Nothing else. |
+| `--primary` | `#0F7B5F` | Active nav, links, selected state, progress, the single call to action |
+| `--primary-soft` | `#E2F3EE` | Filled info cards (the pale green lesson cards) |
 | `--success` | `#12B556` | Completed, mastered |
 | `--warning` | `#F5B940` | Due soon, needs attention |
 
-**`--accent` belongs to the app, never to a course — non-negotiable.** It is
-a fixed colour, the same on every screen and every card, chosen once here;
-nothing about a specific course, its subject colour, or its state ever
-changes it. The moment an accent button started borrowing a course's own
-colour, that colour would stop meaning "this is Maths" and start meaning
-"this one needs attention" — exactly the confusion `Subject colours`' own
-second rule (below) exists to prevent. Kept as its own token, distinct from
-`--primary` (`#2563EB`, active nav) even though an earlier version of this
-pass considered collapsing them into one shared value — deliberately not
-done: the two answer different questions (which nav item is active, versus
-which button on this card is the one to press), and coupling them would
-mean a future change to one always dragging the other along for no reason
-tied to either question.
+**M9 merges `--accent` into `--primary` — one green, not two tokens for two
+roles.** Previously kept deliberately separate (an earlier version of this
+same section argued the two "answer different questions — which nav item is
+active, versus which button on this card is the one to press" — true, and
+still true as a description of the *roles*), reversed here at explicit
+request rather than rediscovered as wrong: a single brand colour for both
+roles is the point of the redesign, not a side effect of it. The role
+distinction the old argument protected — nav/links versus "the one button to
+press" — still exists in the interface and still matters (`One accent-
+weighted action per card`, below, is unchanged); it is no longer expressed
+as two different hues, only as which element gets the colour at all.
+`variant="accent"` stays the name of that role in `Button`'s own code
+(`apps/web/src/components/ui/button.tsx`) and in this document's own prose
+below — a role name now, not a second colour, so existing call sites
+("Réviser", "Confirmer", "Discuter") needed no change beyond which token
+their class list points at.
+
+**The surviving value is `--accent`'s old one, `#0F7B5F`, not `--primary`'s
+old `#2563EB`.** Kept for the reasons the paragraph below already
+established when this value was first chosen — measured white-text contrast,
+clearance from the subject palette, clearance from `--success` — all of
+which stay true unchanged since the hex itself doesn't move, only which
+token name owns it and how many other elements now render in it (nav-active,
+links, focus rings, in addition to the one call-to-action button). Reusing
+`--primary`'s own old indigo instead was not seriously considered: the
+paragraph below already rejected that exact hue once, for reasons that don't
+depend on how many roles it's asked to carry.
 
 **A deep green, not the indigo that first replaced red.** `#F04438`, this
 token's original value, was tried and rejected in an earlier version of
@@ -67,9 +94,9 @@ pass's own contrast check caught. Darkening it to `#D92D20` (same hue,
 looking at the screen with real course cards rather than trusting the
 numbers alone: `#D92D20` sat 3.9° from the subject palette's own red
 (`#F87171`) — a course's own identity colour and the app's one call-to-
-action, indistinguishable on Mathématiques' own card. Reusing `--primary`'s
-indigo was tried next and did clear that collision (22.8° from the
-palette's own closest hue), but was set aside for a different reason: it
+action, indistinguishable on Mathématiques' own card. Reusing the old
+`--primary`'s indigo was tried next and did clear that collision (22.8° from
+the palette's own closest hue), but was set aside for a different reason: it
 is Tailwind's own default blue, instantly recognisable as such, and wearing
 a framework's stock colour as the app's own signature reads as an
 un-designed, generated interface. `#0F7B5F`, a deep green, is what this
@@ -77,7 +104,17 @@ pass settled on instead — chosen for what it says, not just what it avoids:
 green already means "forward, on track" everywhere outside this app, which
 is exactly what pressing "Réviser" is, where blue said nothing in
 particular. Measured, not assumed: white text on `#0F7B5F` is 5.23:1,
-clearing 4.5:1 with room to spare, no lightness adjustment needed.
+clearing 4.5:1 with room to spare, no lightness adjustment needed. M9's
+merge inherits this reasoning rather than reopening it: nav-active and
+links now say the same "forward, on track" thing every accent button
+already said, which is the intended reading, not an accident of reuse.
+
+**`--primary-soft` is a tint of the same merged green, recomputed, not
+reused from the old indigo tint it replaces.** `#E2F3EE` (same 164° hue,
+low saturation, high lightness) — a light-mode fill for `bg-primary-soft`
+elements (the active-nav pill, message bubbles) that reads as "this token's
+own pale version," not as an unrelated leftover blue sitting next to a green
+active state.
 
 **Every semantic colour token's hue family is excluded from every other,
 enforced, not just written down.** First written as an accent-vs-subject-
@@ -87,18 +124,27 @@ collision this narrower rule couldn't see: `--success` (`#12B5A5`, hue
 family of problem, between two *semantic* tokens this time, not a
 semantic token and a subject colour. The real invariant was never "the
 accent avoids the subject palette", it is "no two colours this app hands
-out a fixed meaning to — `--primary`, `--accent`, `--success`,
-`--warning`, and every subject-palette hue — read as the same colour."
+out a fixed meaning to — `--primary` (`--accent`'s own old value, since
+M9's merge, above), `--success`, `--warning`, and every subject-palette
+hue — read as the same colour."
 `15°` remains the floor (unchanged from the narrower version of this
 rule): nothing new has been measured to move it, and the values below sit
 either comfortably clear of it or were moved specifically to clear it.
 `apps/web/src/styles/tokens.colour-collision.unit.test.ts` (renamed from
 `tokens.accent-collision.unit.test.ts`, no longer accent-specific) now
 checks every pair drawn from that full set, not just accent-vs-palette.
+**M9 shrinks that set by one, not the check itself**: `--accent` merged
+into `--primary` (above), so the test's own token list drops the name
+`--color-accent` and keeps checking every remaining pair at the same 15°
+floor — one fewer name, same coverage of everything that still exists,
+never fewer checks than it ran before.
 
 Two collisions this widening found, both fixed by moving the *subject*
 colour, never a semantic token — the same policy the accent/turquoise fix
-above already established, extended rather than reconsidered:
+above already established, extended rather than reconsidered. Both are
+stated below against the name in force when each was fixed, `--accent`,
+which is `--primary`'s own value since M9's merge — the hue and every
+measurement are unchanged, only the token's name is:
 - SVT's default (`#12B5A5` originally, already moved once to `#12B2B5` for
   `--accent`'s sake) stays exactly where that first move put it (hue 181°,
   16.6° from `--accent`) — a corridor between `--accent` (164°) and the
@@ -114,19 +160,21 @@ above already established, extended rather than reconsidered:
   a 10°-wide corridor, `[15°, 25°]` — landed at its centre, 20°, for the
   same reason SVT's fix landed at its own corridor's centre.
 
-**`--success` moves, it is not retired, even though `--accent` now also
-means "forward, on track".** Considered and rejected: the two tokens still
+**`--success` moves, it is not retired, even though `--primary` now also
+means "forward, on track" for every one of its roles, not just the button
+that used to be `--accent`.** Considered and rejected: the two tokens still
 answer different questions on the one screen where they appear
 together — `ReviewScreen.tsx`'s graded MCQ view sets `ring-success` on
 whichever option was factually correct and, when the student picked a
-*different* option, `ring-accent` on that wrong pick, both visible at
-once, on two different options in the same list. Collapsing them into one
-green would leave nothing distinguishing "this was the right answer" from
-"this is merely what you clicked" at the exact moment a wrong answer most
-needs to read as wrong — the opposite of decorative, load-bearing for the
-one thing this app is for. Moved to `#12B556` (hue 145°, clear of the
-whole `--accent`/turquoise cluster entirely rather than squeezed beside
-it — 19.4° from `--accent`, comfortably past the floor).
+*different* option, `ring-primary` on that wrong pick (`ring-accent` before
+M9's merge — same hue, the class changed because the token backing it did),
+both visible at once, on two different options in the same list. Collapsing
+them into one green would leave nothing distinguishing "this was the right
+answer" from "this is merely what you clicked" at the exact moment a wrong
+answer most needs to read as wrong — the opposite of decorative,
+load-bearing for the one thing this app is for. Moved to `#12B556` (hue
+145°, clear of the whole `--primary`/turquoise cluster entirely rather than
+squeezed beside it — 19.4° from `--primary`, comfortably past the floor).
 
 **That 19.4° passed the hue-collision test and still failed on screen.** A
 live check of exactly this ReviewScreen state (a QCM graded wrong, both
@@ -189,7 +237,7 @@ confirmation modal: low visual weight already tells the story `--warning`
 or a red button would otherwise have to carry.
 
 **One accent-weighted action per card, not per screen.** `Forbidden`
-(below) has always banned a second `--accent` element competing for
+(below) has always banned a second accent-styled element competing for
 attention on the same screen — right for a single-purpose screen
 (Connexion, UploadCard's own confirm step) where every accent element really
 does compete with every other one for the same decision. It reads
@@ -232,11 +280,13 @@ calendar chips, card left borders, task dots, plan entries.
 
 `#F75757` `#F36016` `#109DA0` `#0897D6` `#8B5CF6` `#EC4899`
 
-Neither `--accent` nor `--primary` appears in this palette, deliberately: a
-course must never look like the primary call to action or like the active nav
-state — and neither does any hue close enough to `--accent`'s own to read as
-the same colour, `Colour`'s own note above (SVT's own default, tested and
-enforced there, is what changed to hold this).
+`--primary` does not appear in this palette, deliberately (before M9's
+merge, neither did the separate `--accent`; the rule and the reason are
+unchanged, there is simply one token to keep out instead of two): a course
+must never look like the app's one call-to-action or its active nav
+state — and neither does any hue close enough to `--primary`'s own to read
+as the same colour, `Colour`'s own note above (SVT's own default, tested
+and enforced there, is what changed to hold this).
 
 Two rules:
 - A subject colour is always paired with the course name or an icon. Colour alone
@@ -332,7 +382,7 @@ matching "Lire le cours" and "Voir la progression" — never
 `--text-display`, whatever it counts.
 
 **A card carries at most one `--text-display` number, mirroring the
-one-`--accent`-element invariant above (`Colour`'s own note).** Two
+one-accent-element invariant above (`Colour`'s own note).** Two
 independent counts can legitimately describe the same card without ever
 being compared to each other — Aujourd'hui's own course card, where a due
 count and a below-target count answer two different questions and can
@@ -624,11 +674,15 @@ carries nothing a screen reader can use), but each is paired with its own
 above has the full reasoning).
 
 **Scope for this pass**: one icon per nav destination (`Home` for
-Aujourd'hui, `BookOpen` for Mes cours, `TrendingUp` for Progression,
-`Calendar` for Calendrier, `MessageCircle` for Tuteur — plain and literal,
-matching the other four, not `Bot`: the mascot section's own "Fiche is a
-tool, not a friend, never a chat persona" already argues against a nav icon
-that reads as an anthropomorphic AI), and
+Aujourd'hui, `BookOpen` for Mes cours, `Layers` for Notions (M9 — distinct
+from `BookOpen`, a course's atomic units rather than its catalogue entry),
+`BookOpenText` for Lecteur (M9 — the same icon this section already gives
+"Lire le cours" on a card, reused rather than invented since it is the same
+destination), `TrendingUp` for Progression, `Calendar` for Calendrier,
+`MessageCircle` for Tuteur — plain and literal, matching the rest, not
+`Bot`: the mascot section's own "Fiche is a tool, not a friend, never a chat
+persona" already argues against a nav icon that reads as an anthropomorphic
+AI), and
 on each card's own primary, forward-moving actions — the ones docs/UI.md
 already calls "a path to action" on Aujourd'hui's own course card:
 `BookOpen` for "Voir le cours"/"Voir les notions" (both land on the same
@@ -749,19 +803,20 @@ single column.
   row currently holds only the user chip (greeting and sign-out).
 - **The secondary group.** Mes notes and Réglages have no screen at all
   yet (no module built past its own spec in `docs/modules/`). The
-  persistent nav — sidebar and bottom bar alike — renders only the five
-  real destinations below (Aujourd'hui, Mes cours, Progression,
-  Calendrier, Tuteur); there is no divider, no secondary group, and no
-  placeholder standing in for what isn't built. Five destinations is now
-  both the target and what exists — Tuteur's own note (`Screen notes`,
-  below) is the last primary item to reach it.
+  persistent nav — sidebar and bottom bar alike — renders only the seven
+  real destinations below; there is no divider, no secondary group, and no
+  placeholder standing in for what isn't built. Seven destinations is now
+  both the target and what exists (M9 adds Notions and Lecteur to the five
+  M8 already reached).
 
 ### Navigation
 
 Primary (bottom bar on mobile, top group in the sidebar):
 
 - **Aujourd'hui** — home
-- **Mes cours** — documents, notions, upload
+- **Mes cours** — documents, upload
+- **Notions** — a course's atomic notions, generation, review entry point
+- **Lecteur** — a course's source text, read continuously
 - **Progression** — deadlines, coverage and readiness per course
 - **Calendrier** — this month's deadlines and dated todos, at a glance
 - **Tuteur** — AI chat scoped to a course
@@ -775,6 +830,27 @@ only from within a course** — when entered that way there is no originating
 course to return to, so its own screen's "Retour" goes to `Mes cours`
 instead of a specific course's notion list. The screen's own content is
 unaffected either way: it always shows every course (`docs/modules/progress.md`).
+
+**Notions and Lecteur (M9) are grouped beside Mes cours, in that order, not
+scattered to match some other logic** — the three together are "the course",
+read at increasing depth: the catalogue, then a course's own atomic units,
+then its full source text. Each gets the same dual-entry shape `Tuteur`
+already established: reachable directly from the nav with no course chosen,
+landing on a picker that reuses `Mes cours`' own list and its four states
+unmodified (`Screen notes`'s own Tuteur note, above, already describes this
+mechanism in full — Notions' and Lecteur's own pickers are the identical
+component, only the destination each row routes to differs), and reachable
+from within a course exactly as before M9 (a course's own card on `Mes
+cours`, `Notions du cours`' own toolbar for Lecteur) — neither existing
+entry point is removed. A third source needs a third piece of state beyond
+the `fromNotions` field `Lecteur`'s own note (below) already had: `Notions`
+and `Lecteur`'s view shapes both gain `fromPicker?: boolean`, true only when
+opened from this nav-level picker, so "Retour" can tell that case apart from
+"opened from a course's own card on Mes cours" (still "Retour" to `Mes
+cours`, unchanged) and return to the picker itself instead — the same
+"which of several sources" problem `fromDocumentId`/`fromNotions` already
+solve elsewhere in this app, extended by one more source rather than
+redesigned.
 
 Touch targets are 44px minimum everywhere.
 
@@ -834,8 +910,9 @@ Login-only, no self-signup (`docs/modules/identity.md`, `README.md`):
 every account is created, or reset, by an administrator from the CLI, so
 this screen has nothing to register and never offers to.
 
-**"Se connecter" is `--accent`, and this is one of the few places in the
-app where that is actually earned:** a single focused screen with exactly
+**"Se connecter" is `--primary`, in its accent role, and this is one of the
+few places in the app where that is actually earned:** a single focused
+screen with exactly
 one action, the same shape as ReviewScreen's session-end/post-grade
 buttons and UploadCard's `Confirmer` — not one of several peer actions
 competing for the same weight, the mistake corrected on NotionsScreen's
@@ -890,6 +967,15 @@ where its card lands in the grid. The todos card is simply the next item
 after the last course card, wherever that now lands — not pinned to a
 fixed side.
 
+**M9 pins the streak card (below) first, ahead of every course card,
+always** — the one exception to "sorted by urgency": it does not describe
+a course, so `daysAway` has nothing to sort it by, and a fact about the
+student rather than about any one course reads naturally as the grid's own
+opening item, the position a reference screenshot places it in too. It
+renders even when the grid would otherwise be empty (a course-free empty
+state still has a streak, possibly zero) — the one card on this screen
+that is never conditional on there being anything else to show.
+
 A course's card states, together, whichever of these apply to it — never
 across separate cards, so the same course never appears twice:
 
@@ -898,8 +984,20 @@ across separate cards, so the same course never appears twice:
   phrase `Progression` already uses for the same fact
   (`docs/modules/progress.md`'s `notionsBelowTargetForDocument`), reused
   verbatim so the same number reads the same way on both screens.
-- **Deadline**, as a plain fact ("Contrôle le 12 juin, dans 9 jours"), never a
-  countdown.
+- **Deadline** — M9 replaces the previous plain-fact sentence ("Contrôle le
+  12 juin, dans 9 jours") with a small badge carrying only the relative form,
+  "Examen dans 9 jours" (`daysAway` from the same `deadline` object the sort
+  above already reads, worded "aujourd'hui"/"demain" at 0/1 rather than
+  "dans 0 jour"/"dans 1 jour"). A deliberate, narrow reversal of this
+  section's own former "never a countdown" line (`Who this is for`'s own
+  M9 note, above, draws where the line still holds): the absolute date is
+  dropped, not kept alongside the badge — this is the one piece of this
+  screen a reference screenshot asked for directly, not a rediscovered
+  need, and keeping both would read as hedging on a choice actually made.
+  Styled `bg-warning/10 text-warning` in a small rounded pill, the same
+  idiom `ReviewScreen`'s own "Maîtrisée" badge already uses for a fact
+  worth a light visual lift without the weight of a full `--warning`
+  button or banner — a day count is exactly that, not an alert.
 
 A due count and a below-target count for the same course can both be
 non-zero at once. That is not a contradiction — they measure different
@@ -942,7 +1040,8 @@ page, never a click hidden on the title: "Voir le cours" always opens that
 course's page, and, only when the due count is above zero, "Réviser" starts
 a review session for that course directly. **Now with a real hierarchy
 between them, not the identical weight both used to carry:** "Réviser",
-when it is there, is the card's one `--accent` button — it is the action
+when it is there, is the card's one accent button (`variant="accent"`,
+`--primary` since M9's merge — `Colour`'s own note above) — it is the action
 that actually moves the student forward, spaced repetition's whole point,
 so it is the one that looks like the obvious next click. "Voir le cours"
 stays `--secondary` on every card, always, whether or not its sibling
@@ -1046,6 +1145,36 @@ This screen has no "Retour": it is the destination the sidebar/header's
 elsewhere and backs out of. The same header carries a symmetric "Mes cours"
 link, so both homes stay reachable from any screen.
 
+**Aujourd'hui — streak (M9).** A card in the shared grid, pinned first
+(`One grid, not two`'s own M9 note, above). One `--text-display` number
+(the streak length) and one line beneath it: "Continue comme ça !" while
+the streak is at least 1, or a plain "Révise aujourd'hui pour commencer une
+série." when it is 0 — an invitation, not a guilt line, the same register
+`Who this is for`'s own rule already requires everywhere else. No flame
+icon, no fire emoji: `Icons`' own set is plain and literal by rule (above),
+and a flame reads as exactly the habit-loop urgency device this whole
+section otherwise argues against having imported wholesale.
+
+**The number is `computeStreak`'s own output, read fresh on every load,
+never stored.** `GET /api/today` gains one field, sourced the same way
+every other `TodayView` field already is — a pure function
+(`workspace/domain`) over data `get-today.ts` already has one more read
+away: the set of calendar days, in the viewer's own local timezone, on
+which at least one `reviews` row exists for that user (`docs/MILESTONES.md`'s
+M9 acceptance). Consecutive days ending today or yesterday count; a full
+calendar day with zero reviews, anywhere further back, ends the run there.
+Reviewing later today after opening this screen does not retroactively
+bump the number without a reload — the same "no optimistic UI on generated
+content" caution `Asynchronous work` (above) already applies to a fetched
+number that a later action can change; a plain re-fetch on the next visit
+is enough, this is not read-heavy enough to warrant a live update.
+
+**No per-course streak, no configurable goal, no protection/freeze
+mechanic** — `docs/MILESTONES.md`'s M9 "Out of scope" already names these;
+repeated here because a reference screenshot's own genre (habit-tracking
+dashboards) tends to carry all three by convention, and this app adopts the
+one widget, not the surrounding feature family it usually ships inside.
+
 **Aujourd'hui — pomodoro (M7).** One more block, full width, below the grid
 above (course cards and the todos card) — not one more item inside it:
 `items-stretch`'s row-matching is for cards competing for the same row, and
@@ -1064,7 +1193,7 @@ block's own mount effect, not a separate mechanism:
 - **Repos** — an optional `<select>` of today's todos, the same
   chevron-and-`FIELD_CLASS` treatment as the add-todo form's own course
   picker, filtered to `done: false` (a checked-off todo needs no focus
-  session), then "Démarrer" (`--accent` — this state's only button, the
+  session), then "Démarrer" (accent, `--primary` — this state's only button, the
   same single-action-screen exception `Colour`'s own note above already
   grants Connexion's "Se connecter" and UploadCard's "Confirmer").
 - **En cours** — a countdown (`--text-display`, the one number this block
@@ -1072,7 +1201,7 @@ block's own mount effect, not a separate mechanism:
   accumulated client-side; "sur « {todo} »" underneath, only when the
   session's `todoId` still resolves inside the same todos list the select
   above reads from — see "A todo deleted mid-session" below. One button,
-  "Terminer" (`--accent`, same exception as "Démarrer" above — this state
+  "Terminer" (accent, `--primary`, same exception as "Démarrer" above — this state
   shows exactly one action too).
 - **Juste terminée** — a confirmation line built from the session object
   already in hand (whichever call returned it: the start response, the
@@ -1150,7 +1279,7 @@ before that click, not merely an unset attribute that happens to look
 empty. Collapsed state: a short line ("Écoute de la musique pendant que
 tu travailles.") and "Écouter" (`--secondary` — this is a revealed-content
 trigger, the same idiom as "Ajouter un todo"/"Ajouter depuis une photo"
-above, not the single-action `--accent` exception Pomodoro's own
+above, not the single-action accent exception Pomodoro's own
 "Démarrer" earns, since listening is optional accompaniment, never the
 thing this app is steering the student toward). Clicking it mounts the
 real `<iframe>`, pointed at the fixed embed URL above, with a visible
@@ -1198,6 +1327,16 @@ restricts only the directives it actually names.
 **Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
 progress ring with its number. Upload is a card in the grid, not a floating button.
 
+**Notions du cours (M9) gains the nav's own picker as a second way in,
+alongside the existing Mes cours card click.** Same mechanism `Tuteur`'s
+own note and `Lecteur`'s own note (above) both describe: reachable directly
+from the nav with no course chosen, landing on a picker that reuses Mes
+cours' own list and its four states, each row routing here instead. The
+new `fromPicker?: boolean` field (`Navigation`'s own note, above) this
+adds decides what its own header's back link (below) reads and where it
+goes: unset, exactly as before M9, opened from a course's own card on Mes
+cours; `true`, opened from this new picker instead.
+
 **Notions du cours (`NotionsScreen`)'s own header: "Retour à mes cours"
 sits on its own line above the title, flush left — not beside the title,
 and not sharing the title's own line at all.** Two corrections happened
@@ -1228,6 +1367,14 @@ alone — its own line, above the title — already carries the distinction.
 in accent. Tab order follows the layout: "Retour à mes cours" first,
 then the toolbar's own three actions — the natural consequence of where
 it now sits, not a separate decision.
+
+**M9: this link reads "Retour" instead, exactly `Lecteur`'s own plain
+label, when `fromPicker` is set.** "Retour à mes cours" names a specific
+destination; returning to the nav's own picker instead — a different
+screen from the Mes cours catalogue this label names — would make the
+same label lie on this path the way `Lecteur`'s own note (above) already
+explains for its own back action. Position, tab order and every other
+part of this note are unchanged either way, only the word.
 
 **A notion card's own title and its difficulty label carry `--space-related`
 (8px) between them, not the plain block flow that used to leave them with
@@ -1372,9 +1519,10 @@ status word at all that day.
 
 A course behind its target is stated as a fact, never scolded: the status
 word plus the notion count (never a percentage-point deficit, never a time
-estimate), in `--warning`, never `--accent`, and never a comment on why or
-since when. No streak, no "tu n'as pas ouvert ce cours depuis 5 jours", no
-red.
+estimate), in `--warning`, never `--primary`'s own accent role, and never a
+comment on why or since when. No streak, no "tu n'as pas ouvert ce cours
+depuis 5 jours", no red — Aujourd'hui's own streak card and countdown badge
+(`Screen notes`, below) are scoped to that one screen, not to this one.
 
 **A course whose deadline has already passed keeps showing coverage and
 readiness like every other card — the lapsed date is one more fact about
@@ -1492,18 +1640,29 @@ itself is the useful surface even at zero events (you can still page to
 another month), unlike a list screen where zero rows really is nothing to
 show. No mascot for a quiet month.
 
-**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached two ways, both
-"Lire le cours": from a course's card on Mes cours (replacing the old "Voir
-le texte" toggle, same `status === "done"` gate that button already had),
-and from Notions du cours' own toolbar. Never from the nav: this is a
-drill-down from a specific course, the same shape as Notions du cours, not
-a top-level home, so it keeps its own back action rather than relying on
-the nav's generic "Mes cours" the way Aujourd'hui and Calendrier do. That
-back action reads plain **"Retour"**, not "Retour à mes cours": it returns
-to wherever the screen was opened from — Mes cours, or Notions du cours
-when opened from there — the same `fromDocumentId`-shaped mechanic
-ProgressScreen already uses for its own two entry paths, and a label
-naming one specific destination would lie on the other path.
+**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached three ways.
+Two predate M9, both "Lire le cours": from a course's card on Mes cours
+(replacing the old "Voir le texte" toggle, same `status === "done"` gate
+that button already had), and from Notions du cours' own toolbar. **M9 adds
+a third: directly from the nav**, reversing this note's own earlier "never
+from the nav" — written when Lecteur was purely a drill-down from an
+already-chosen course, no longer true now that `Navigation` (above) lists
+it as one of the app's seven top-level destinations. Entered that way it
+lands on the same picker `Tuteur`'s own note describes (reusing `Mes
+cours`' own list and its four states, each row routing into Lecteur
+instead), the same component Notions' own nav entry uses too — one picker,
+reused by name, not three near-identical ones.
+
+That back action reads plain **"Retour"**, not "Retour à mes cours": it
+returns to wherever the screen was opened from — Mes cours, Notions du
+cours, or (M9) the nav's own picker — the same `fromDocumentId`-shaped
+mechanic ProgressScreen already uses for its own two entry paths, now with
+a third source distinguished by a new `fromPicker?: boolean` (`Navigation`'s
+own note, above): `fromPicker` true returns to the picker with no course
+selected; `fromNotions` true (unchanged) returns to that course's Notions du
+cours; neither set (opened from a course's own card on Mes cours, unchanged
+since M7) returns to Mes cours. A label naming one specific destination
+would lie on the other two paths.
 
 **The course content's own heading scale is a rule, not a calibration
 value: content can never render at the same size as the chrome that
@@ -1769,11 +1928,22 @@ French, tutoiement, sentence case, no emoji.
   "La photo est trop floue pour être lue. Reprends-la avec plus de lumière."
 - Empty states invite: "Aucun cours pour l'instant. Prends ton cours en photo pour
   commencer."
-- Never comment on pace or effort. No "tu es en retard", no "3 jours d'affilée",
-  no "plus que 2 jours". State facts: "Contrôle le 12 juin", "14 fiches à revoir".
+- Never comment on pace or effort, and never imply lateness: no "tu es en
+  retard", no "plus que 2 jours" as a pressuring frame. State facts:
+  "Contrôle le 12 juin", "14 fiches à revoir", and, on Aujourd'hui only
+  (M9, `Screen notes` below), "Examen dans 9 jours" and a streak length —
+  a day count and a fact about past activity, stated once, not turned into
+  a pace judgement the way "tu es en retard" or "3 jours d'affilée !" (an
+  exclamation performing enthusiasm about the count itself) would be. The
+  line is register, not subject: `docs/UI.md`'s M9 note under `Who this is
+  for` (above) is what actually decides which day counts are in bounds.
 
-**No streaks, no badges, no points.** Progress is the real count of notions
-mastered. That number is true, and it is what the exam measures.
+**No badges, no points, anywhere.** Progression's own progress is the real
+count of notions mastered, never gamified — that number is true, and it is
+what the exam measures. Aujourd'hui's own streak (M9, `Screen notes` below)
+is the one narrow exception to "no streaks", not a reopening of this line:
+a single, uneditable, ungoaled count derived from real review activity,
+never a badge, a level, or a point total layered on top of it.
 
 ---
 
@@ -1783,11 +1953,12 @@ Checked in the Playwright suite:
 
 - Visible keyboard focus everywhere. Never `outline: none` without a replacement.
 - Contrast AA on all text. `--warning` is never a text colour on white at
-  body size (it fails 3:1, let alone 4.5:1). `--accent` passes 4.5:1 as
-  running text too (`#0F7B5F`, 5.23:1, `Colour` above) but still is not used
-  that way, on purpose: its one job is marking the primary action, and
-  letting it also colour arbitrary text — an error message, say — would blur that
-  single meaning even where the numbers technically allow it.
+  body size (it fails 3:1, let alone 4.5:1). `--primary` passes 4.5:1 as
+  running text too (`#0F7B5F`, 5.23:1, `Colour` above) but its accent role is
+  still not used that way, on purpose: that role's one job is marking the
+  primary action, and letting it also colour arbitrary text — an error
+  message, say — would blur that single meaning even where the numbers
+  technically allow it.
 - `prefers-reduced-motion` respected, including for the mascot.
 - Every field has a real `<label>`. A placeholder is not a label.
 - The review screen is fully operable by keyboard.
@@ -1801,13 +1972,19 @@ Checked in the Playwright suite:
 - Toasts for blocking errors
 - Carousels
 - Gradients, coloured shadows, glassmorphism
-- More than one `--accent` element inside the same card, or on a
+- More than one accent-styled element inside the same card, or on a
   single-purpose screen that is not a grid of cards (`Colour`'s own note
   above on why a card grid reads differently)
 - Icon-only buttons without an accessible label
 - Infinite scroll
 - Any colour outside the token set
-- Countdown timers, streak counters, urgency language
+- A status word or colour that implies a person is late or behind, outside
+  of a plain stated fact (`Who this is for`'s own note above draws the
+  line: a day count stated once, as a fact, is not this; a red "en retard"
+  or a ticking clock is) — narrowed by M9 from a blanket ban on any
+  countdown or streak, which Aujourd'hui's own streak card and countdown
+  badge are now a deliberate, scoped exception to (`Screen notes`, below);
+  Progression and Révision keep the original, stricter reading
 
 ---
 
