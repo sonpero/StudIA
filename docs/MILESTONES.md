@@ -269,7 +269,7 @@ right passage.
 - [x] Loading the course is filtered by `user_id` and `document_id`
 - [x] Questions the course does not cover are refused, by system-prompt instruction verified on the golden set, and the refusal says so
 - [x] Eval measures answer groundedness on the golden set
-- [ ] Playwright: ask a question, receive a streamed answer with a citation
+- [x] Playwright: ask a question, receive a streamed answer with a citation
 
 ---
 

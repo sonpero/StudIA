@@ -13,8 +13,9 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M8 — Tutor.** See `docs/MILESTONES.md` for the full plan and
-acceptance criteria.
+**M8 — Tutor. Accepted** (all four acceptance boxes in `docs/MILESTONES.md`
+ticked). No milestone beyond M8 is currently planned — read
+`docs/MILESTONES.md` in full and ask before starting anything past its scope.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,
