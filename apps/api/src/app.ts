@@ -22,7 +22,9 @@ import { meRoutes } from "./routes/me.js";
 import { notionsRoutes } from "./routes/notions.js";
 import { progressRoutes } from "./routes/progress.js";
 import { reviewRoutes } from "./routes/review.js";
+import { tutorRoutes } from "./routes/tutor.js";
 import { workspaceRoutes } from "./routes/workspace.js";
+import { buildTutorDeps } from "./tutor-deps.js";
 import { buildWorkspaceDeps } from "./workspace-deps.js";
 
 export interface BuildAppOptions {
@@ -59,6 +61,7 @@ export function buildApp(opts: BuildAppOptions) {
   const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
   const progressDeps = buildProgressDeps(db);
   const workspaceDeps = buildWorkspaceDeps({ db, dataDir: opts.dataDir, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
+  const tutorDeps = buildTutorDeps(db);
 
   const app = Fastify({ logger: true });
 
@@ -125,6 +128,15 @@ export function buildApp(opts: BuildAppOptions) {
     fileStore: workspaceDeps.fileStore,
     jobQueue,
     extractor: workspaceDeps.extractor,
+    idGenerator: uuidV7Generator,
+    clock: systemClock,
+  });
+  void app.register(tutorRoutes, {
+    conversationRepo: tutorDeps.conversationRepo,
+    documentRepo: ingestionDeps.repo,
+    jobQueue,
+    chatModel: tutorDeps.chatModel,
+    citationExtractor: tutorDeps.citationExtractor,
     idGenerator: uuidV7Generator,
     clock: systemClock,
   });
