@@ -90,6 +90,12 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
         void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
         void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
       }
+      // A rated card's due date just moved, changing this course's (and
+      // Aujourd'hui's overall) due count — without this, TodayScreen's own
+      // course-today-card can keep showing a pre-review count/action
+      // (Réviser instead of Rien à réviser) until something else happens to
+      // refetch ["today"].
+      void queryClient.invalidateQueries({ queryKey: ["today"] });
       setIndex((i) => i + 1);
       setRevealed(false);
       setMcqSelection(null);
