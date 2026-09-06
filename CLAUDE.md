@@ -18,6 +18,18 @@ acceptance criteria. M8 is accepted; M9 deliberately reverses two of
 `docs/UI.md`'s own rules (the streak and countdown bans below) — read
 `docs/UI.md`'s own note on the reversal before assuming this file is stale.
 
+M9 has two phases. Phase 1 (merged colour, streak, countdown, nav to
+seven) is done. Phase 2 is an ongoing, per-screen redesign from
+user-supplied mockups, ignoring `docs/UI.md` where a mockup calls for
+it and reconciling `docs/UI.md`'s own Screen notes back into sync once
+each pass lands — Aujourd'hui, Mes cours and Notions are done this way;
+**Lecteur, Progression, Calendrier and Tuteur are next, in that order.**
+Before starting any of the four: ask the user for that screen's own
+mockup screenshot if one hasn't been supplied yet — do not invent a
+redesign without one, the same discipline the first three followed.
+`docs/MILESTONES.md`'s own M9 section and `docs/UI.md`'s matching Screen
+notes both need updating as each screen lands, not deferred.
+
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,
 do not add "we'll need it anyway" abstractions, and do not create tables for

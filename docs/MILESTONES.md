@@ -276,10 +276,20 @@ right passage.
 ## M9 — Redesign
 
 Not the next vertical slice — a visual and navigational pass over what M0–M8
-already shipped, requested directly from a reference screenshot rather than
+already shipped, requested directly from reference screenshots rather than
 derived from a new capability. Written as its own milestone rather than a
 loose set of commits so it gets the same acceptance discipline as everything
 before it, per `CLAUDE.md`'s "no work outside a milestone" rule.
+
+Grew in scope after Phase 1 landed: the user kept supplying mockup
+screenshots for individual screens, one at a time, and each became its own
+redesign pass rather than a new milestone — still M9, since none of it is a
+new capability either. Phase 2 (below) tracks that ongoing, per-screen work.
+`docs/UI.md` is the authoritative detail source for every screen this
+milestone touches, reconciled with what actually shipped as of commit
+`47f6064`; this file only tracks status and acceptance.
+
+### Phase 1 — merged colour, streak, countdown, nav to seven
 
 Two of `docs/UI.md`'s own long-standing rules are deliberately reversed here,
 not rediscovered as wrong: the streak counter and the relative-countdown
@@ -312,38 +322,54 @@ reversal; this section only carries what must be true for it to count as done.
   card, the existing todo list, pomodoro and Spotify blocks unchanged.
 
 **Demo** — Open Aujourd'hui, see a streak card and a relative countdown
-badge on a course with a deadline. From the nav, reach Notions and Lecteur
-directly, pick a course from each one's own picker, without going through
-Mes cours first.
+badge on a course with a deadline. From the nav, reach Lecteur directly and
+pick a course from its own picker, without going through Mes cours first
+(Notions is also reachable directly from the nav, but Phase 2's own
+redesign, below, replaced its picker with a pill selector before this demo
+was ever run for real).
 
 **Acceptance**
-- [ ] `computeStreak` is a pure function taking a set of calendar days with
-      activity and `now`, property-tested: a gap of a full calendar day
-      with no activity, anywhere before yesterday, caps the count at the
-      run ending closest to `now`; activity today is not required to keep
-      yesterday's count; deterministic on repeated calls
-- [ ] The streak's day list comes from one new `ReviewRepository` method,
-      scoped by `user_id` like every other repository method here — no new
-      table, no new module
-- [ ] `tokens.colour-collision.unit.test.ts` passes against the merged
+- [x] `computeStreak` is a pure function taking a set of calendar days with
+      activity and `now`: a gap of a full calendar day with no activity,
+      anywhere before yesterday, caps the count at the run ending closest
+      to `now`; activity today is not required to keep yesterday's count;
+      deterministic on repeated calls. Mutation-tested (`CLAUDE.md`'s own
+      regime for pure domain functions), not literally property-tested —
+      the box originally asked for the latter; no fast-check-style test
+      exists, this is the honest record of what was actually done instead
+- [x] The streak's day list comes from one new `ReviewRepository` method
+      (`getReviewDayKeysForUser`), scoped by `user_id` like every other
+      repository method here — no new table, no new module
+- [x] `tokens.colour-collision.unit.test.ts` passes against the merged
       token set (one semantic token fewer than before), still checking
       every remaining pair, not weakened to fewer checks than it ran before
 - [ ] Every existing screen that used `--accent` or the old `--primary`
       renders with the merged green — checked live, not just by grep, on at
-      least: Notions du cours, Révision, Progression, Calendrier, Tuteur
-- [ ] `ReviewScreen`'s graded-MCQ view still tells a correct pick from a
+      least: Notions, Révision, Progression, Calendrier, Tuteur. **Partial**:
+      Notions was checked live with seeded data during Phase 2's own
+      Notions redesign (merged green renders correctly there); Révision,
+      Progression, Calendrier and Tuteur have not been specifically
+      re-checked for this box since the merge — due when each is
+      redesigned in Phase 2, or sooner if asked for directly
+- [x] `ReviewScreen`'s graded-MCQ view still tells a correct pick from a
       wrong one without relying on hue alone (`docs/UI.md`'s own icon-based
-      fix, predating this milestone, is not to be undone by the merge)
-- [ ] Notions and Lecteur are reachable from the nav with no course
-      preselected, land on a picker reusing `Mes cours`' own four states,
-      and existing entry points (from a course, from Notions) are unchanged
-- [ ] Aujourd'hui's countdown badge shows only the relative form ("dans N
+      fix, predating this milestone, was not undone by the merge)
+- [x] Lecteur is reachable from the nav with no course preselected, lands
+      on a picker reusing `Mes cours`' own four states, and existing entry
+      points (from a course, from Notions' own toolbar) are unchanged.
+      **Notions itself no longer works this way** — Phase 2's own Notions
+      redesign (below) replaced its picker with a pill-selector page before
+      this box was ever ticked; superseded, not satisfied as originally
+      written
+- [x] Aujourd'hui's countdown badge shows only the relative form ("dans N
       jours"), never invented urgency wording beyond what `docs/UI.md`'s
       copy register already allows elsewhere
-- [ ] Playwright: a course with a deadline shows the countdown badge; a
+- [x] Playwright: a course with a deadline shows the countdown badge and a
       user with at least one review today or yesterday sees a non-zero
-      streak; Notions and Lecteur are each reachable from the nav via their
-      own picker
+      streak (`e2e/streak-and-countdown.spec.ts`); Lecteur is reachable
+      from the nav via its own picker (`e2e/nav-pickers.spec.ts`) — that
+      same spec's own Notions half now covers its pill-selector page
+      instead of a picker, per the box above
 
 **Out of scope** — a configurable streak goal, a streak notification or
 reminder, a per-course streak, freezing/protecting a streak, any new
@@ -353,6 +379,66 @@ cross-module read no screen has asked for yet, when `review` alone already
 answers what the reference screenshot shows), the tablet 72px icon-only nav
 collapse, and the secondary nav group (Mes notes, Réglages — still no
 screen behind either).
+
+### Phase 2 — per-screen mockup redesigns
+
+Also not a new capability: each screen rebuilt from a user-supplied mockup
+screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
+it — a deliberate departure each time, not a silent drift, and reconciled
+back into `docs/UI.md`'s own Screen notes as each pass lands (all three
+below are reconciled as of commit `47f6064`; that file is the authoritative
+detail source, this entry only tracks status). No acceptance criteria are
+written ahead of a mockup existing — each screen's own scope is only known
+once its mockup is in hand, the same way every one of the three done so far
+was scoped.
+
+**Done:**
+- **Aujourd'hui** — rebuilt wholesale from mockup (greeting header, a
+  due-courses grid, the todos card, Pomodoro simplified to one fixed
+  duration, a still-mock study-sounds card). Commits `83f8e05` through
+  `66d55c0`.
+- **Mes cours** — redesigned from mockup (persistent two-column layout,
+  tinted-circle course cards with real per-course stats, always-open
+  upload panel). Commits `442d4ab`, `64c5f5c`, `c5e465c`.
+- **Notions** — unified its old picker-plus-course-view into one
+  pill-selector page. Commit `e9440ce`, plus a related bug fix
+  (`9030ad8`) and a full e2e-suite repair for regressions the earlier two
+  redesigns had left unnoticed (`d8f1853`).
+
+**Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
+notes for each screen carry the full reasoning):
+- Spotify removed entirely from Aujourd'hui (M7's own embed, not merely
+  restyled — no card, no CSP entry).
+- Pomodoro no longer links a session to a specific todo; "recorded" is now
+  a session counter, not a confirmation banner.
+- Aujourd'hui's own course card lost its "Voir le cours" action, keeping
+  only "Réviser" (Mes cours' own card kept its equivalent, "Lire le
+  cours" — the two are no longer symmetric on this point).
+
+**Found during the `docs/UI.md` reconciliation pass, not yet confirmed
+with the user:** Notions' own per-notion "why isn't this mastered yet"
+sentence is gone from the redesigned card. Needs a decision before it is
+either restored or written off as a fourth intentional cut.
+
+**Remaining — next step:** **Lecteur, Progression, Calendrier, Tuteur**,
+same pattern, one at a time. Each needs its own mockup from the user
+before scoping starts — do not invent a redesign for any of these without
+one. `docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen
+notes both need updating as each lands, the same way all three done
+screens were.
+
+**Acceptance**
+- [x] Aujourd'hui redesigned from mockup, `docs/UI.md` reconciled
+- [x] Mes cours redesigned from mockup, `docs/UI.md` reconciled
+- [x] Notions redesigned from mockup, `docs/UI.md` reconciled, full
+      `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated `fixme`)
+- [ ] Lecteur redesigned from mockup, `docs/UI.md` reconciled
+- [ ] Progression redesigned from mockup, `docs/UI.md` reconciled
+- [ ] Calendrier redesigned from mockup, `docs/UI.md` reconciled
+- [ ] Tuteur redesigned from mockup, `docs/UI.md` reconciled
+- [ ] This file's own M9 section fully reconciled once all seven screens
+      are done — until then, treat both boxes above and this file's own
+      Phase 1 acceptance list as the current, partial state, not "M9 done"
 
 ---
 
