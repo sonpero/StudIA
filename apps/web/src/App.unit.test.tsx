@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
@@ -62,17 +62,37 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the nav offers all five real destinations, Aujourd'hui, Mes cours, Progression, Calendrier and Tuteur, from anywhere", async () => {
+  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9)", async () => {
     stubAuthenticatedFetch();
 
     render(<App />);
 
     await screen.findByText(/alex/i);
-    expect(screen.getByRole("button", { name: "Aujourd'hui" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mes cours" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Progression" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Calendrier" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tuteur" })).toBeInTheDocument();
+    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur"];
+    for (const name of names) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    const buttons = within(nav).getAllByRole("button");
+    expect(buttons.map((b) => b.textContent)).toEqual(names);
+  });
+
+  it("Notions and Lecteur each mark their own nav item active, never 'Mes cours' — each is its own destination now (M9), not a Mes cours sub-state", async () => {
+    stubAuthenticatedFetch();
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    await user.click(screen.getByRole("button", { name: "Notions" }));
+    await screen.findByRole("heading", { name: "Notions" });
+    expect(screen.getByRole("button", { name: "Notions" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Mes cours" })).not.toHaveAttribute("aria-current");
+
+    await user.click(screen.getByRole("button", { name: "Lecteur" }));
+    await screen.findByRole("heading", { name: "Lecteur" });
+    expect(screen.getByRole("button", { name: "Lecteur" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Mes cours" })).not.toHaveAttribute("aria-current");
   });
 
   it("Tuteur is reachable directly from the nav (a course picker) and from within a course via NotionsScreen's 'Discuter du cours'", async () => {
@@ -113,6 +133,78 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Retour" }));
     await screen.findByRole("heading", { name: "Notions du cours" });
+  });
+
+  // docs/UI.md's Navigation note (M9): Notions and Lecteur gain the same
+  // dual-entry shape Tuteur already has — reachable directly from the nav
+  // with no course chosen, landing on the shared picker (CoursePickerScreen),
+  // and "Retour" from a course reached that way returns to the picker
+  // itself, never to Mes cours (fromPicker, distinct from the unchanged
+  // "opened from a course's own card" path already covered elsewhere).
+  it("Notions is reachable directly from the nav (a course picker); 'Retour' from there returns to the picker, not Mes cours", async () => {
+    const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+    const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Notion 1", body: "Corps.", difficulty: "medium", position: 0, createdAt: "2026-01-01T00:00:00Z" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+        if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    // Directly from the nav: a picker, not a specific course's notions yet.
+    await user.click(screen.getByRole("button", { name: "Notions" }));
+    await screen.findByRole("heading", { name: "Notions" });
+    await screen.findByText("Cours test");
+
+    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
+    await screen.findByRole("heading", { name: "Notions du cours" });
+
+    // fromPicker: "Retour", not "Retour à mes cours", and it goes back to
+    // the picker (heading "Notions"), not to Mes cours.
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Notions" });
+    expect(screen.queryByRole("heading", { name: "Mes cours" })).not.toBeInTheDocument();
+  });
+
+  it("Lecteur is reachable directly from the nav (a course picker); 'Retour' from there returns to the picker, not Mes cours", async () => {
+    const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (/\/api\/documents\/doc-1$/.test(url)) return Promise.resolve(new Response(JSON.stringify({ ...aDocument, lastError: null, markdown: "Contenu du cours." }), { status: 200 }));
+        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    // Directly from the nav: a picker, not a specific course's content yet.
+    await user.click(screen.getByRole("button", { name: "Lecteur" }));
+    await screen.findByRole("heading", { name: "Lecteur" });
+    await screen.findByText("Cours test");
+
+    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
+    await screen.findByRole("heading", { name: "Lecture" });
+    await screen.findByText("Contenu du cours.");
+
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Lecteur" });
+    expect(screen.queryByRole("heading", { name: "Mes cours" })).not.toBeInTheDocument();
   });
 
   it("authenticated: the content area reserves space for the now-fixed desktop sidebar, so a long page's content never renders underneath it", async () => {

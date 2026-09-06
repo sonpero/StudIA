@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BookOpen, Calendar, Home, MessageCircle, TrendingUp } from "lucide-react";
+import { BookOpen, BookOpenText, Calendar, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
@@ -30,12 +30,25 @@ import { TutorScreen } from "./screens/TutorScreen.js";
 // the same persistent nav at all times.
 type View =
   | { name: "documents" }
-  | { name: "notions"; documentId: string }
+  // documentId absent: the picker (docs/UI.md's Navigation note, M9 —
+  // the same shape Tuteur already had). fromPicker mirrors tutor's own
+  // fromNotions in spirit: only meaningful once documentId is set, and
+  // decides whether "Retour"/"Retour à mes cours" leaves for Mes cours or
+  // for the picker (the same view with documentId cleared) — a third
+  // source needing its own flag, alongside "opened from a course's own
+  // card on Mes cours" (neither flag set, unchanged since before M9).
+  | { name: "notions"; documentId?: string; fromPicker?: boolean }
   | { name: "review"; documentId: string; notionId?: string }
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
   | { name: "calendar" }
-  | { name: "reader"; documentId: string; fromNotions?: boolean }
+  // documentId absent: the picker (M9, same shape as notions above).
+  // fromNotions and fromPicker are mutually exclusive sources, both only
+  // meaningful once documentId is set: fromNotions returns to that
+  // course's NotionsScreen, fromPicker returns to this picker, neither set
+  // (opened from a course's own card on Mes cours, unchanged since M7)
+  // returns to Mes cours.
+  | { name: "reader"; documentId?: string; fromNotions?: boolean; fromPicker?: boolean }
   | { name: "proposals"; jobId: string }
   // documentId absent: the picker (docs/UI.md's Tuteur note). fromNotions
   // mirrors reader's own field: only meaningful once documentId is set, and
@@ -68,15 +81,17 @@ function AppShell() {
     return <LoginScreen />;
   }
 
+  // docs/UI.md's Navigation note (M9): Notions and Lecteur are now their own
+  // top-level destinations, grouped beside Mes cours in that order — the
+  // catalogue, then a course's own atomic units, then its full source text.
+  // "Mes cours" no longer stays active for those two views: each has its
+  // own nav item now, so the old fallback (active for notions/reader too)
+  // would light up two items at once.
   const navItems: AppNavItem[] = [
     { key: "today", label: "Aujourd'hui", icon: Home, active: view.name === "today", onClick: () => setView({ name: "today" }) },
-    {
-      key: "documents",
-      label: "Mes cours",
-      icon: BookOpen,
-      active: view.name === "documents" || view.name === "notions" || view.name === "reader",
-      onClick: () => setView({ name: "documents" }),
-    },
+    { key: "documents", label: "Mes cours", icon: BookOpen, active: view.name === "documents", onClick: () => setView({ name: "documents" }) },
+    { key: "notions", label: "Notions", icon: Layers, active: view.name === "notions", onClick: () => setView({ name: "notions" }) },
+    { key: "reader", label: "Lecteur", icon: BookOpenText, active: view.name === "reader", onClick: () => setView({ name: "reader" }) },
     { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
     { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
     { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
@@ -105,11 +120,13 @@ function AppShell() {
           {view.name === "notions" && (
             <NotionsScreen
               documentId={view.documentId}
-              onBack={() => setView({ name: "documents" })}
-              onReview={(notionId) => setView({ name: "review", documentId: view.documentId, notionId })}
+              fromPicker={view.fromPicker}
+              onBack={() => (view.fromPicker ? setView({ name: "notions" }) : setView({ name: "documents" }))}
+              onReview={(notionId) => view.documentId && setView({ name: "review", documentId: view.documentId, notionId })}
               onOpenProgress={() => setView({ name: "progress", fromDocumentId: view.documentId })}
               onOpenReader={() => setView({ name: "reader", documentId: view.documentId, fromNotions: true })}
               onOpenTutor={() => setView({ name: "tutor", documentId: view.documentId, fromNotions: true })}
+              onSelectDocument={(documentId) => setView({ name: "notions", documentId, fromPicker: true })}
             />
           )}
           {view.name === "review" && (
@@ -136,7 +153,14 @@ function AppShell() {
           {view.name === "reader" && (
             <ReaderScreen
               documentId={view.documentId}
-              onBack={() => (view.fromNotions ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "documents" }))}
+              onBack={() =>
+                view.fromNotions
+                  ? setView({ name: "notions", documentId: view.documentId })
+                  : view.fromPicker
+                    ? setView({ name: "reader" })
+                    : setView({ name: "documents" })
+              }
+              onSelectDocument={(documentId) => setView({ name: "reader", documentId, fromPicker: true })}
             />
           )}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}

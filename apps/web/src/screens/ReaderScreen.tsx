@@ -1,5 +1,6 @@
 import type { ExtractionStatus } from "@studia/contracts";
 import { useQuery } from "@tanstack/react-query";
+import { BookOpenText } from "lucide-react";
 import { useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
@@ -7,6 +8,7 @@ import { Idle } from "../components/mascot/Idle.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Button } from "../components/ui/button.js";
 import { getDocument } from "../lib/documents-api.js";
+import { CoursePickerScreen } from "./CoursePickerScreen.js";
 
 function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
@@ -52,7 +54,7 @@ function BackButton({ onBack }: { onBack: () => void }) {
   );
 }
 
-export function ReaderScreen({ documentId, onBack }: { documentId: string; onBack: () => void }) {
+function ReaderCourseScreen({ documentId, onBack }: { documentId: string; onBack: () => void }) {
   const pollStartedAt = useRef<number | null>(null);
 
   const query = useQuery({
@@ -157,4 +159,34 @@ export function ReaderScreen({ documentId, onBack }: { documentId: string; onBac
       </div>
     </main>
   );
+}
+
+// M9 (docs/UI.md's Lecteur note): reachable directly from the nav with no
+// course chosen, landing on the same shared picker Tuteur's and Notions'
+// own notes describe. No hooks of its own — it only dispatches between the
+// picker and ReaderCourseScreen's own hooks, the same split TutorScreen
+// already uses for its own picker/chat halves, so switching between them
+// never violates the rules of hooks.
+export function ReaderScreen({
+  documentId,
+  onBack,
+  onSelectDocument,
+}: {
+  documentId?: string;
+  onBack: () => void;
+  onSelectDocument: (documentId: string) => void;
+}) {
+  if (documentId === undefined) {
+    return (
+      <CoursePickerScreen
+        heading="Lecteur"
+        description="Choisis un cours à lire."
+        emptyMessage="Ajoute un cours dans Mes cours pour le lire."
+        ctaLabel="Lire le cours"
+        ctaIcon={BookOpenText}
+        onSelectDocument={onSelectDocument}
+      />
+    );
+  }
+  return <ReaderCourseScreen documentId={documentId} onBack={onBack} />;
 }

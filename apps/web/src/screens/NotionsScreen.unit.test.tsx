@@ -6,17 +6,21 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotionsScreen } from "./NotionsScreen.js";
 
-function renderScreen(overrides: Partial<{ onOpenReader: () => void; onOpenTutor: () => void }> = {}) {
+function renderScreen(
+  overrides: Partial<{ onOpenReader: () => void; onOpenTutor: () => void; documentId: string; fromPicker: boolean; onSelectDocument: (documentId: string) => void }> = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <NotionsScreen
-        documentId="doc-1"
+        documentId={overrides.documentId ?? "doc-1"}
+        fromPicker={overrides.fromPicker}
         onBack={() => undefined}
         onReview={() => undefined}
         onOpenProgress={() => undefined}
         onOpenReader={overrides.onOpenReader ?? (() => undefined)}
         onOpenTutor={overrides.onOpenTutor ?? (() => undefined)}
+        onSelectDocument={overrides.onSelectDocument ?? (() => undefined)}
       />
     </QueryClientProvider>,
   );
@@ -325,7 +329,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} onSelectDocument={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");
@@ -637,7 +641,7 @@ describe("NotionsScreen", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} />
+        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} onSelectDocument={() => undefined} />
       </QueryClientProvider>,
     );
     await screen.findByText("Photosynthèse");
@@ -851,5 +855,106 @@ describe("NotionsScreen", () => {
 
     expect(await screen.findByRole("button", { name: /régénérer les fiches/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^créer les fiches$/i })).not.toBeInTheDocument();
+  });
+});
+
+// docs/UI.md's Navigation note (M9): Notions is now reachable directly from
+// the nav with no course chosen, landing on the same shared picker Tuteur's
+// own note describes (CoursePickerScreen). documentId absent is what
+// signals "no course chosen yet" — the same shape TutorScreen already used
+// before this pass.
+describe("NotionsScreen — picker (no course chosen, M9)", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function renderPicker(onSelectDocument: (documentId: string) => void = () => undefined) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NotionsScreen
+          documentId={undefined}
+          onBack={() => undefined}
+          onReview={() => undefined}
+          onOpenProgress={() => undefined}
+          onOpenReader={() => undefined}
+          onOpenTutor={() => undefined}
+          onSelectDocument={onSelectDocument}
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows the picker (heading 'Notions'), not any of the course-specific states", () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderPicker();
+    expect(screen.getByRole("heading", { name: "Notions" })).toBeInTheDocument();
+  });
+
+  it("picking a course calls onSelectDocument with its id", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: "doc-9", title: "Cours test", colour: "#F87171" }]), { status: 200 })));
+    const onSelectDocument = vi.fn();
+    const user = userEvent.setup();
+    renderPicker(onSelectDocument);
+
+    await screen.findByText("Cours test");
+    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
+
+    expect(onSelectDocument).toHaveBeenCalledWith("doc-9");
+  });
+});
+
+// docs/UI.md's Notions du cours note (M9): "this link reads 'Retour'
+// instead of 'Retour à mes cours', when fromPicker is set" — a course
+// reached via the nav's own picker returns there, and "Retour à mes cours"
+// would name the wrong destination on that path.
+describe("NotionsScreen — fromPicker back label (M9)", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("empty state: reads 'Retour', not 'Retour à mes cours', when opened from the picker", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
+
+    renderScreen({ fromPicker: true });
+
+    await screen.findByText(/pas encore été créées/i);
+    expect(screen.getByRole("button", { name: "Retour" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retour à mes cours/i })).not.toBeInTheDocument();
+  });
+
+  it("ready state: reads 'Retour', not 'Retour à mes cours', when opened from the picker", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen({ fromPicker: true });
+    await screen.findByText("Photosynthèse");
+
+    expect(screen.getByText("Retour")).toBeInTheDocument();
+    expect(screen.queryByText(/retour à mes cours/i)).not.toBeInTheDocument();
+  });
+
+  it("ready state: still reads 'Retour à mes cours' when fromPicker is unset (opened from a course's own card, unchanged)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
+      }),
+    );
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    expect(screen.getByText("Retour à mes cours")).toBeInTheDocument();
   });
 });

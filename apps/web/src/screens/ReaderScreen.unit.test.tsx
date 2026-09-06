@@ -6,11 +6,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReaderScreen } from "./ReaderScreen.js";
 
-function renderScreen(onBack: () => void = () => undefined) {
+function renderScreen(onBack: () => void = () => undefined, onSelectDocument: (documentId: string) => void = () => undefined) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <ReaderScreen documentId="doc-1" onBack={onBack} />
+      <ReaderScreen documentId="doc-1" onBack={onBack} onSelectDocument={onSelectDocument} />
     </QueryClientProvider>,
   );
 }
@@ -222,5 +222,43 @@ describe("ReaderScreen", () => {
     await user.click(screen.getByRole("button", { name: "Retour" }));
 
     expect(onBack).toHaveBeenCalled();
+  });
+});
+
+// docs/UI.md's Lecteur note (M9): reachable directly from the nav with no
+// course chosen, landing on the same shared picker Tuteur's and Notions'
+// own notes describe — documentId absent is what signals "no course chosen
+// yet", the same shape TutorScreen already used before this pass.
+describe("ReaderScreen — picker (no course chosen, M9)", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function renderPicker(onSelectDocument: (documentId: string) => void = () => undefined) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReaderScreen documentId={undefined} onBack={() => undefined} onSelectDocument={onSelectDocument} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows the picker (heading 'Lecteur'), not any of the course-specific states", () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    renderPicker();
+    expect(screen.getByRole("heading", { name: "Lecteur" })).toBeInTheDocument();
+  });
+
+  it("picking a course calls onSelectDocument with its id", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: "doc-9", title: "Cours test", colour: "#F87171" }]), { status: 200 })));
+    const onSelectDocument = vi.fn();
+    const user = userEvent.setup();
+    renderPicker(onSelectDocument);
+
+    await screen.findByText("Cours test");
+    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
+
+    expect(onSelectDocument).toHaveBeenCalledWith("doc-9");
   });
 });

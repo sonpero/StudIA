@@ -8,75 +8,13 @@ import { Idle } from "../components/mascot/Idle.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Thinking } from "../components/mascot/Thinking.js";
 import { Button } from "../components/ui/button.js";
-import { Card } from "../components/ui/card.js";
-import { getDocument, listDocuments } from "../lib/documents-api.js";
-import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { getDocument } from "../lib/documents-api.js";
 import { askStream, createConversation, getConversation, type Citation, type TutorMessage } from "../lib/tutor-api.js";
 import { getCachedConversationId, setCachedConversationId } from "../lib/tutor-storage.js";
+import { CoursePickerScreen } from "./CoursePickerScreen.js";
 
 function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
-}
-
-function TutorPickerScreen({ onSelectDocument }: { onSelectDocument: (documentId: string) => void }) {
-  const query = useQuery({ queryKey: ["documents"], queryFn: listDocuments });
-
-  if (query.status === "pending") {
-    return (
-      <main className="p-8">
-        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
-          ))}
-        </div>
-      </main>
-    );
-  }
-
-  if (query.status === "error") {
-    return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
-        <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-        <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void query.refetch()}>Réessayer</Button>
-      </main>
-    );
-  }
-
-  const documents = query.data;
-
-  if (documents.length === 0) {
-    return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
-        <Idle />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-        <p>Ajoute un cours dans Mes cours pour pouvoir en discuter avec le tuteur.</p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="p-8">
-      <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-      <p className="mb-[var(--space-block)] text-sm text-text-muted">Choisis un cours pour commencer à discuter.</p>
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-[var(--space-block)]">
-        {documents.map((document) => (
-          <Card key={document.id} className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-              <span className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</span>
-            </div>
-            <Button variant="secondary" onClick={() => onSelectDocument(document.id)}>
-              <MessageCircle aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-              Discuter
-            </Button>
-          </Card>
-        ))}
-      </div>
-    </main>
-  );
 }
 
 // Shared by the answer bubble and its citations (docs/UI.md's Tuteur note),
@@ -432,6 +370,17 @@ export function TutorScreen({
   onSelectDocument: (documentId: string) => void;
   onBack: () => void;
 }) {
-  if (!documentId) return <TutorPickerScreen onSelectDocument={onSelectDocument} />;
+  if (!documentId) {
+    return (
+      <CoursePickerScreen
+        heading="Tuteur"
+        description="Choisis un cours pour commencer à discuter."
+        emptyMessage="Ajoute un cours dans Mes cours pour pouvoir en discuter avec le tuteur."
+        ctaLabel="Discuter"
+        ctaIcon={MessageCircle}
+        onSelectDocument={onSelectDocument}
+      />
+    );
+  }
   return <TutorChatScreen documentId={documentId} onBack={onBack} />;
 }

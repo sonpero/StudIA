@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Repeat } from "lucide-react";
+import { BookOpen, Repeat } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
@@ -7,6 +7,7 @@ import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { CoursePickerScreen } from "./CoursePickerScreen.js";
 import {
   generateCardsForDocument,
   getGenerationStatus,
@@ -103,8 +104,9 @@ const NOTION_BODY_COMPONENTS: Components = {
   code: (props) => <code className="rounded bg-canvas px-1 text-sm" {...props} />,
 };
 
-export function NotionsScreen({
+function NotionsCourseScreen({
   documentId,
+  fromPicker,
   onBack,
   onReview,
   onOpenProgress,
@@ -112,12 +114,18 @@ export function NotionsScreen({
   onOpenTutor,
 }: {
   documentId: string;
+  fromPicker?: boolean;
   onBack: () => void;
   onReview: (notionId?: string) => void;
   onOpenProgress: () => void;
   onOpenReader: () => void;
   onOpenTutor: () => void;
 }) {
+  // M9 (docs/UI.md's Notions du cours note): "Retour à mes cours" names a
+  // specific destination, which would lie once the third entry point (the
+  // nav's own picker) is where this course was actually reached from —
+  // "Retour" is what Lecteur's own note already calls the same distinction.
+  const backLabel = fromPicker ? "Retour" : "Retour à mes cours";
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
   const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
@@ -231,7 +239,7 @@ export function NotionsScreen({
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
         <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>
         <Button variant="secondary" onClick={onBack}>
-          Retour à mes cours
+          {backLabel}
         </Button>
       </main>
     );
@@ -256,7 +264,7 @@ export function NotionsScreen({
             order follows: this link first, then the toolbar's three
             actions. */}
         <button type="button" className="mb-[var(--space-block)] text-sm text-text-muted underline" onClick={onBack}>
-          Retour à mes cours
+          {backLabel}
         </button>
         <div className="mb-[var(--space-section)] flex flex-wrap items-start justify-between gap-4">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
@@ -385,5 +393,55 @@ export function NotionsScreen({
         })}
       </div>
     </main>
+  );
+}
+
+// M9 (docs/UI.md's Navigation note): Notions is now reachable directly from
+// the nav with no course chosen, landing on the same shared picker Tuteur's
+// own note describes. This outer component carries no hooks of its own — it
+// only dispatches between the picker and NotionsCourseScreen's own hooks,
+// the same split TutorScreen already uses for its own picker/chat halves,
+// so switching between them never violates the rules of hooks.
+export function NotionsScreen({
+  documentId,
+  fromPicker,
+  onBack,
+  onReview,
+  onOpenProgress,
+  onOpenReader,
+  onOpenTutor,
+  onSelectDocument,
+}: {
+  documentId?: string;
+  fromPicker?: boolean;
+  onBack: () => void;
+  onReview: (notionId?: string) => void;
+  onOpenProgress: () => void;
+  onOpenReader: () => void;
+  onOpenTutor: () => void;
+  onSelectDocument: (documentId: string) => void;
+}) {
+  if (documentId === undefined) {
+    return (
+      <CoursePickerScreen
+        heading="Notions"
+        description="Choisis un cours pour voir ses notions."
+        emptyMessage="Ajoute un cours dans Mes cours pour voir ses notions."
+        ctaLabel="Voir les notions"
+        ctaIcon={BookOpen}
+        onSelectDocument={onSelectDocument}
+      />
+    );
+  }
+  return (
+    <NotionsCourseScreen
+      documentId={documentId}
+      fromPicker={fromPicker}
+      onBack={onBack}
+      onReview={onReview}
+      onOpenProgress={onOpenProgress}
+      onOpenReader={onOpenReader}
+      onOpenTutor={onOpenTutor}
+    />
   );
 }
