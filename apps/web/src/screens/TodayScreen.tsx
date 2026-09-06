@@ -115,7 +115,7 @@ function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number
 // do the same thing, disabled while a photo is already uploading, the same
 // guard UploadCard's own "Annuler" applies to its confirm step (docs/UI.md's
 // Shape and depth note).
-function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string) => void; onClose: () => void }) {
+export function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string) => void; onClose: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
@@ -175,8 +175,8 @@ function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string)
   );
 }
 
-type TodoDraft = { label: string; dueDate: string; documentId: string };
-const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
+export type TodoDraft = { label: string; dueDate: string; documentId: string };
+export const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
 
 // Strictly what the CRUD already exposes server-side: a label, an optional
 // date, an optional course — no priority, no tags, no recurrence.
@@ -185,7 +185,7 @@ const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
 // this form unmounts on close (it's a sibling of its own "Ajouter un todo"
 // trigger, not CSS-hidden — docs/UI.md), so an unsaved draft only survives
 // Escape because it was never inside the component that just disappeared.
-function AddTodoForm({
+export function AddTodoForm({
   documents,
   pending,
   draft,

@@ -1,17 +1,13 @@
+import type { DocumentSummary } from "@studia/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   BookOpen,
-  BookOpenText,
   Calendar,
+  Camera,
   Check,
   Clock,
-  Flame,
-  GraduationCap,
-  Home,
-  Layers,
   ListChecks,
-  MessageCircle,
   Music,
   Play,
   Plus,
@@ -19,111 +15,42 @@ import {
   SkipBack,
   SkipForward,
   Timer,
-  TrendingUp,
   Volume2,
   X,
-  type LucideIcon,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
-import { FIELD_CLASS } from "../components/ui/field-styles.js";
-import { ICON_SIZE_INLINE, ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { listDocuments } from "../lib/documents-api.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type Todo } from "../lib/today-api.js";
-import { buildCourseCards, countdownLabel, formatTodoDueDate, type CourseCard as CourseCardData } from "./TodayScreen.js";
+import {
+  AddTodoForm,
+  buildCourseCards,
+  countdownLabel,
+  EMPTY_TODO_DRAFT,
+  formatTodoDueDate,
+  PhotoUploadInput,
+  type CourseCard as CourseCardData,
+  type TodoDraft,
+} from "./TodayScreen.js";
 
 const QUERY_KEY = ["today"];
+const DOCUMENTS_QUERY_KEY = ["documents"];
 
 // Front-end prototype, approved from a design mockup (see the reviewed
 // artifact), reachable from App.tsx's own nav as a temporary staging
-// entry. Courses and todos are wired to the real GET /api/today (the same
-// endpoint and the same buildCourseCards fold the shipped Aujourd'hui
-// already uses — re-exported from TodayScreen.tsx rather than
-// duplicated); the streak, the user chip, the pomodoro card and the
-// study-sounds player are still hardcoded, wired one piece at a time.
+// entry. Courses, todos, the sidebar (now App.tsx's own real AppNav) and
+// the connected user's name are wired to real data; the pomodoro card and
+// the study-sounds player are still hardcoded, wired one piece at a time.
 //
-// Knowingly departs from two of docs/UI.md's existing rules for the
+// Knowingly departs from one of docs/UI.md's existing rules for the
 // shipped Aujourd'hui screen, per the approved mockup — the user asked
 // not to worry about reconciling this with docs/UI.md for now (that
-// happens later, whenever this replaces the real Aujourd'hui):
-// - the course cards' subject icon sits in a tinted circle (a subject-
-//   colour tint), where the shipped screen uses a left border only
-//   ("Card left border, not a tinted background").
-// - the sidebar streak card has a flame icon, which "no flame icon, no
-//   fire emoji" (the shipped streak card's own rule) bans outright.
-const NAV_ITEMS: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: "Aujourd'hui", icon: Home, active: true },
-  { label: "Mes cours", icon: BookOpen },
-  { label: "Notions", icon: Layers },
-  { label: "Lecteur", icon: BookOpenText },
-  { label: "Progression", icon: TrendingUp },
-  { label: "Calendrier", icon: Calendar },
-  { label: "Tuteur", icon: MessageCircle },
-];
-
-function Sidebar({ onExit }: { onExit?: () => void }) {
-  return (
-    <div className="flex w-60 shrink-0 flex-col gap-[var(--space-section)] border-r border-border p-4">
-      <div className="flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary">
-          <GraduationCap aria-hidden="true" focusable="false" size={20} strokeWidth={ICON_STROKE_WIDTH} color="#fff" />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-[family-name:var(--font-display)] text-base font-extrabold leading-tight">StudIA</span>
-          <span className="text-[length:var(--text-label)] leading-tight text-text-muted">Étudie plus intelligemment</span>
-        </div>
-      </div>
-
-      <nav aria-label="Navigation principale" className="flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          // The only piece of real navigation so far: "Aujourd'hui"
-          // returns to the real app. Every other item stays a static row
-          // until its own screen exists here.
-          const onClick = item.label === "Aujourd'hui" ? onExit : undefined;
-          return (
-            <button
-              key={item.label}
-              type="button"
-              onClick={onClick}
-              aria-current={item.active ? "page" : undefined}
-              className={
-                item.active
-                  ? "flex items-center gap-2.5 rounded-full bg-primary-soft px-3 py-2 text-sm font-semibold text-primary"
-                  : "flex items-center gap-2.5 rounded-full px-3 py-2 text-sm text-text-muted"
-              }
-            >
-              <Icon aria-hidden="true" focusable="false" size={ICON_SIZE_NAV} strokeWidth={ICON_STROKE_WIDTH} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="flex-1" />
-
-      {/* Still mock: the streak isn't wired this pass. */}
-      <Card className="flex items-center gap-2.5 p-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/10">
-          <Flame aria-hidden="true" focusable="false" size={16} strokeWidth={ICON_STROKE_WIDTH} color="#f5b940" />
-        </span>
-        <div className="flex flex-col">
-          <span className="text-sm font-bold">Série de 9 jours</span>
-          <span className="text-[length:var(--text-label)] text-text-muted">Continue comme ça !</span>
-        </div>
-      </Card>
-
-      <div className="flex items-center gap-2.5 px-1">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">LM</div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight">Léa Martin</span>
-          <span className="text-[length:var(--text-label)] leading-tight text-text-muted">24 fiches à réviser</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// happens later, whenever this replaces the real Aujourd'hui): the course
+// cards' subject icon sits in a tinted circle (a subject-colour tint),
+// where the shipped screen uses a left border only ("Card left border,
+// not a tinted background").
 function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onReviewCourse?: (documentId: string) => void }) {
   const colour = course.colour ?? "#667085";
   return (
@@ -194,45 +121,26 @@ function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColou
   );
 }
 
-// Minimal by design: a label only, matching the API's own "label required,
-// everything else optional" contract — the mockup's own "+" affordance
-// never specified a fuller form (date, course), so this doesn't invent one.
-function AddTodoForm({ onSubmit, onClose }: { onSubmit: (label: string) => void; onClose: () => void }) {
-  const [label, setLabel] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const inputId = useId();
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  return (
-    <form
-      className="flex items-center gap-[var(--space-related)]"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
-      }}
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = label.trim();
-        if (!trimmed) return;
-        onSubmit(trimmed);
-      }}
-    >
-      <label htmlFor={inputId} className="sr-only">
-        Nouveau todo
-      </label>
-      <input id={inputId} ref={inputRef} required value={label} onChange={(e) => setLabel(e.target.value)} className={`${FIELD_CLASS} flex-1 py-1.5 text-sm`} placeholder="Nouveau todo" />
-      <button type="submit" aria-label="Confirmer l'ajout" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-        <Check aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
-      </button>
-    </form>
-  );
-}
-
-function TodosCard({ todos, courseColourByDocumentId }: { todos: Todo[]; courseColourByDocumentId: Map<string, string> }) {
+// Manual entry (label + date + course) and the photo-extraction flow are
+// both real now, reusing TodayScreen.tsx's own AddTodoForm/PhotoUploadInput
+// rather than a second, narrower implementation — "c'est déjà dispo dans
+// l'API" was true for both before this pass, only their trigger here (a
+// compact "+"/camera pair, not two full-width buttons) is new.
+function TodosCard({
+  todos,
+  documents,
+  courseColourByDocumentId,
+  onPhotoUploaded,
+}: {
+  todos: Todo[];
+  documents: DocumentSummary[];
+  courseColourByDocumentId: Map<string, string>;
+  onPhotoUploaded: (jobId: string) => void;
+}) {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
   const remaining = todos.filter((t) => !t.done).length;
 
   const toggleMutation = useMutation({
@@ -244,8 +152,9 @@ function TodosCard({ todos, courseColourByDocumentId }: { todos: Todo[]; courseC
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
   const createMutation = useMutation({
-    mutationFn: (label: string) => createTodo({ label, dueDate: null, documentId: null }),
+    mutationFn: (input: { label: string; dueDate: string | null; documentId: string | null }) => createTodo(input),
     onSuccess: () => {
+      setDraft(EMPTY_TODO_DRAFT);
       setAddOpen(false);
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
@@ -258,11 +167,12 @@ function TodosCard({ todos, courseColourByDocumentId }: { todos: Todo[]; courseC
           <ListChecks aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Todos
         </div>
-        {addOpen ? (
-          <AddTodoForm onSubmit={(label) => createMutation.mutate(label)} onClose={() => setAddOpen(false)} />
-        ) : (
+        {!addOpen && !photoOpen && (
           <div className="flex items-center gap-[var(--space-related)]">
             <span className="text-[length:var(--text-label)] text-text-muted">{remaining} restants</span>
+            <button type="button" aria-label="Ajouter depuis une photo" onClick={() => setPhotoOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Camera aria-hidden="true" focusable="false" size={14} strokeWidth={ICON_STROKE_WIDTH} />
+            </button>
             <button type="button" aria-label="Ajouter un todo" onClick={() => setAddOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
               <Plus aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
             </button>
@@ -282,6 +192,26 @@ function TodosCard({ todos, courseColourByDocumentId }: { todos: Todo[]; courseC
             />
           ))}
         </ul>
+      )}
+
+      {addOpen && (
+        <AddTodoForm
+          documents={documents}
+          pending={createMutation.isPending}
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={(input) => createMutation.mutate(input)}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
+      {photoOpen && (
+        <PhotoUploadInput
+          onUploaded={(jobId) => {
+            setPhotoOpen(false);
+            onPhotoUploaded(jobId);
+          }}
+          onClose={() => setPhotoOpen(false)}
+        />
       )}
     </Card>
   );
@@ -382,18 +312,28 @@ function StudySoundsCard() {
   );
 }
 
-export function Today({ onExit, onReviewCourse }: { onExit?: () => void; onReviewCourse?: (documentId: string) => void } = {}) {
+export function Today({
+  username,
+  onReviewCourse,
+  onOpenProposals,
+}: {
+  username: string;
+  onReviewCourse?: (documentId: string) => void;
+  onOpenProposals: (jobId: string) => void;
+}) {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: getToday });
+  // Only feeds the add-todo form's own course picker, same reasoning as
+  // TodayScreen.tsx's own identical read: a course with nothing to signal
+  // today never reaches TodayView, but must still be selectable by hand.
+  const documentsQuery = useQuery({ queryKey: DOCUMENTS_QUERY_KEY, queryFn: listDocuments });
 
   return (
-    <div className="flex min-h-screen bg-canvas">
-      <Sidebar onExit={onExit} />
-
-      <div className="flex flex-1 gap-[var(--space-section)] p-8">
-        <main className="flex flex-1 flex-col gap-[var(--space-section)]">
-          {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
-          {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
-          {query.status === "success" && (() => {
+    <div className="flex gap-[var(--space-section)]">
+      <main className="flex flex-1 flex-col gap-[var(--space-section)]">
+        {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
+        {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
+        {query.status === "success" &&
+          (() => {
             const view = query.data;
             const courseCards = buildCourseCards(view);
             const totalDue = view.dueCards.reduce((sum, c) => sum + c.count, 0);
@@ -402,7 +342,7 @@ export function Today({ onExit, onReviewCourse }: { onExit?: () => void; onRevie
             return (
               <>
                 <div className="flex flex-col gap-[var(--space-related)]">
-                  <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, Léa</h1>
+                  <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, {username}</h1>
                   {totalDue > 0 ? (
                     <p className="text-sm text-text-muted">
                       Tu as <strong className="font-semibold text-text">{totalDue} fiche{totalDue > 1 ? "s" : ""}</strong> à réviser dans {view.dueCards.length} cours. 25
@@ -427,16 +367,15 @@ export function Today({ onExit, onReviewCourse }: { onExit?: () => void; onRevie
                   </div>
                 )}
 
-                <TodosCard todos={view.todos} courseColourByDocumentId={courseColourByDocumentId} />
+                <TodosCard todos={view.todos} documents={documentsQuery.data ?? []} courseColourByDocumentId={courseColourByDocumentId} onPhotoUploaded={onOpenProposals} />
               </>
             );
           })()}
-        </main>
+      </main>
 
-        <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
-          <PomodoroCard />
-          <StudySoundsCard />
-        </div>
+      <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
+        <PomodoroCard />
+        <StudySoundsCard />
       </div>
     </div>
   );

@@ -7,17 +7,28 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodayView } from "../lib/today-api.js";
 import { Today } from "./Today.js";
 
-// Courses and todos are real now (view.dueCards/notionsBelowTarget/
+// Courses and todos are real (view.dueCards/notionsBelowTarget/
 // upcomingDeadlines/todos, from the same GET /api/today the shipped
 // Aujourd'hui already calls, and the same buildCourseCards fold —
-// re-exported from TodayScreen.tsx rather than duplicated). Pomodoro,
-// study sounds, and the sidebar's own streak/user chip stay mock: this
-// commit only wires courses and todos, one piece at a time as agreed.
-function renderScreen(overrides: Partial<{ onExit: () => void; onReviewCourse: (documentId: string) => void }> = {}) {
+// re-exported from TodayScreen.tsx rather than duplicated), and so is the
+// add-todo flow (date, course picker, photo upload) — this file reuses
+// TodayScreen.tsx's own AddTodoForm/PhotoUploadInput rather than a second,
+// narrower implementation. username is a required prop now (App.tsx's own
+// useAuth, not this component's own mock) — the sidebar itself moved out
+// of this file entirely, promoted to the app's real AppNav
+// (apps/web/src/components/AppNav.tsx), so it has no tests here any more.
+// Pomodoro and study sounds stay mock.
+function renderScreen(
+  overrides: Partial<{ username: string; onReviewCourse: (documentId: string) => void; onOpenProposals: (jobId: string) => void }> = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <Today onExit={overrides.onExit} onReviewCourse={overrides.onReviewCourse} />
+      <Today
+        username={overrides.username ?? "alex"}
+        onReviewCourse={overrides.onReviewCourse}
+        onOpenProposals={overrides.onOpenProposals ?? (() => undefined)}
+      />
     </QueryClientProvider>,
   );
 }
@@ -25,7 +36,8 @@ function renderScreen(overrides: Partial<{ onExit: () => void; onReviewCourse: (
 function stubFetch(view: TodayView | (() => Response)) {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockImplementation(() => {
+    vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
       if (typeof view === "function") return Promise.resolve(view());
       return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
     }),
@@ -35,7 +47,10 @@ function stubFetch(view: TodayView | (() => Response)) {
 const emptyView: TodayView = { date: "2026-09-06", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 };
 
 describe("Today (front-end prototype — courses and todos wired to real data)", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("loading state: shows a skeleton, never a bare mock", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
@@ -47,6 +62,12 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     stubFetch(() => new Response(null, { status: 500 }));
     renderScreen();
     await screen.findByText(/impossible de charger/i);
+  });
+
+  it("greets the real connected user by name, not a hardcoded one", async () => {
+    stubFetch(emptyView);
+    renderScreen({ username: "Camille" });
+    expect(await screen.findByRole("heading", { name: "Bonjour, Camille" })).toBeInTheDocument();
   });
 
   it("renders one card per course from the real due cards and upcoming deadlines", async () => {
@@ -125,7 +146,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     expect(within(undated).queryByText(/\d{4}/)).not.toBeInTheDocument();
   });
 
-  it("a done todo renders struck through, and '4 restants' counts only the pending ones", async () => {
+  it("a done todo renders struck through, and '1 restants' counts only the pending ones", async () => {
     stubFetch({
       ...emptyView,
       todos: [
@@ -145,6 +166,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (init?.method === "PATCH") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(null, { status: 200 }));
@@ -168,6 +190,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (init?.method === "DELETE") {
           calls.push({ url, method: init.method });
           return Promise.resolve(new Response(null, { status: 204 }));
@@ -187,11 +210,12 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("the '+' button reveals a minimal add form; submitting posts the label and collapses it", async () => {
+  it("the '+' button reveals the full add-todo form (label, date, course); submitting a bare label posts it with null date and course", async () => {
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (init?.method === "POST" && url === "/api/todos") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Nouveau todo", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
@@ -204,12 +228,101 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     await screen.findByText(/rien à réviser pour l'instant/i);
 
     await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
-    await user.type(screen.getByLabelText("Nouveau todo"), "Nouveau todo");
-    await user.click(screen.getByRole("button", { name: "Confirmer l'ajout" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Nouveau todo");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
     expect(calls).toEqual([{ url: "/api/todos", body: { label: "Nouveau todo", dueDate: null, documentId: null } }]);
     expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Nouveau todo")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+  });
+
+  it("filling in the date field posts it as the todo's dueDate", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (init?.method === "POST" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser", dueDate: "2026-09-20", documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser");
+    await user.type(screen.getByLabelText(/date/i), "2026-09-20");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser", dueDate: "2026-09-20", documentId: null } }]);
+  });
+
+  it("picking a course in the add-todo form posts its documentId", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) {
+          return Promise.resolve(new Response(JSON.stringify([{ id: "doc-1", title: "Maths", createdAt: "2026-01-01T00:00:00.000Z" }]), { status: 200 }));
+        }
+        if (init?.method === "POST" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser", dueDate: null, documentId: "doc-1", done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser");
+    await user.selectOptions(screen.getByLabelText(/^cours/i), "doc-1");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser", dueDate: null, documentId: "doc-1" } }]);
+  });
+
+  it("offers a second, discreet trigger to add a todo from a planner photo, closed by default", async () => {
+    stubFetch(emptyView);
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
+
+    expect(screen.getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
+  });
+
+  it("uploading a photo calls onOpenProposals with the returned job id", async () => {
+    const onOpenProposals = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
+          return Promise.resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen({ onOpenProposals });
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
+
+    const input = screen.getByLabelText(/photo de l'agenda/i);
+    const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
+    await user.upload(input, file);
+
+    expect(onOpenProposals).toHaveBeenCalledWith("job-1");
   });
 
   it("renders the pomodoro card with its segmented tabs and a start action (still mock)", async () => {
@@ -227,28 +340,5 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     await screen.findByText(/rien à réviser pour l'instant/i);
     expect(screen.getByText("Sons d'ambiance")).toBeInTheDocument();
     expect(screen.getAllByText("Rainy Window")).toHaveLength(2);
-  });
-
-  it("renders the sidebar: nav destinations, the streak, and the user chip (still mock)", async () => {
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien à réviser pour l'instant/i);
-    for (const name of ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur"]) {
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
-    }
-    expect(screen.getByText("Série de 9 jours")).toBeInTheDocument();
-    expect(screen.getByText("Léa Martin")).toBeInTheDocument();
-  });
-
-  it("the sidebar's own 'Aujourd'hui' row calls onExit — the way back to the real app", async () => {
-    stubFetch(emptyView);
-    const onExit = vi.fn();
-    const user = userEvent.setup();
-    renderScreen({ onExit });
-    await screen.findByText(/rien à réviser pour l'instant/i);
-
-    await user.click(screen.getByRole("button", { name: "Aujourd'hui" }));
-
-    expect(onExit).toHaveBeenCalled();
   });
 });

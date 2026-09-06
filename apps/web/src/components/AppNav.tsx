@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
-import { APP_NAME } from "../app-info.js";
+import { Flame, GraduationCap, type LucideIcon } from "lucide-react";
+import { APP_NAME, APP_TAGLINE } from "../app-info.js";
 import { ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
@@ -14,6 +14,15 @@ export interface AppNavItem {
   onClick: () => void;
 }
 
+// Two letters, from the pieces of a display name — "Léa Martin" -> "LM" —
+// or the first two characters of a plain single-word username ("alex" ->
+// "AL") when there's no second word to take one from.
+function initials(username: string): string {
+  const words = username.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0]!.charAt(0)}${words[1]!.charAt(0)}`.toUpperCase();
+  return username.slice(0, 2).toUpperCase();
+}
+
 // docs/UI.md's Layout/Navigation sections: one persistent nav, not two
 // separately-authored trees for desktop and mobile — the same buttons
 // reposition via responsive classes from a left sidebar (>=768px) to a
@@ -22,12 +31,30 @@ export interface AppNavItem {
 // accessible name, breaking getByRole("button", { name }) queries that
 // assume one match.
 //
+// Adopts the "Today" prototype's own sidebar (apps/web/src/screens/
+// Today.tsx) as the app's real one: the tagline, the streak card and the
+// user chip are new here, desktop-only (hidden md:flex — a bottom tab bar
+// has no room for either). streak/dueCount/username are real data now
+// (App.tsx's own GET /api/today and useAuth), not mock.
+//
 // Not yet built: the secondary group (Mes notes, Réglages have no screen at
 // all yet) and the tablet 72px icon-only collapse, which needs tooltips
 // standing in for the hidden labels — a new interaction pattern this pass
 // does not introduce (docs/UI.md's Icons note). The sidebar stays at its
 // full desktop width through the tablet breakpoint instead of collapsing.
-export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?: boolean }) {
+export function AppNav({
+  items,
+  dimmed = false,
+  streak,
+  dueCount,
+  username,
+}: {
+  items: AppNavItem[];
+  dimmed?: boolean;
+  streak: number;
+  dueCount: number;
+  username: string;
+}) {
   return (
     <nav
       aria-label="Navigation principale"
@@ -47,7 +74,15 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
         dimmed && "opacity-50",
       )}
     >
-      <span className="hidden font-[family-name:var(--font-display)] text-lg font-extrabold md:mb-6 md:block">{APP_NAME}</span>
+      <div className="hidden items-center gap-2 px-2 md:mb-6 md:flex">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary">
+          <GraduationCap aria-hidden="true" focusable="false" size={20} strokeWidth={ICON_STROKE_WIDTH} color="#fff" />
+        </span>
+        <span className="flex flex-col">
+          <span className="font-[family-name:var(--font-display)] text-base font-extrabold leading-tight">{APP_NAME}</span>
+          <span className="text-[length:var(--text-label)] leading-tight text-text-muted">{APP_TAGLINE}</span>
+        </span>
+      </div>
       {items.map((item) => {
         const Icon = item.icon;
         return (
@@ -57,8 +92,8 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
             aria-current={item.active ? "page" : undefined}
             onClick={item.onClick}
             className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium md:flex-none md:justify-start md:gap-2 md:rounded-[var(--radius-button)] md:text-left",
-              item.active ? "text-primary md:bg-primary-soft" : "text-text-muted hover:text-text md:hover:bg-canvas",
+              "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium md:flex-none md:justify-start md:gap-2 md:text-left",
+              item.active ? "text-primary md:bg-primary-soft md:font-semibold" : "text-text-muted hover:text-text md:hover:bg-canvas",
             )}
           >
             <Icon aria-hidden="true" focusable="false" size={ICON_SIZE_NAV} strokeWidth={ICON_STROKE_WIDTH} />
@@ -66,6 +101,30 @@ export function AppNav({ items, dimmed = false }: { items: AppNavItem[]; dimmed?
           </button>
         );
       })}
+
+      <div className="hidden flex-1 md:block" />
+
+      <div className="hidden flex-col gap-[var(--space-section)] md:flex">
+        <div className="flex items-center gap-[var(--space-related)] rounded-[var(--radius-card)] border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,24,40,.05)]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/10">
+            <Flame aria-hidden="true" focusable="false" size={16} strokeWidth={ICON_STROKE_WIDTH} color="#f5b940" />
+          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold">Série de {streak} jour{streak > 1 ? "s" : ""}</span>
+            <span className="text-[length:var(--text-label)] text-text-muted">{streak > 0 ? "Continue comme ça !" : "Révise aujourd'hui pour commencer une série."}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-[var(--space-related)] px-1">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{initials(username)}</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight">{username}</span>
+            <span className="text-[length:var(--text-label)] leading-tight text-text-muted">
+              {dueCount} fiche{dueCount > 1 ? "s" : ""} à réviser
+            </span>
+          </div>
+        </div>
+      </div>
     </nav>
   );
 }

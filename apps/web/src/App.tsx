@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { BookOpen, BookOpenText, Calendar, FlaskConical, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
+import { getToday } from "./lib/today-api.js";
 import { CalendarScreen } from "./screens/CalendarScreen.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
 import { NotionsScreen } from "./screens/NotionsScreen.js";
@@ -60,13 +61,27 @@ type View =
   // Temporary: the in-progress redesign prototype (apps/web/src/screens/
   // Today.tsx), staged in the nav so it can be followed as it gets wired
   // to real data, one section at a time — not part of any milestone's own
-  // scope. Static for now (no props at all): remove this view and its nav
-  // entry once it either replaces "today" above or is dropped.
+  // scope. Rendered like any other view now (its own sidebar was promoted
+  // to the app's real AppNav, below) — remove this view and its nav entry
+  // once it either replaces "today" above or is dropped.
   | { name: "today-preview" };
 
 function AppShell() {
   const auth = useAuth();
   const [view, setView] = useState<View>({ name: "documents" });
+
+  // Feeds the sidebar's own streak card and the user chip's due count
+  // (apps/web/src/components/AppNav.tsx) — the same GET /api/today every
+  // screen's own due/streak data already comes from (Today.tsx,
+  // TodayScreen.tsx), so this shares that one cached query rather than
+  // adding a second read: whichever of the three mounts first fetches it,
+  // the others reuse the cache. Called unconditionally, ahead of every
+  // early return below (Rules of Hooks: a hook after a conditional return
+  // that stops firing once auth resolves throws "Rendered more hooks than
+  // during the previous render" on the very first loading -> authenticated
+  // transition) — enabled only once authenticated, so it never fires
+  // against a session that isn't there yet.
+  const sidebarQuery = useQuery({ queryKey: ["today"], queryFn: getToday, enabled: auth.status === "authenticated" });
 
   if (auth.status === "loading") {
     return (
@@ -88,18 +103,6 @@ function AppShell() {
     return <LoginScreen />;
   }
 
-  // Bypasses the real AppNav entirely, same idiom as LoginScreen above:
-  // Today.tsx already renders its own full page, sidebar included (the
-  // approved mockup's own shape) — nesting it inside the real sidebar
-  // would double it up. onExit returns to the real app; onReviewCourse
-  // reuses the real ReviewScreen as-is (courses are wired to real data
-  // now, so a real due count needs a real review, not a decorative
-  // button) — this drops out of the preview into the normal AppShell
-  // below, same as any other "review" transition already does.
-  if (view.name === "today-preview") {
-    return <Today onExit={() => setView({ name: "today" })} onReviewCourse={(documentId) => setView({ name: "review", documentId })} />;
-  }
-
   // docs/UI.md's Navigation note (M9): Notions and Lecteur are now their own
   // top-level destinations, grouped beside Mes cours in that order — the
   // catalogue, then a course's own atomic units, then its full source text.
@@ -117,15 +120,15 @@ function AppShell() {
     // Temporary staging entry, kept last and visually distinct (FlaskConical,
     // not part of the M9 icon set) so it never reads as a real destination —
     // see the "today-preview" View variant above.
-    // active: always false, not view.name === "today-preview" — the early
-    // bypass above already returns before this array is ever built for
-    // that view, so TypeScript correctly flags the comparison as unreachable.
-    { key: "today-preview", label: "Today", icon: FlaskConical, active: false, onClick: () => setView({ name: "today-preview" }) },
+    { key: "today-preview", label: "Today", icon: FlaskConical, active: view.name === "today-preview", onClick: () => setView({ name: "today-preview" }) },
   ];
+
+  const sidebarStreak = sidebarQuery.data?.streak ?? 0;
+  const sidebarDueCount = sidebarQuery.data?.dueCards.reduce((sum, c) => sum + c.count, 0) ?? 0;
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <AppNav items={navItems} dimmed={view.name === "review"} />
+      <AppNav items={navItems} dimmed={view.name === "review"} streak={sidebarStreak} dueCount={sidebarDueCount} username={auth.user?.username ?? ""} />
       {/* md:ml-60 reserves the space the now-fixed sidebar (AppNav) takes
           out of normal flow on desktop — without it, content would render
           underneath it instead of beside it. */}
@@ -195,6 +198,13 @@ function AppShell() {
               documentId={view.documentId}
               onSelectDocument={(documentId) => setView({ name: "tutor", documentId })}
               onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "tutor" }))}
+            />
+          )}
+          {view.name === "today-preview" && (
+            <Today
+              username={auth.user?.username ?? ""}
+              onReviewCourse={(documentId) => setView({ name: "review", documentId })}
+              onOpenProposals={(jobId) => setView({ name: "proposals", jobId })}
             />
           )}
         </div>

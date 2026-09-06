@@ -59,14 +59,11 @@ describe("App", () => {
   });
 
   it("authenticated: shows the app content, not the login form", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 })),
-    );
+    stubAuthenticatedFetch();
 
     render(<App />);
 
-    expect(await screen.findByText(/alex/i)).toBeInTheDocument();
+    expect(await screen.findByText("Bonjour, alex.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
@@ -75,7 +72,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
     // "Today" is a temporary staging entry for the in-progress redesign
     // prototype (apps/web/src/screens/Today.tsx) — not part of M9's own
     // seven, kept last and named distinctly from "Aujourd'hui" so it's
@@ -89,16 +86,16 @@ describe("App", () => {
     expect(buttons.map((b) => b.textContent)).toEqual(names);
   });
 
-  it("Today (the in-progress redesign prototype) is reachable from the nav", async () => {
+  it("Today (the in-progress redesign prototype) is reachable from the nav, greeting the real connected user", async () => {
     stubAuthenticatedFetch();
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     await user.click(screen.getByRole("button", { name: "Today" }));
 
-    expect(screen.getByRole("heading", { name: "Bonjour, Léa" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bonjour, alex" })).toBeInTheDocument();
   });
 
   it("Notions and Lecteur each mark their own nav item active, never 'Mes cours' — each is its own destination now (M9), not a Mes cours sub-state", async () => {
@@ -106,7 +103,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     await user.click(screen.getByRole("button", { name: "Notions" }));
     await screen.findByRole("heading", { name: "Notions" });
@@ -127,6 +124,11 @@ describe("App", () => {
       vi.fn().mockImplementation((url: string) => {
         if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (url.startsWith("/api/today")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+          );
+        }
         if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
@@ -138,7 +140,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     // Directly from the nav: a picker, not a specific course's chat yet.
     await user.click(screen.getByRole("button", { name: "Tuteur" }));
@@ -173,6 +175,11 @@ describe("App", () => {
       vi.fn().mockImplementation((url: string) => {
         if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (url.startsWith("/api/today")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+          );
+        }
         if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
@@ -183,7 +190,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     // Directly from the nav: a picker, not a specific course's notions yet.
     await user.click(screen.getByRole("button", { name: "Notions" }));
@@ -207,6 +214,11 @@ describe("App", () => {
       vi.fn().mockImplementation((url: string) => {
         if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (url.startsWith("/api/today")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+          );
+        }
         if (/\/api\/documents\/doc-1$/.test(url)) return Promise.resolve(new Response(JSON.stringify({ ...aDocument, lastError: null, markdown: "Contenu du cours." }), { status: 200 }));
         if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
@@ -215,7 +227,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     // Directly from the nav: a picker, not a specific course's content yet.
     await user.click(screen.getByRole("button", { name: "Lecteur" }));
@@ -236,7 +248,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
     expect(screen.getByTestId("app-content").className).toMatch(/md:ml-60/);
   });
 
@@ -245,7 +257,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     await user.click(screen.getByRole("button", { name: "Calendrier" }));
     await screen.findByTestId("calendar-grid");
@@ -263,7 +275,7 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     await user.click(screen.getByRole("button", { name: "Progression" }));
     await screen.findByRole("heading", { name: "Progression" });
@@ -280,6 +292,11 @@ describe("App", () => {
       vi.fn().mockImplementation((url: string) => {
         if (typeof url !== "string") return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+        if (url.startsWith("/api/today")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+          );
+        }
         if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
@@ -308,13 +325,10 @@ describe("App", () => {
   });
 
   it("a 401 on any protected call bounces an authenticated session back to the login screen", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 })),
-    );
+    stubAuthenticatedFetch();
 
     render(<App />);
-    await screen.findByText(/alex/i);
+    await screen.findByText("Bonjour, alex.");
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
     await act(async () => {
