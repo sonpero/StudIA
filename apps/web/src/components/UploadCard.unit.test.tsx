@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UploadCard } from "./UploadCard.js";
@@ -9,6 +9,10 @@ function aFile(name: string) {
   return new File(["bytes"], name, { type: "image/jpeg" });
 }
 
+// Redesigned per the "Mes cours" mockup (ignoring docs/UI.md, per the user):
+// always open (no "+ Ajouter un cours" toggle to click through first) and
+// offers a real drop zone, not just a plain file input — dropping a file
+// must actually stage it, not merely look like it would.
 describe("UploadCard", () => {
   // jsdom does not implement createObjectURL; the thumbnail preview genuinely
   // needs it in a real browser, this just stubs the gap in the test environment.
@@ -19,12 +23,18 @@ describe("UploadCard", () => {
     vi.unstubAllGlobals();
   });
 
+  it("is always open, no toggle to click through first", () => {
+    render(<UploadCard onCreated={() => undefined} />);
+
+    expect(screen.getByLabelText(/titre du cours/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/dépose un fichier/i)).toBeInTheDocument();
+  });
+
   it("multi-page: staged files can be reordered and removed before confirming", async () => {
     const user = userEvent.setup();
     render(<UploadCard onCreated={() => undefined} />);
-    await user.click(screen.getByText(/ajouter un cours/i));
 
-    const input = screen.getByLabelText(/photos ou document/i);
+    const input = screen.getByLabelText(/dépose un fichier/i);
     await user.upload(input, [aFile("a.jpg"), aFile("b.jpg"), aFile("c.jpg")]);
 
     const names = () => screen.getAllByText(/\.jpg$/).map((el) => el.textContent);
@@ -37,13 +47,21 @@ describe("UploadCard", () => {
     expect(names()).toEqual(["a.jpg", "c.jpg"]);
   });
 
-  it("'Confirmer' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+  it("dropping a file onto the drop zone stages it, exactly like picking it from the file browser", () => {
+    render(<UploadCard onCreated={() => undefined} />);
+    const dropZone = screen.getByLabelText(/dépose un fichier/i);
+
+    fireEvent.drop(dropZone, { dataTransfer: { files: [aFile("dropped.jpg")] } });
+
+    expect(screen.getByText("dropped.jpg")).toBeInTheDocument();
+  });
+
+  it("'Créer le cours' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
     const user = userEvent.setup();
     render(<UploadCard onCreated={() => undefined} />);
-    await user.click(screen.getByText(/ajouter un cours/i));
-    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
+    await user.upload(screen.getByLabelText(/dépose un fichier/i), aFile("a.jpg"));
 
-    const button = screen.getByRole("button", { name: "Confirmer" });
+    const button = screen.getByRole("button", { name: "Créer le cours" });
     const icon = button.querySelector("svg");
     expect(icon).not.toBeNull();
     expect(icon).toHaveAttribute("aria-hidden", "true");
@@ -62,10 +80,9 @@ describe("UploadCard", () => {
     );
     const user = userEvent.setup();
     render(<UploadCard onCreated={() => undefined} />);
-    await user.click(screen.getByText(/ajouter un cours/i));
-    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
+    await user.upload(screen.getByLabelText(/dépose un fichier/i), aFile("a.jpg"));
 
-    await user.click(screen.getByRole("button", { name: /confirmer/i }));
+    await user.click(screen.getByRole("button", { name: /créer le cours/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/déjà été ajoutée/i);
   });
@@ -82,10 +99,9 @@ describe("UploadCard", () => {
     );
     const user = userEvent.setup();
     render(<UploadCard onCreated={() => undefined} />);
-    await user.click(screen.getByText(/ajouter un cours/i));
-    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
+    await user.upload(screen.getByLabelText(/dépose un fichier/i), aFile("a.jpg"));
 
-    await user.click(screen.getByRole("button", { name: /confirmer/i }));
+    await user.click(screen.getByRole("button", { name: /créer le cours/i }));
 
     const alert = await screen.findByRole("alert");
     expect(alert.className).not.toMatch(/text-primary/);
@@ -129,9 +145,8 @@ describe("UploadCard", () => {
 
     // Course A: a page is refused as a duplicate, the confirmation is
     // refused on screen.
-    await user.click(screen.getByText(/ajouter un cours/i));
-    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("a.jpg"));
-    await user.click(screen.getByRole("button", { name: /confirmer/i }));
+    await user.upload(screen.getByLabelText(/dépose un fichier/i), aFile("a.jpg"));
+    await user.click(screen.getByRole("button", { name: /créer le cours/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/déjà été ajoutée/i);
 
     // The document created for the refused course must not survive the
@@ -141,8 +156,8 @@ describe("UploadCard", () => {
     // Course B: a second, valid course, uploaded right after.
     await user.clear(screen.getByLabelText(/titre du cours/i));
     await user.click(screen.getByRole("button", { name: /retirer a\.jpg/i }));
-    await user.upload(screen.getByLabelText(/photos ou document/i), aFile("b.jpg"));
-    await user.click(screen.getByRole("button", { name: /confirmer/i }));
+    await user.upload(screen.getByLabelText(/dépose un fichier/i), aFile("b.jpg"));
+    await user.click(screen.getByRole("button", { name: /créer le cours/i }));
 
     await vi.waitFor(() => expect(onCreated).toHaveBeenCalled());
 

@@ -73,7 +73,7 @@ type CourseCardData = {
 // "Examen aujourd'hui"/"Examen demain" at 0/1, never "dans 0 jour"/"dans 1
 // jour" (docs/UI.md's Aujourd'hui — deadline note). daysAway is always >= 0
 // here: upcomingDeadlines already excludes a lapsed deadline.
-function countdownLabel(daysAway: number): string {
+export function countdownLabel(daysAway: number): string {
   if (daysAway === 0) return "Examen aujourd'hui";
   if (daysAway === 1) return "Examen demain";
   return `Examen dans ${daysAway} jours`;

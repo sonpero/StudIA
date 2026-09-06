@@ -155,8 +155,10 @@ describe("App", () => {
     await screen.findByText("Cours test");
     expect(screen.getByRole("button", { name: /discuter/i })).toBeInTheDocument();
 
-    // From within a course instead: NotionsScreen's own entry.
-    await user.click(screen.getByRole("button", { name: "Mes cours" }));
+    // From within a course instead: the Notions picker's own entry — Mes
+    // cours' own cards dropped "Voir les notions" in its redesign (Notions
+    // is independently reachable from the nav now, M9).
+    await user.click(screen.getByRole("button", { name: "Notions" }));
     await user.click(screen.getByRole("button", { name: "Voir les notions" }));
     await screen.findByRole("heading", { name: "Notions du cours" });
 
@@ -320,7 +322,10 @@ describe("App", () => {
 
     render(<App />);
     await screen.findByRole("heading", { name: "Bonjour, alex" });
-    await user.click(screen.getByRole("button", { name: "Mes cours" }));
+    // Via the Notions picker, not Mes cours — Mes cours' own cards dropped
+    // "Voir les notions" in its redesign (Notions is independently
+    // reachable from the nav now, M9).
+    await user.click(screen.getByRole("button", { name: "Notions" }));
     await screen.findByText("Cours test");
 
     await user.click(screen.getByRole("button", { name: "Voir les notions" }));

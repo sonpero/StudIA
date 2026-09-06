@@ -1,6 +1,6 @@
 import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, BookOpenText, RotateCw } from "lucide-react";
+import { ArrowRight, BookOpen, BookOpenText, FileText, Image as ImageIcon, RotateCw } from "lucide-react";
 import { useRef } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Reading } from "../components/mascot/Reading.js";
@@ -9,6 +9,9 @@ import { Button } from "../components/ui/button.js";
 import { UploadCard } from "../components/UploadCard.js";
 import { deleteDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { getProgress } from "../lib/notions-api.js";
+import { getToday } from "../lib/today-api.js";
+import { countdownLabel } from "./TodayScreen.js";
 
 const STATUS_LABEL: Record<ExtractionStatus, string> = {
   pending: "En attente",
@@ -21,47 +24,107 @@ function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
 }
 
+// Redesigned per a "Mes cours" mockup, ignoring docs/UI.md per the user.
+// A course card's subject icon sits in a tinted circle (a document.colour
+// tint, generic BookOpen icon), the same knowing departure from docs/UI.md's
+// "left border, not a tinted background" rule already made for Aujourd'hui's
+// own redesigned course cards — kept visually consistent between the two.
+//
+// The mockup shows several distinct "materials" (separate uploads: a PDF, a
+// second PDF, a photo) grouped under one course card, with its own panel to
+// add more material to an EXISTING course later. That grouping doesn't
+// exist in this app yet — a course is still exactly one upload (one title,
+// one page set) — so, per the user's own call, this stays front-end only:
+// one material chip per card, built from that same document's own title/
+// pageCount/sourceType, and the upload panel on the right only ever creates
+// a new course, the same capability it already had.
 function DocumentCard({
   document,
+  dueCount,
+  deadlineDaysAway,
   onChanged,
-  onOpenNotions,
   onOpenReader,
+  onReviewCourse,
 }: {
   document: DocumentSummary;
+  dueCount: number;
+  deadlineDaysAway: number | null;
   onChanged: () => void;
-  onOpenNotions: (documentId: string) => void;
   onOpenReader: (documentId: string) => void;
+  onReviewCourse: (documentId: string) => void;
 }) {
+  const progressQuery = useQuery({
+    queryKey: ["document-progress", document.id],
+    queryFn: () => getProgress(document.id),
+    enabled: document.status === "done",
+  });
+  const MaterialIcon = document.sourceType === "photo" ? ImageIcon : FileText;
+
   return (
-    <Card className="flex flex-col gap-2" data-testid="document-card">
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
-        <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h3>
+    <Card className="flex flex-col gap-[var(--space-block)]" data-testid="document-card">
+      <div className="flex items-center justify-between gap-2">
+        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${document.colour}26` }}>
+          <BookOpen size={18} strokeWidth={ICON_STROKE_WIDTH} color={document.colour} />
+        </span>
+        {deadlineDaysAway !== null && (
+          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold text-warning">{countdownLabel(deadlineDaysAway)}</span>
+        )}
       </div>
-      <p className="text-sm text-text-muted">
+
+      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h3>
+
+      <p className="text-sm">
         {document.pageCount} page{document.pageCount > 1 ? "s" : ""}
       </p>
-      <p aria-live="polite" className="text-sm">
-        {STATUS_LABEL[document.status]}
-      </p>
+
+      {document.status !== "done" ? (
+        <p aria-live="polite" className="text-sm">
+          {STATUS_LABEL[document.status]}
+        </p>
+      ) : (
+        <>
+          {progressQuery.data && (
+            <p className="text-sm text-text-muted">
+              {progressQuery.data.total} notion{progressQuery.data.total > 1 ? "s" : ""} · {progressQuery.data.mastered} maîtrisée
+              {progressQuery.data.mastered > 1 ? "s" : ""} · <strong className="font-semibold text-text">{dueCount} à réviser</strong>
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-canvas px-3 py-1.5 text-sm">
+              <MaterialIcon aria-hidden="true" focusable="false" size={14} strokeWidth={ICON_STROKE_WIDTH} className="text-text-muted" />
+              {document.title} · {document.pageCount}p
+            </span>
+          </div>
+        </>
+      )}
+
       {document.status === "failed" && (
         <Button variant="secondary" onClick={() => void retryExtraction(document.id).then(onChanged)}>
           <RotateCw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Réessayer
         </Button>
       )}
+
       {document.status === "done" && (
-        <>
+        <div className="flex gap-2">
+          {dueCount > 0 ? (
+            <Button variant="accent" onClick={() => onReviewCourse(document.id)}>
+              Réviser
+              <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+            </Button>
+          ) : (
+            <Button variant="secondary" disabled>
+              Rien à réviser
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => onOpenReader(document.id)}>
             <BookOpenText aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Lire le cours
           </Button>
-          <Button variant="secondary" onClick={() => onOpenNotions(document.id)}>
-            <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-            Voir les notions
-          </Button>
-        </>
+        </div>
       )}
+
       <button
         type="button"
         className="self-start text-sm text-text-muted underline"
@@ -74,11 +137,11 @@ function DocumentCard({
 }
 
 export function DocumentsScreen({
-  onOpenNotions,
   onOpenReader,
+  onReviewCourse,
 }: {
-  onOpenNotions: (documentId: string) => void;
   onOpenReader: (documentId: string) => void;
+  onReviewCourse: (documentId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
@@ -99,55 +162,80 @@ export function DocumentsScreen({
       return Date.now() - pollStartedAt.current > 30_000 ? 10_000 : 2_000;
     },
   });
+  // Shared with AppNav/TodayScreen (same ["today"] cache): dueCards and
+  // upcomingDeadlines are already exactly "due today, per course" and "next
+  // deadline, per course" — no separate read of this screen's own invented
+  // shape needed.
+  const todayQuery = useQuery({ queryKey: ["today"], queryFn: getToday });
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["documents"] });
 
+  const uploadPanel = <UploadCard onCreated={refresh} />;
+
   if (query.status === "pending") {
     return (
-      <main className="p-8">
-        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
-          ))}
+      <main className="flex gap-[var(--space-section)] p-8">
+        <div className="flex-1">
+          <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+          <div className="flex flex-col gap-[var(--space-block)]">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
+            ))}
+          </div>
         </div>
+        <div className="w-[320px] shrink-0">{uploadPanel}</div>
       </main>
     );
   }
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
-        <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-        <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void query.refetch()}>Réessayer</Button>
+      <main className="flex gap-[var(--space-section)] p-8">
+        <div className="flex flex-1 flex-col items-center gap-[var(--space-section)] text-center">
+          <Confused />
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+          <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
+          <Button onClick={() => void query.refetch()}>Réessayer</Button>
+        </div>
+        <div className="w-[320px] shrink-0">{uploadPanel}</div>
       </main>
     );
   }
 
   const documents = query.data;
+  const dueCountByDocumentId = new Map(todayQuery.data?.dueCards.map((c) => [c.documentId, c.count]) ?? []);
+  const deadlineByDocumentId = new Map(todayQuery.data?.upcomingDeadlines.map((d) => [d.documentId, d.daysAway]) ?? []);
 
   return (
-    <main className="p-8">
-      <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+    <main className="flex gap-[var(--space-section)] p-8">
+      <div className="flex-1">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
+        <p className="mb-[var(--space-section)] text-sm text-text-muted">
+          Importe tes notes et StudIA les transforme en notions, fiches et un plan de révision.
+        </p>
 
-      {documents.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <Reading />
-          <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
-          <div className="w-full max-w-sm">
-            <UploadCard onCreated={refresh} />
+        {documents.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-12 text-center">
+            <Reading />
+            <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
-          <UploadCard onCreated={refresh} />
-          {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onChanged={refresh} onOpenNotions={onOpenNotions} onOpenReader={onOpenReader} />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col gap-[var(--space-block)]">
+            {documents.map((document) => (
+              <DocumentCard
+                key={document.id}
+                document={document}
+                dueCount={dueCountByDocumentId.get(document.id) ?? 0}
+                deadlineDaysAway={deadlineByDocumentId.get(document.id) ?? null}
+                onChanged={refresh}
+                onOpenReader={onOpenReader}
+                onReviewCourse={onReviewCourse}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="w-[320px] shrink-0">{uploadPanel}</div>
     </main>
   );
 }

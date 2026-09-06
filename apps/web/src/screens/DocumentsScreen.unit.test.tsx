@@ -1,19 +1,62 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import type { DocumentSummary } from "@studia/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TodayView } from "../lib/today-api.js";
 import { DocumentsScreen } from "./DocumentsScreen.js";
 
-function renderScreen(overrides: Partial<{ onOpenNotions: (documentId: string) => void; onOpenReader: (documentId: string) => void }> = {}) {
+// Redesigned per a "Mes cours" mockup, ignoring docs/UI.md per the user: a
+// persistent two-column layout — a course card per document on the left,
+// the (also redesigned, always-open) UploadCard on the right, in every
+// state (loading/error/empty/ready alike), not a toggle sharing a grid
+// slot with the cards. Each card now shows real notions/mastered counts
+// (GET /api/documents/:id/progress) and a real due-today count and
+// deadline countdown (both from GET /api/today, the same shared query
+// AppNav/TodayScreen already use) alongside the existing status/pageCount
+// data. "Voir les notions" is gone from this screen — Notions has its own
+// nav destination + picker (M9) — replaced by "Réviser", which opens a
+// real review session directly (onReviewCourse), matching the accent
+// action Aujourd'hui's own course cards already use.
+function renderScreen(overrides: Partial<{ onOpenReader: (documentId: string) => void; onReviewCourse: (documentId: string) => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <DocumentsScreen onOpenNotions={overrides.onOpenNotions ?? (() => undefined)} onOpenReader={overrides.onOpenReader ?? (() => undefined)} />
+      <DocumentsScreen onOpenReader={overrides.onOpenReader ?? (() => undefined)} onReviewCourse={overrides.onReviewCourse ?? (() => undefined)} />
     </QueryClientProvider>,
   );
 }
+
+const emptyToday: TodayView = { date: "2026-09-06", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 };
+
+function stubFetch(options: {
+  documents?: DocumentSummary[] | (() => Response);
+  today?: TodayView;
+  progress?: Record<string, { mastered: number; total: number; nextDueDate: string | null }>;
+}) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && /\/api\/documents\/[^/]+\/progress/.test(url)) {
+        const documentId = url.split("/")[3]!;
+        const progress = options.progress?.[documentId] ?? { mastered: 0, total: 0, nextDueDate: null };
+        return Promise.resolve(new Response(JSON.stringify(progress), { status: 200 }));
+      }
+      if (typeof url === "string" && url.startsWith("/api/today")) {
+        return Promise.resolve(new Response(JSON.stringify(options.today ?? emptyToday), { status: 200 }));
+      }
+      if (typeof url === "string" && url.startsWith("/api/documents")) {
+        if (typeof options.documents === "function") return Promise.resolve(options.documents());
+        return Promise.resolve(new Response(JSON.stringify(options.documents ?? []), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    }),
+  );
+}
+
+const aDocument: DocumentSummary = { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
 
 describe("DocumentsScreen", () => {
   afterEach(() => {
@@ -21,127 +64,101 @@ describe("DocumentsScreen", () => {
     vi.unstubAllGlobals();
   });
 
-  it("loading state: shows skeleton placeholders while the list is being fetched", () => {
+  it("loading state: shows skeleton placeholders, with the upload panel already visible on the right", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
 
     renderScreen();
 
     expect(screen.getByText("Mes cours")).toBeInTheDocument();
     expect(screen.queryByText(/aucun cours/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/titre du cours/i)).toBeInTheDocument();
   });
 
-  it("error state: shows the confused mascot and an explicit message, with a retry action", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+  it("error state: shows the confused mascot and an explicit message, with a retry action — the upload panel stays usable regardless", async () => {
+    stubFetch({ documents: () => new Response(null, { status: 500 }) });
 
     renderScreen();
 
     expect(await screen.findByText(/impossible de charger tes cours/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/titre du cours/i)).toBeInTheDocument();
   });
 
-  it("empty state: invites the user to add a course, action right there, never 'aucun résultat'", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
+  it("empty state: invites the user to add a course, the upload panel right there, never 'aucun résultat'", async () => {
+    stubFetch({ documents: [] });
 
     renderScreen();
 
     expect(await screen.findByText(/prends ton cours en photo pour commencer/i)).toBeInTheDocument();
-    expect(screen.getByText(/\+ ajouter un cours/i)).toBeInTheDocument();
+    expect(screen.getByText("Ajouter un cours")).toBeInTheDocument();
     expect(screen.queryByText(/^aucun résultat$/i)).not.toBeInTheDocument();
   });
 
-  it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike (docs/UI.md's Grid and spacing note)", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
-    renderScreen();
-    const loadingHeading = screen.getByText("Mes cours");
-    expect(loadingHeading.className).toMatch(/mb-\[var\(--space-section\)\]/);
-    cleanup();
-
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
-    renderScreen();
-    await screen.findByText(/impossible de charger tes cours/i);
-    const errorMain = screen.getByRole("heading", { name: "Mes cours" }).closest("main");
-    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-    cleanup();
-
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
-    renderScreen();
-    await screen.findByText(/aucun cours/i);
-    const readyHeading = screen.getByText("Mes cours");
-    expect(readyHeading.className).toMatch(/mb-\[var\(--space-section\)\]/);
-  });
-
-  it("the document grid's own gutter is --space-block, cards being distinct blocks within one section (docs/UI.md's Grid and spacing note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
-    renderScreen();
-    await screen.findByText("Chapitre 3");
-
-    const grid = screen.getByTestId("document-card").closest(".grid") as HTMLElement;
-    expect(grid.className).toMatch(/gap-\[var\(--space-block\)\]/);
-  });
-
-  it("ready state: lists the user's documents with status and subject colour", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
+  it("ready state: lists the user's documents with status, subject colour and page count", async () => {
+    stubFetch({ documents: [aDocument] });
 
     renderScreen();
 
     expect(await screen.findByText("Chapitre 3")).toBeInTheDocument();
     expect(screen.getByText("3 pages")).toBeInTheDocument();
-    expect(screen.getByText("Terminé")).toBeInTheDocument();
   });
 
-  it("ready state: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass (docs/UI.md's Type note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
+  it("ready state: a done course shows its real notions/mastered/due counts", async () => {
+    stubFetch({
+      documents: [aDocument],
+      today: { ...emptyToday, dueCards: [{ documentId: "d1", documentTitle: "Chapitre 3", colour: "#F87171", count: 12 }] },
+      progress: { d1: { mastered: 15, total: 24, nextDueDate: null } },
+    });
+
+    renderScreen();
+    const card = await screen.findByTestId("document-card");
+
+    expect(await within(card).findByText(/24 notions/)).toBeInTheDocument();
+    expect(within(card).getByText(/15 maîtrisées/)).toBeInTheDocument();
+    expect(within(card).getByText(/12 à réviser/)).toBeInTheDocument();
+  });
+
+  it("ready state: a course with a real deadline shows the relative countdown badge", async () => {
+    stubFetch({
+      documents: [aDocument],
+      today: { ...emptyToday, upcomingDeadlines: [{ documentId: "d1", title: "Chapitre 3", deadlineDate: "2026-09-14", deadlineLabel: null, daysAway: 8 }] },
+    });
 
     renderScreen();
 
-    const title = await screen.findByText("Chapitre 3");
-    expect(title.className).toContain("text-[length:var(--text-title)]");
+    expect(await screen.findByText("Examen dans 8 jours")).toBeInTheDocument();
   });
 
-  it("a done document offers to open the reader, calling back with its id — replacing the old inline 'Voir le texte' toggle", async () => {
+  it("ready state: a course with nothing due shows a disabled 'Rien à réviser' instead of the accent action", async () => {
+    stubFetch({ documents: [aDocument], progress: { d1: { mastered: 13, total: 16, nextDueDate: null } } });
+
+    renderScreen();
+    await screen.findByText("Chapitre 3");
+
+    expect(screen.getByRole("button", { name: "Rien à réviser" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Réviser" })).not.toBeInTheDocument();
+  });
+
+  it("a course with something due offers 'Réviser', calling back with its id — the real review session, not just the notions list", async () => {
+    const user = userEvent.setup();
+    const onReviewCourse = vi.fn();
+    stubFetch({
+      documents: [aDocument],
+      today: { ...emptyToday, dueCards: [{ documentId: "d1", documentTitle: "Chapitre 3", colour: "#F87171", count: 3 }] },
+    });
+
+    renderScreen({ onReviewCourse });
+    await screen.findByText("Chapitre 3");
+
+    await user.click(screen.getByRole("button", { name: "Réviser" }));
+
+    expect(onReviewCourse).toHaveBeenCalledWith("d1");
+  });
+
+  it("a done document offers to open the reader, calling back with its id", async () => {
     const user = userEvent.setup();
     const onOpenReader = vi.fn();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
+    stubFetch({ documents: [aDocument] });
 
     renderScreen({ onOpenReader });
     await screen.findByText("Chapitre 3");
@@ -149,21 +166,11 @@ describe("DocumentsScreen", () => {
     await user.click(screen.getByRole("button", { name: /lire le cours/i }));
 
     expect(onOpenReader).toHaveBeenCalledWith("d1");
-    expect(screen.queryByRole("button", { name: /voir le texte/i })).not.toBeInTheDocument();
   });
 
   it("shows a retry action only for a failed document, with its last error implied by the failed status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Cours raté", sourceType: "photo", status: "failed", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
+    const failed: DocumentSummary = { ...aDocument, id: "d2", title: "Cours raté", status: "failed" };
+    stubFetch({ documents: [failed] });
 
     renderScreen();
 
@@ -172,25 +179,18 @@ describe("DocumentsScreen", () => {
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
-  it("a card's own 'Lire le cours', 'Voir les notions' and 'Réessayer' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-            { id: "d2", title: "Cours raté", sourceType: "photo", status: "failed", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
-    );
+  it("a card's own 'Lire le cours', 'Réviser' and 'Réessayer' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    const failed: DocumentSummary = { ...aDocument, id: "d2", title: "Cours raté", status: "failed" };
+    stubFetch({
+      documents: [aDocument, failed],
+      today: { ...emptyToday, dueCards: [{ documentId: "d1", documentTitle: "Chapitre 3", colour: "#F87171", count: 3 }] },
+    });
 
     renderScreen();
     await screen.findByText("Chapitre 3");
     await screen.findByText("Cours raté");
 
-    for (const name of ["Lire le cours", "Voir les notions", "Réessayer"]) {
+    for (const name of ["Lire le cours", "Réviser", "Réessayer"]) {
       const button = screen.getByRole("button", { name });
       const icon = button.querySelector("svg");
       expect(icon).not.toBeNull();
@@ -199,38 +199,35 @@ describe("DocumentsScreen", () => {
     }
   });
 
-  it("a done document offers to open its notions, calling back with its id", async () => {
+  it("offers a discreet way to delete a course, refreshing the list", async () => {
     const user = userEvent.setup();
-    const onOpenNotions = vi.fn();
+    const calls: { url: string; method: string | undefined }[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            { id: "d1", title: "Chapitre 3", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-          ]),
-          { status: 200 },
-        ),
-      ),
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (init?.method === "DELETE") {
+          calls.push({ url, method: init.method });
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        if (typeof url === "string" && /\/api\/documents\/[^/]+\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0, nextDueDate: null }), { status: 200 }));
+        if (typeof url === "string" && url.startsWith("/api/today")) return Promise.resolve(new Response(JSON.stringify(emptyToday), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+      }),
     );
 
-    renderScreen({ onOpenNotions });
+    renderScreen();
     await screen.findByText("Chapitre 3");
 
-    await user.click(screen.getByRole("button", { name: /voir les notions/i }));
+    await user.click(screen.getByRole("button", { name: /supprimer/i }));
 
-    expect(onOpenNotions).toHaveBeenCalledWith("d1");
+    expect(calls).toContainEqual({ url: "/api/documents/d1", method: "DELETE" });
   });
 
   it("polls while a document is still pending or running", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          { id: "d1", title: "Cours", sourceType: "photo", status: "pending", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" },
-        ]),
-        { status: 200 },
-      ),
-    );
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.startsWith("/api/today")) return Promise.resolve(new Response(JSON.stringify(emptyToday), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify([{ ...aDocument, status: "pending" }]), { status: 200 }));
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     renderScreen();

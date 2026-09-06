@@ -1,7 +1,8 @@
-import { Upload } from "lucide-react";
+import { Plus, Upload, UploadCloud } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "./ui/button.js";
 import { Card } from "./ui/card.js";
+import { FIELD_CLASS } from "./ui/field-styles.js";
 import { createDocument, deleteDocument, startExtraction, uploadPage } from "../lib/documents-api.js";
 import { guessSourceType } from "../lib/detect-source-type.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
@@ -18,12 +19,17 @@ const UPLOAD_ERROR_MESSAGES: Record<string, string> = {
   unknown: "L'envoi a échoué.",
 };
 
+// Redesigned per the "Mes cours" mockup, ignoring docs/UI.md per the user —
+// always open (no "+ Ajouter un cours" toggle to click through first,
+// unlike the version this replaces) with a real drop zone: dragging a file
+// onto it stages it exactly like picking it from the browser, not just a
+// decorative box that looks like one.
 export function UploadCard({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const titleId = useId();
   const fileInputId = useId();
 
@@ -49,7 +55,6 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
   }
 
   function reset() {
-    setOpen(false);
     setTitle("");
     setFiles([]);
     setError(null);
@@ -82,50 +87,44 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  if (!open) {
-    return (
-      <Card
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setOpen(true);
-        }}
-        className="flex min-h-40 cursor-pointer items-center justify-center border-dashed text-text-muted hover:border-primary hover:text-primary"
-      >
-        + Ajouter un cours
-      </Card>
-    );
-  }
-
   return (
-    <Card className="flex flex-col gap-3">
-      <div>
-        <label htmlFor={titleId} className="mb-1 block text-sm font-medium">
-          Titre du cours
-        </label>
-        <input
-          id={titleId}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-[var(--radius-button)] border border-border px-3 py-2 text-sm"
-          placeholder="Chapitre 3 — La photosynthèse"
-        />
+    <Card className="flex flex-col gap-[var(--space-block)]" data-testid="upload-card">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <Plus aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        Ajouter un cours
       </div>
+      <p className="text-sm text-text-muted">PDF ou photos de notes manuscrites.</p>
 
-      <div>
-        <label htmlFor={fileInputId} className="mb-1 block text-sm font-medium">
-          Photos ou document
-        </label>
+      <label
+        htmlFor={fileInputId}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          addFiles(e.dataTransfer.files);
+        }}
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed p-6 text-center ${
+          dragOver ? "border-primary bg-primary-soft" : "border-border"
+        }`}
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft">
+          <UploadCloud aria-hidden="true" focusable="false" size={20} strokeWidth={ICON_STROKE_WIDTH} className="text-primary" />
+        </span>
+        <span className="text-sm font-medium">Dépose un fichier ou clique pour parcourir</span>
+        <span className="text-[length:var(--text-label)] text-text-muted">PDF, Word, PowerPoint, JPG, PNG ou WEBP · jusqu'à 20 Mo</span>
         <input
           id={fileInputId}
           type="file"
           multiple
           accept="image/jpeg,image/png,image/webp,.pdf,.docx,.pptx"
           onChange={(e) => addFiles(e.target.files)}
-          className="text-sm"
+          className="sr-only"
         />
-      </div>
+      </label>
 
       {files.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -163,21 +162,29 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
         </ul>
       )}
 
+      <label htmlFor={titleId} className="flex flex-col gap-1 text-sm font-medium">
+        Titre du cours
+        <input
+          id={titleId}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={FIELD_CLASS}
+          placeholder="Chapitre 3 — La photosynthèse"
+        />
+      </label>
+
       {error && (
         <p role="alert" className="text-sm text-text">
           {error}
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button variant="accent" onClick={() => void confirm()} disabled={submitting || files.length === 0}>
-          <Upload aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-          {submitting ? "Envoi en cours…" : "Confirmer"}
-        </Button>
-        <Button variant="secondary" onClick={reset} disabled={submitting}>
-          Annuler
-        </Button>
-      </div>
+      <p className="text-[length:var(--text-label)] text-text-muted">On extrait le texte et on le découpe en notions automatiquement.</p>
+
+      <Button variant="accent" onClick={() => void confirm()} disabled={submitting || files.length === 0} className="justify-center">
+        <Upload aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        {submitting ? "Envoi en cours…" : "Créer le cours"}
+      </Button>
     </Card>
   );
 }

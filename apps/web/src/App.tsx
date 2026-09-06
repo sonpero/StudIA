@@ -131,8 +131,8 @@ function AppShell() {
         <div className="mx-auto max-w-6xl">
           {view.name === "documents" && (
             <DocumentsScreen
-              onOpenNotions={(documentId) => setView({ name: "notions", documentId })}
               onOpenReader={(documentId) => setView({ name: "reader", documentId })}
+              onReviewCourse={(documentId) => setView({ name: "review", documentId })}
             />
           )}
           {view.name === "notions" && (
