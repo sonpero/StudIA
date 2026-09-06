@@ -88,7 +88,7 @@ describe("UploadCard", () => {
     await user.click(screen.getByRole("button", { name: /confirmer/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.className).not.toMatch(/text-accent/);
+    expect(alert.className).not.toMatch(/text-primary/);
     expect(alert.className).toMatch(/text-text\b/);
   });
 

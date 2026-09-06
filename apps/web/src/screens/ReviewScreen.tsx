@@ -235,7 +235,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
             const revealCorrectOption = grade !== null && isCorrectOption(option, current.answer);
             const isSelected = mcqSelection === option;
             const wrongPick = !revealCorrectOption && chosen && isSelected && grade !== null;
-            const outcomeClass = revealCorrectOption ? "ring-2 ring-success" : wrongPick ? "ring-2 ring-accent" : "";
+            const outcomeClass = revealCorrectOption ? "ring-2 ring-success" : wrongPick ? "ring-2 ring-primary" : "";
             return (
               <Button
                 key={option}

@@ -212,12 +212,21 @@ describe("ProgressScreen", () => {
     // Never blame the person directly (docs/UI.md: no "tu es en retard").
     expect(screen.queryByText(/tu es en retard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/de retard/i)).not.toBeInTheDocument();
-    // Structural, not just textual: docs/UI.md forbids --accent for "behind"
-    // (it's the course-subject colour, not a status colour) — this must
-    // still catch a future edit that switches the warning styling to
-    // Button's variant="accent" or a raw bg-accent/text-accent/border-accent
-    // class, not just today's copy.
-    expect(card.querySelectorAll('[class*="accent"]')).toHaveLength(0);
+    // Structural, not just textual: docs/UI.md forbids the CTA/--accent
+    // treatment for "behind" (it's the course-subject colour, not a status
+    // colour) — this must still catch a future edit that switches the
+    // warning styling to Button's variant="accent" (bg-primary text-white),
+    // not just today's copy. Scoped to bg-primary specifically, not any
+    // "primary" substring: since M9 merged --accent into --primary, every
+    // button also carries focus-visible:outline-primary regardless of
+    // variant, and every gauge's fill bar is legitimately bg-primary on
+    // every card regardless of status (docs/UI.md's Progress section) — both
+    // pre-existing, unrelated to the one thing this assertion is for, so
+    // excluded by selector/data-testid rather than by weakening the check.
+    const ctaStyledElements = Array.from(card.querySelectorAll('[class*="bg-primary"]')).filter(
+      (el) => el.getAttribute("data-testid") !== "gauge-fill",
+    );
+    expect(ctaStyledElements).toHaveLength(0);
     // docs/UI.md: a fact stated soberly, never the loudest element on the
     // card — no boxed/badge treatment (border, background tint, pill
     // radius, padding) and no underline, whichever element carries the text.

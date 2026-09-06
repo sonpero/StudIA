@@ -186,7 +186,7 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const reviewButton = screen.getByRole("button", { name: "Réviser" });
-    expect(reviewButton.className).toMatch(/bg-accent/);
+    expect(reviewButton.className).toMatch(/bg-primary/);
     expect(reviewButton.className).toMatch(/text-white/);
   });
 
@@ -207,7 +207,7 @@ describe("NotionsScreen", () => {
       const link = screen.getByRole("button", { name });
       expect(link.className).toMatch(/underline/);
       expect(link.className).not.toMatch(/border-border/);
-      expect(link.className).not.toMatch(/bg-accent/);
+      expect(link.className).not.toMatch(/bg-primary/);
     }
   });
 
@@ -609,17 +609,17 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     const perNotion = screen.getByRole("button", { name: "Réviser cette notion" });
-    expect(perNotion.className).toMatch(/bg-accent/);
+    expect(perNotion.className).toMatch(/bg-primary/);
     expect(perNotion.className).toMatch(/text-white/);
 
     const toolbar = screen.getByRole("button", { name: "Réviser" });
-    expect(toolbar.className).toMatch(/bg-accent/);
+    expect(toolbar.className).toMatch(/bg-primary/);
 
     // The invariant that actually matters — never more than one accent
     // element inside a single card — still holds: the toolbar's own
     // accent button is not a descendant of the notion card at all.
     const notionCard = screen.getByTestId("notion-card");
-    expect(within(notionCard).getAllByRole("button").filter((b) => /bg-accent/.test(b.className))).toHaveLength(1);
+    expect(within(notionCard).getAllByRole("button").filter((b) => /bg-primary/.test(b.className))).toHaveLength(1);
     expect(notionCard).not.toContainElement(toolbar);
   });
 

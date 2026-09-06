@@ -272,21 +272,21 @@ describe("TodayScreen", () => {
     const histoireCard = screen.getByText("Histoire").closest('[data-testid="course-today-card"]') as HTMLElement;
 
     const reviser = within(mathsCard).getByRole("button", { name: "Réviser" });
-    expect(reviser.className).toMatch(/bg-accent/);
+    expect(reviser.className).toMatch(/bg-primary/);
     expect(reviser.className).toMatch(/text-white/);
 
     const voirMaths = within(mathsCard).getByRole("button", { name: "Voir le cours" });
-    expect(voirMaths.className).not.toMatch(/bg-accent/);
+    expect(voirMaths.className).not.toMatch(/bg-primary/);
     expect(voirMaths.className).toMatch(/border-border/);
 
     // Histoire has no due count, so no Réviser at all — its lone remaining
     // button must not be promoted to accent just because it is now alone.
     const voirHistoire = within(histoireCard).getByRole("button", { name: "Voir le cours" });
-    expect(voirHistoire.className).not.toMatch(/bg-accent/);
+    expect(voirHistoire.className).not.toMatch(/bg-primary/);
     expect(voirHistoire.className).toMatch(/border-border/);
 
     // Never more than one accent element inside a single card (docs/UI.md).
-    expect(within(mathsCard).getAllByRole("button").filter((b) => /bg-accent/.test(b.className))).toHaveLength(1);
+    expect(within(mathsCard).getAllByRole("button").filter((b) => /bg-primary/.test(b.className))).toHaveLength(1);
   });
 
   it("ready: the accent action's colour is fixed — never the course's own subject colour, whatever that colour is (docs/UI.md's Colour note: --accent belongs to the app, never to a course)", async () => {
@@ -306,8 +306,8 @@ describe("TodayScreen", () => {
 
     // Same fixed class on both, regardless of each card's own distinct
     // subject colour — the button's style never reads from card.colour.
-    expect(mathsReviser.className).toMatch(/bg-accent/);
-    expect(histoireReviser.className).toMatch(/bg-accent/);
+    expect(mathsReviser.className).toMatch(/bg-primary/);
+    expect(histoireReviser.className).toMatch(/bg-primary/);
     expect(mathsReviser.style.backgroundColor).toBe("");
     expect(histoireReviser.style.backgroundColor).toBe("");
   });

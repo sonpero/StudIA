@@ -14,7 +14,7 @@ const SUBJECT_COLOUR_PALETTE = ["#F75757", "#F36016", "#109DA0", "#0897D6", "#8B
 // narrower rule couldn't see. The real invariant: no two colours this app
 // hands a fixed meaning to — the semantic tokens below, and every
 // subject-palette hue — read as the same colour.
-const SEMANTIC_TOKEN_NAMES = ["--color-primary", "--color-accent", "--color-success", "--color-warning"];
+const SEMANTIC_TOKEN_NAMES = ["--color-primary", "--color-success", "--color-warning"];
 
 // The ~4° gap between the old accent and the subject red was a real,
 // visible collision, confirmed on screen; 16.6°+ was not. 15° sits

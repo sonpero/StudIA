@@ -44,7 +44,7 @@ describe("LoginScreen", () => {
     renderLoginScreen();
 
     const button = await screen.findByRole("button", { name: /se connecter/i });
-    expect(button.className).toMatch(/bg-accent/);
+    expect(button.className).toMatch(/bg-primary/);
   });
 
   it("pressing Enter submits the form, the same as clicking 'Se connecter'", async () => {
