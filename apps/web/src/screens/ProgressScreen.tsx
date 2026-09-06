@@ -211,10 +211,9 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
         </div>
       )}
 
-      {/* Always visible, independent of editing state or status: symmetric to
-          Aujourd'hui's own course-card action (TodayScreen's CourseTodayCard).
-          "Voir le cours" never collides with the nav's "Progression" item —
-          the mistake made once on NotionsScreen's own button to this same
+      {/* Always visible, independent of editing state or status. "Voir le
+          cours" never collides with the nav's "Progression" item — the
+          mistake made once on NotionsScreen's own button to this same
           screen, avoided there by spelling out the full phrase. */}
       <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
         <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />

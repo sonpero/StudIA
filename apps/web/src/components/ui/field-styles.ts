@@ -1,9 +1,8 @@
 // Shared by every native form field styled to match the design system
 // (docs/UI.md's Shape and depth: "native form controls still get the
 // design-system border, radius and colour tokens"). Originally defined
-// once inside TodayScreen.tsx's own AddTodoForm; PomodoroCard's todo
-// picker needs the exact same treatment, so this moved here rather than
-// being duplicated a second time.
+// once inside TodayScreen.tsx's own AddTodoForm, moved here so a future
+// second consumer can reuse it rather than duplicating it.
 
 // A design-system chevron replacing <select>'s native arrow (--color-text-muted,
 // #667085, matched by hand — tokens.css's @theme values aren't reachable from

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { BookOpen, BookOpenText, Calendar, FlaskConical, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
+import { BookOpen, BookOpenText, Calendar, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
@@ -12,7 +12,6 @@ import { ProgressScreen } from "./screens/ProgressScreen.js";
 import { ProposalsScreen } from "./screens/ProposalsScreen.js";
 import { ReaderScreen } from "./screens/ReaderScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
-import { Today } from "./screens/Today.js";
 import { TodayScreen } from "./screens/TodayScreen.js";
 import { TutorScreen } from "./screens/TutorScreen.js";
 
@@ -26,10 +25,11 @@ import { TutorScreen } from "./screens/TutorScreen.js";
 // where there is no originating course and "back" returns to "documents"
 // instead. Neither is a scoping parameter for the progress screen itself,
 // which always shows every course regardless of how it was entered. "today"
-// (M6, docs/modules/workspace.md) is reachable from anywhere via the nav,
-// not scoped to a document, and has no "back" of its own (docs/UI.md): it
-// is one of the app's two homes, "documents" the other, both reachable from
-// the same persistent nav at all times.
+// (M6, docs/modules/workspace.md; redesigned under M9) is reachable from
+// anywhere via the nav, not scoped to a document, has no "back" of its own
+// (docs/UI.md), and is now the app's own landing view — AppShell's initial
+// state — with "documents" the other home, both reachable from the same
+// persistent nav at all times.
 type View =
   | { name: "documents" }
   // documentId absent: the picker (docs/UI.md's Navigation note, M9 —
@@ -57,25 +57,18 @@ type View =
   // decides whether "Retour" leaves for that course's NotionsScreen or for
   // the picker (the same view with documentId cleared) — the picker itself
   // has no course to return to, the same shape DocumentsScreen has none.
-  | { name: "tutor"; documentId?: string; fromNotions?: boolean }
-  // Temporary: the in-progress redesign prototype (apps/web/src/screens/
-  // Today.tsx), staged in the nav so it can be followed as it gets wired
-  // to real data, one section at a time — not part of any milestone's own
-  // scope. Rendered like any other view now (its own sidebar was promoted
-  // to the app's real AppNav, below) — remove this view and its nav entry
-  // once it either replaces "today" above or is dropped.
-  | { name: "today-preview" };
+  | { name: "tutor"; documentId?: string; fromNotions?: boolean };
 
 function AppShell() {
   const auth = useAuth();
-  const [view, setView] = useState<View>({ name: "documents" });
+  const [view, setView] = useState<View>({ name: "today" });
 
   // Feeds the sidebar's own streak card and the user chip's due count
-  // (apps/web/src/components/AppNav.tsx) — the same GET /api/today every
-  // screen's own due/streak data already comes from (Today.tsx,
-  // TodayScreen.tsx), so this shares that one cached query rather than
-  // adding a second read: whichever of the three mounts first fetches it,
-  // the others reuse the cache. Called unconditionally, ahead of every
+  // (apps/web/src/components/AppNav.tsx) — the same GET /api/today
+  // TodayScreen.tsx's own due/streak data already comes from, so this
+  // shares that one cached query rather than adding a second read:
+  // whichever of the two mounts first fetches it, the other reuses the
+  // cache. Called unconditionally, ahead of every
   // early return below (Rules of Hooks: a hook after a conditional return
   // that stops firing once auth resolves throws "Rendered more hooks than
   // during the previous render" on the very first loading -> authenticated
@@ -117,10 +110,6 @@ function AppShell() {
     { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
     { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
     { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
-    // Temporary staging entry, kept last and visually distinct (FlaskConical,
-    // not part of the M9 icon set) so it never reads as a real destination —
-    // see the "today-preview" View variant above.
-    { key: "today-preview", label: "Today", icon: FlaskConical, active: view.name === "today-preview", onClick: () => setView({ name: "today-preview" }) },
   ];
 
   const sidebarStreak = sidebarQuery.data?.streak ?? 0;
@@ -173,9 +162,9 @@ function AppShell() {
           )}
           {view.name === "today" && (
             <TodayScreen
-              onOpenProposals={(jobId) => setView({ name: "proposals", jobId })}
-              onOpenCourse={(documentId) => setView({ name: "notions", documentId })}
+              username={auth.user?.username ?? ""}
               onReviewCourse={(documentId) => setView({ name: "review", documentId })}
+              onOpenProposals={(jobId) => setView({ name: "proposals", jobId })}
             />
           )}
           {view.name === "calendar" && <CalendarScreen onOpenCourse={(documentId) => setView({ name: "notions", documentId })} />}
@@ -198,13 +187,6 @@ function AppShell() {
               documentId={view.documentId}
               onSelectDocument={(documentId) => setView({ name: "tutor", documentId })}
               onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "tutor" }))}
-            />
-          )}
-          {view.name === "today-preview" && (
-            <Today
-              username={auth.user?.username ?? ""}
-              onReviewCourse={(documentId) => setView({ name: "review", documentId })}
-              onOpenProposals={(jobId) => setView({ name: "proposals", jobId })}
             />
           )}
         </div>

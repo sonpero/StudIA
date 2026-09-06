@@ -16,9 +16,10 @@ function items(overrides: Partial<Record<string, Partial<AppNavItem>>> = {}): Ap
 }
 
 // streak/dueCount/username became real (App.tsx's own GET /api/today and
-// useAuth) once Today's own sidebar (apps/web/src/screens/Today.tsx)
-// became the app's real one — every existing test below that doesn't
-// care about their exact values uses this same neutral default.
+// useAuth) once the redesigned Aujourd'hui screen's own sidebar
+// (apps/web/src/screens/TodayScreen.tsx) became the app's real one — every
+// existing test below that doesn't care about their exact values uses this
+// same neutral default.
 const DEFAULT_SIDEBAR_PROPS = { streak: 0, dueCount: 0, username: "alex" };
 
 describe("AppNav", () => {

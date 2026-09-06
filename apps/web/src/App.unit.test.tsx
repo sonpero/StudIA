@@ -15,9 +15,9 @@ function stubAuthenticatedFetch() {
         const params = new URLSearchParams(url.split("?")[1]);
         return Promise.resolve(new Response(JSON.stringify({ start: params.get("start"), end: params.get("end"), days: [] }), { status: 200 }));
       }
-      // Both the real "Aujourd'hui" and the "Today" prototype call this
-      // same endpoint (courses/todos are wired to real data now) — a
-      // valid empty TodayView, not the bare [] every other route gets.
+      // Aujourd'hui (the app's own default landing view) calls this
+      // endpoint on every mount — a valid empty TodayView, not the bare []
+      // every other route gets.
       if (typeof url === "string" && url.startsWith("/api/today")) {
         return Promise.resolve(
           new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
@@ -67,17 +67,13 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9) — plus the in-progress 'Today' preview, last", async () => {
+  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9)", async () => {
     stubAuthenticatedFetch();
 
     render(<App />);
 
     await screen.findByText("Bonjour, alex.");
-    // "Today" is a temporary staging entry for the in-progress redesign
-    // prototype (apps/web/src/screens/Today.tsx) — not part of M9's own
-    // seven, kept last and named distinctly from "Aujourd'hui" so it's
-    // never mistaken for the shipped screen.
-    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur", "Today"];
+    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur"];
     for (const name of names) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
@@ -86,14 +82,25 @@ describe("App", () => {
     expect(buttons.map((b) => b.textContent)).toEqual(names);
   });
 
-  it("Today (the in-progress redesign prototype) is reachable from the nav, greeting the real connected user", async () => {
+  it("authenticated: lands on Aujourd'hui by default (the app's own home screen), greeting the real connected user", async () => {
+    stubAuthenticatedFetch();
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Bonjour, alex" })).toBeInTheDocument();
+  });
+
+  it("Aujourd'hui stays reachable from the nav after navigating away from it", async () => {
     stubAuthenticatedFetch();
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByText("Bonjour, alex.");
+    await screen.findByRole("heading", { name: "Bonjour, alex" });
 
-    await user.click(screen.getByRole("button", { name: "Today" }));
+    await user.click(screen.getByRole("button", { name: "Mes cours" }));
+    await screen.findByRole("heading", { name: "Mes cours" });
+
+    await user.click(screen.getByRole("button", { name: "Aujourd'hui" }));
 
     expect(await screen.findByRole("heading", { name: "Bonjour, alex" })).toBeInTheDocument();
   });
@@ -312,6 +319,8 @@ describe("App", () => {
     const user = userEvent.setup();
 
     render(<App />);
+    await screen.findByRole("heading", { name: "Bonjour, alex" });
+    await user.click(screen.getByRole("button", { name: "Mes cours" }));
     await screen.findByText("Cours test");
 
     await user.click(screen.getByRole("button", { name: "Voir les notions" }));

@@ -31,11 +31,12 @@ function initials(username: string): string {
 // accessible name, breaking getByRole("button", { name }) queries that
 // assume one match.
 //
-// Adopts the "Today" prototype's own sidebar (apps/web/src/screens/
-// Today.tsx) as the app's real one: the tagline, the streak card and the
-// user chip are new here, desktop-only (hidden md:flex — a bottom tab bar
-// has no room for either). streak/dueCount/username are real data now
-// (App.tsx's own GET /api/today and useAuth), not mock.
+// Adopts the redesigned Aujourd'hui screen's own sidebar
+// (apps/web/src/screens/TodayScreen.tsx) as the app's real one: the
+// tagline, the streak card and the user chip are new here, desktop-only
+// (hidden md:flex — a bottom tab bar has no room for either).
+// streak/dueCount/username are real data (App.tsx's own GET /api/today and
+// useAuth), not mock.
 //
 // Not yet built: the secondary group (Mes notes, Réglages have no screen at
 // all yet) and the tablet 72px icon-only collapse, which needs tooltips

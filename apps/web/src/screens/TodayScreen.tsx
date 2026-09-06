@@ -1,21 +1,40 @@
 import type { DocumentSummary } from "@studia/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Repeat } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Calendar,
+  Camera,
+  Check,
+  Clock,
+  ListChecks,
+  Music,
+  Play,
+  Plus,
+  RotateCcw,
+  SkipBack,
+  SkipForward,
+  Timer,
+  Volume2,
+  X,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Confused } from "../components/mascot/Confused.js";
-import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { FIELD_CLASS, SELECT_CHEVRON } from "../components/ui/field-styles.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession } from "../lib/pomodoro-api.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
-import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView } from "../lib/today-api.js";
-import { PomodoroCard } from "./PomodoroCard.js";
-import { SpotifyCard } from "./SpotifyCard.js";
+import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView, type Todo } from "../lib/today-api.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
+const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
+// The backend's own pomodoro duration is fixed (packages/core/src/workspace),
+// never selectable — hardcoded here rather than discovered, since there is
+// no session yet to read a real durationSeconds from before one starts.
+const IDLE_DISPLAY = "25:00";
 
 // A todo's due date is a plain dated fact, formatted the same way whether
 // it's still to come or already past (docs/UI.md — no countdown, no
@@ -25,7 +44,7 @@ const DOCUMENTS_QUERY_KEY = ["documents"];
 // displayed day never shifts by one under a non-UTC timezone.
 const TODO_DUE_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-export function formatTodoDueDate(dueDate: string): string {
+function formatTodoDueDate(dueDate: string): string {
   const year = Number(dueDate.slice(0, 4));
   const month = Number(dueDate.slice(5, 7));
   const day = Number(dueDate.slice(8, 10));
@@ -38,7 +57,7 @@ export function formatTodoDueDate(dueDate: string): string {
 // unchanged), this just folds them into one row per course in memory. A
 // course absent from all three contributes no card at all — this screen
 // answers "what do I do now", not "what are all my courses".
-export type CourseCard = {
+type CourseCardData = {
   documentId: string;
   documentTitle: string;
   colour: string | null;
@@ -54,19 +73,19 @@ export type CourseCard = {
 // "Examen aujourd'hui"/"Examen demain" at 0/1, never "dans 0 jour"/"dans 1
 // jour" (docs/UI.md's Aujourd'hui — deadline note). daysAway is always >= 0
 // here: upcomingDeadlines already excludes a lapsed deadline.
-export function countdownLabel(daysAway: number): string {
+function countdownLabel(daysAway: number): string {
   if (daysAway === 0) return "Examen aujourd'hui";
   if (daysAway === 1) return "Examen demain";
   return `Examen dans ${daysAway} jours`;
 }
 
-export function buildCourseCards(view: TodayView): CourseCard[] {
-  const byId = new Map<string, CourseCard>();
+function buildCourseCards(view: TodayView): CourseCardData[] {
+  const byId = new Map<string, CourseCardData>();
 
-  function ensure(documentId: string, documentTitle: string, colour: string | null): CourseCard {
+  function ensure(documentId: string, documentTitle: string, colour: string | null): CourseCardData {
     const existing = byId.get(documentId);
     if (existing) return existing;
-    const card: CourseCard = { documentId, documentTitle, colour, dueCount: 0, belowTargetCount: 0, deadline: null };
+    const card: CourseCardData = { documentId, documentTitle, colour, dueCount: 0, belowTargetCount: 0, deadline: null };
     byId.set(documentId, card);
     return card;
   }
@@ -93,20 +112,17 @@ export function buildCourseCards(view: TodayView): CourseCard[] {
   return [...byId.values()].sort((a, b) => (a.deadline?.daysAway ?? Infinity) - (b.deadline?.daysAway ?? Infinity));
 }
 
-function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number]; onToggle: (done: boolean) => void; onDelete: () => void }) {
-  return (
-    <li className="flex items-center gap-2" data-testid="todo-row">
-      <input type="checkbox" checked={todo.done} onChange={(e) => onToggle(e.target.checked)} aria-label={todo.label} />
-      <span className={todo.done ? "flex-1 line-through text-text-muted" : "flex-1 text-text"}>{todo.label}</span>
-      {todo.dueDate && <span className="text-xs text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
-      {/* Same idiom as UploadCard's own staged-file removal: an accessible
-          label naming the item, not a bare icon (docs/UI.md's Forbidden
-          list). No confirmation — a todo is low stakes and trivially re-added. */}
-      <button type="button" aria-label={`Supprimer « ${todo.label} »`} onClick={onDelete} className="text-text-muted hover:text-text">
-        ✕
-      </button>
-    </li>
-  );
+function remainingSeconds(session: PomodoroSession): number {
+  const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
+  return Math.max(0, session.durationSeconds - elapsed);
+}
+
+function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 // Reused in both the empty and ready states: the only way in this screen to
@@ -115,7 +131,7 @@ function TodoRow({ todo, onToggle, onDelete }: { todo: TodayView["todos"][number
 // do the same thing, disabled while a photo is already uploading, the same
 // guard UploadCard's own "Annuler" applies to its confirm step (docs/UI.md's
 // Shape and depth note).
-export function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string) => void; onClose: () => void }) {
+function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string) => void; onClose: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
@@ -175,8 +191,8 @@ export function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: 
   );
 }
 
-export type TodoDraft = { label: string; dueDate: string; documentId: string };
-export const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
+type TodoDraft = { label: string; dueDate: string; documentId: string };
+const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId: "" };
 
 // Strictly what the CRUD already exposes server-side: a label, an optional
 // date, an optional course — no priority, no tags, no recurrence.
@@ -185,7 +201,7 @@ export const EMPTY_TODO_DRAFT: TodoDraft = { label: "", dueDate: "", documentId:
 // this form unmounts on close (it's a sibling of its own "Ajouter un todo"
 // trigger, not CSS-hidden — docs/UI.md), so an unsaved draft only survives
 // Escape because it was never inside the component that just disappeared.
-export function AddTodoForm({
+function AddTodoForm({
   documents,
   pending,
   draft,
@@ -280,292 +296,431 @@ export function AddTodoForm({
   );
 }
 
-// Pinned first in the grid, always rendered — even a course-free empty
-// state still has a streak, possibly zero (docs/UI.md's Aujourd'hui —
-// streak note). One --text-display number and one line beneath it, no
-// heading, no flame or fire icon: Icons' own "plain and literal" rule
-// already rules out the habit-loop urgency device a streak widget usually
-// imports wholesale. The number is computeStreak's own output, read fresh
-// on every load (GET /api/today), never stored client-side.
-function StreakCard({ streak }: { streak: number }) {
+// Knowingly departs from one of docs/UI.md's original rules for this screen,
+// per the approved redesign mockup (docs/UI.md has not been reconciled with
+// it yet — deferred, per the user, until later): the course card's subject
+// icon sits in a tinted circle (a subject-colour tint), where docs/UI.md's
+// original text calls for a left border only ("Card left border, not a
+// tinted background").
+function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onReviewCourse?: (documentId: string) => void }) {
+  const colour = course.colour ?? "#667085";
   return (
-    <Card className="flex flex-col gap-1" data-testid="streak-card">
-      <span data-testid="streak-count" className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">
-        {streak}
-      </span>
-      <p className="text-sm text-text-muted">{streak > 0 ? "Continue comme ça !" : "Révise aujourd'hui pour commencer une série."}</p>
-    </Card>
-  );
-}
-
-function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseCard; onOpenCourse: (documentId: string) => void; onReviewCourse: (documentId: string) => void }) {
-  return (
-    <Card
-      className={`flex flex-col gap-3 ${card.colour ? "border-l-4" : ""}`}
-      style={card.colour ? { borderLeftColor: card.colour } : undefined}
-      data-testid="course-today-card"
-    >
-      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{card.documentTitle}</h3>
-
-      <div className="flex flex-col gap-1">
-        {/* At most one --text-display digit per card (docs/UI.md's Type
-            note): the due count wins the display slot whenever it's
-            present, since "Réviser" — this card's own accent action —
-            acts on it directly. The below-target count only demotes to
-            the plain-fact register when the due count is also there to
-            contest it; alone, it keeps --text-display exactly as before —
-            nothing to resolve a conflict against (docs/UI.md's Aujourd'hui
-            note). */}
-        {card.dueCount > 0 && (
-          <p>
-            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.dueCount}</span>{" "}
-            <span className="text-[length:var(--text-label)] text-text-muted">
-              fiche{card.dueCount > 1 ? "s" : ""} à revoir aujourd'hui
-            </span>
-          </p>
-        )}
-        {card.belowTargetCount > 0 && card.dueCount === 0 && (
-          <p>
-            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{card.belowTargetCount}</span>{" "}
-            <span className="text-[length:var(--text-label)] text-text-muted">
-              notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
-            </span>
-          </p>
-        )}
-        {card.belowTargetCount > 0 && card.dueCount > 0 && (
-          <p className="text-sm text-text-muted">
-            {card.belowTargetCount} notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
-          </p>
-        )}
-        {/* M9's own reversal of this section's former "never a countdown"
-            line (docs/UI.md's Aujourd'hui — deadline note): a small pill,
-            the same idiom ReviewScreen's own "Maîtrisée" badge already
-            uses for a fact worth a light lift without a full --warning
-            button or banner — a day count is exactly that, not an alert.
-            self-start: this stack is flex-col, whose default cross-axis
-            stretch would otherwise widen the pill to the card's own width. */}
-        {card.deadline && (
-          <span className="self-start rounded-full bg-warning/10 px-2 py-0.5 text-sm font-medium text-warning">{countdownLabel(card.deadline.daysAway)}</span>
+    <Card className="flex flex-col gap-[var(--space-block)]" data-testid="course-today-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-[var(--space-related)]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${colour}26` }}>
+            <BookOpen aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color={colour} />
+          </span>
+          <span className="truncate font-[family-name:var(--font-display)] text-sm font-bold">{course.documentTitle}</span>
+        </div>
+        {course.deadline && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-warning">
+            <Clock aria-hidden="true" focusable="false" size={12} strokeWidth={ICON_STROKE_WIDTH} />
+            {countdownLabel(course.deadline.daysAway)}
+          </span>
         )}
       </div>
 
-      {/* mt-auto pushes this row to the card's own bottom edge (docs/UI.md's
-          Grid and spacing note): once items-stretch (below) makes this card
-          as tall as its row's tallest neighbour, the extra height lands here,
-          above the buttons, rather than leaving them floating over a gap
-          beneath. */}
-      <div className="mt-auto flex gap-2">
-        <Button variant="secondary" onClick={() => onOpenCourse(card.documentId)}>
-          <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-          Voir le cours
+      {course.dueCount > 0 ? (
+        <p>
+          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{course.dueCount}</span>{" "}
+          <span className="text-sm text-text-muted">fiche{course.dueCount > 1 ? "s" : ""} à revoir</span>
+        </p>
+      ) : (
+        <p className="flex items-center gap-[var(--space-related)] text-sm font-semibold text-success">
+          <Check aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Tout est à jour
+        </p>
+      )}
+
+      {course.dueCount > 0 ? (
+        <Button variant="accent" className="w-full justify-center" onClick={() => onReviewCourse?.(course.documentId)}>
+          Réviser
+          <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
-        {card.dueCount > 0 && (
-          <Button variant="accent" onClick={() => onReviewCourse(card.documentId)}>
-            <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-            Réviser
-          </Button>
-        )}
-      </div>
+      ) : (
+        <Button variant="secondary" disabled className="w-full justify-center">
+          Rien à réviser
+        </Button>
+      )}
     </Card>
   );
 }
 
-// One Card, not three loose pieces (docs/UI.md): the checklist, the add
-// form and the photo picker are one unit for layout purposes, so the grid
-// above lays out one item here, not three independently-sized ones.
+// A plain white ring when unchecked, a filled green circle with a white
+// checkmark once done — the mockup's own round todo bullets, in place of
+// the browser's native square checkbox. Still a real <input type="checkbox">
+// under the styling (appearance-none only strips its default paint, not its
+// role/keyboard behaviour), so it stays a checkbox for assistive tech and
+// for existing getByRole("checkbox") queries; the checkmark itself is a
+// small inline SVG data URI, swapped in only once checked, since a native
+// checkbox has no child elements to render one into.
+const CHECK_MARK_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 13 10 18 19 7'/%3E%3C/svg%3E";
+
+function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColour: string | null; onToggle: (done: boolean) => void; onDelete: () => void }) {
+  return (
+    <li data-testid="today-todo-row" className="flex items-center gap-[var(--space-related)]">
+      <input
+        type="checkbox"
+        checked={todo.done}
+        onChange={(e) => onToggle(e.target.checked)}
+        aria-label={todo.label}
+        className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface bg-center bg-no-repeat checked:border-success checked:bg-success"
+        style={{ backgroundSize: "11px 11px", backgroundImage: todo.done ? `url("${CHECK_MARK_SVG}")` : undefined }}
+      />
+      <span className={todo.done ? "flex-1 text-sm text-text-muted line-through" : "flex-1 text-sm"}>{todo.label}</span>
+      {todo.dueDate && <span className="whitespace-nowrap text-[length:var(--text-label)] text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
+      {dotColour && <span aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: dotColour }} />}
+      <button
+        type="button"
+        aria-label={`Supprimer « ${todo.label} »`}
+        onClick={onDelete}
+        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-text-muted hover:text-text"
+      >
+        <X aria-hidden="true" focusable="false" size={13} strokeWidth={ICON_STROKE_WIDTH} />
+      </button>
+    </li>
+  );
+}
+
 function TodosCard({
   todos,
   documents,
-  createPending,
-  onToggle,
-  onDelete,
-  onCreate,
+  courseColourByDocumentId,
   onPhotoUploaded,
 }: {
-  todos: TodayView["todos"];
+  todos: Todo[];
   documents: DocumentSummary[];
-  createPending: boolean;
-  onToggle: (id: string, done: boolean) => void;
-  onDelete: (id: string) => void;
-  onCreate: (input: { label: string; dueDate: string | null; documentId: string | null }) => void;
+  courseColourByDocumentId: Map<string, string>;
   onPhotoUploaded: (jobId: string) => void;
 }) {
-  const [addOpen, setAddOpen] = useState(false);
-  const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
-  const [photoOpen, setPhotoOpen] = useState(false);
-
-  return (
-    <Card className="flex flex-col gap-3" data-testid="todos-card">
-      <h2 className="text-[length:var(--text-label)] font-medium text-text-muted">Todos</h2>
-      {todos.length > 0 && (
-        // A bounded, scrollable panel (docs/UI.md's Shape and depth note):
-        // caps only the list, roughly five rows tall, never the card around
-        // it. 13rem is deliberately not a clean multiple of one row's own
-        // rendered height (a round max-h-60/15rem was tried first and
-        // measured live: it landed exactly on a row boundary, six full rows
-        // and no visible cut at all) — this value was tuned against the
-        // real rendered row height so a partial row shows at the boundary
-        // once there is more to see, never a fade gradient, never a "+N"
-        // count, so nothing readable ever silently disappears. Every row
-        // stays mounted regardless (no virtualisation): Tab still reaches
-        // all of them, the browser's own native scroll-into-view carries a
-        // keyboard user past the fold, and nothing here is lazily loaded —
-        // this is not the infinite scroll the Forbidden list bans. Rows are
-        // --space-block apart (docs/UI.md's Aujourd'hui note: "rows in a
-        // list"), not the tighter --space-related a checkbox shares with
-        // its own label inside one row.
-        <ul className="flex max-h-[13rem] flex-col gap-[var(--space-block)] overflow-y-auto">
-          {todos.map((todo) => (
-            <TodoRow key={todo.id} todo={todo} onToggle={(done) => onToggle(todo.id, done)} onDelete={() => onDelete(todo.id)} />
-          ))}
-        </ul>
-      )}
-
-      {/* Collapsed by default (docs/UI.md): a permanently open form was, on
-          its own, wider and taller than the list it sat below. While both
-          triggers are still collapsed, they share one width (docs/UI.md's
-          Shape and depth note): a single-column inline-grid, self-start so
-          the wrapper itself hugs its own content instead of stretching to
-          the card's full width the way Card's own flex-col would otherwise
-          give it by default, and the grid's own default stretch then makes
-          the narrower button match the wider one. The moment either opens,
-          this reverts to a plain stack — an open form is meant to take the
-          card's full width already (Shape and depth's own form-width rule),
-          and the other trigger, if still collapsed, goes back to its own
-          natural size rather than being stretched to match a form. */}
-      <div className={addOpen || photoOpen ? "flex flex-col gap-3" : "inline-grid grid-cols-1 gap-3 self-start"}>
-        {addOpen ? (
-          <AddTodoForm
-            documents={documents}
-            pending={createPending}
-            draft={draft}
-            onDraftChange={setDraft}
-            onSubmit={onCreate}
-            onClose={() => setAddOpen(false)}
-          />
-        ) : (
-          <Button type="button" variant="secondary" onClick={() => setAddOpen(true)}>
-            Ajouter un todo
-          </Button>
-        )}
-
-        {photoOpen ? (
-          <PhotoUploadInput onUploaded={onPhotoUploaded} onClose={() => setPhotoOpen(false)} />
-        ) : (
-          <Button type="button" variant="secondary" onClick={() => setPhotoOpen(true)}>
-            Ajouter depuis une photo
-          </Button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-export function TodayScreen({
-  onOpenProposals,
-  onOpenCourse,
-  onReviewCourse,
-}: {
-  onOpenProposals: (jobId: string) => void;
-  onOpenCourse: (documentId: string) => void;
-  onReviewCourse: (documentId: string) => void;
-}) {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: QUERY_KEY, queryFn: getToday });
-  // Only feeds the manual-add form's optional course picker: a course with
-  // nothing to signal today never reaches TodayView (see buildCourseCards),
-  // but it must still be selectable when adding a todo by hand.
-  const documentsQuery = useQuery({ queryKey: DOCUMENTS_QUERY_KEY, queryFn: listDocuments });
+  const [addOpen, setAddOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [draft, setDraft] = useState<TodoDraft>(EMPTY_TODO_DRAFT);
+  const remaining = todos.filter((t) => !t.done).length;
+
   const toggleMutation = useMutation({
     mutationFn: ({ id, done }: { id: string; done: boolean }) => toggleTodo(id, done),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
-  const createTodoMutation = useMutation({
-    mutationFn: createTodo,
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTodo(id),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
-  const deleteTodoMutation = useMutation({
-    mutationFn: deleteTodo,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  const createMutation = useMutation({
+    mutationFn: (input: { label: string; dueDate: string | null; documentId: string | null }) => createTodo(input),
+    onSuccess: () => {
+      setDraft(EMPTY_TODO_DRAFT);
+      setAddOpen(false);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
   });
-
-  if (query.status === "pending") {
-    return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
-          ))}
-        </div>
-      </main>
-    );
-  }
-
-  if (query.status === "error") {
-    return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
-        <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
-        <p>Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void query.refetch()}>Réessayer</Button>
-      </main>
-    );
-  }
-
-  const view = query.data;
-  const courseCards = buildCourseCards(view);
-  const nothingAtAll = courseCards.length === 0 && view.todos.length === 0;
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] p-8">
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Aujourd'hui</h1>
-
-      {nothingAtAll && (
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <Sleeping />
-          <p>Rien de prévu pour l'instant. Profites-en pour prendre un cours en photo.</p>
+    <Card className="flex flex-col gap-[var(--space-block)]" data-testid="todos-card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
+          <ListChecks aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Todos
         </div>
-      )}
-
-      {/* One grid, not two (docs/UI.md): course cards and the todos card
-          are items in the same grid, sharing its gutters — items-stretch so
-          every card in a row shares one height (each card pushes its own
-          action row to the bottom with mt-auto instead). Always rendered,
-          even when nothingAtAll: the todos card (add form, photo picker) is
-          still how the empty state's "one useful suggestion" is actually
-          acted on, not just illustrated. */}
-      <div className="grid grid-cols-1 items-stretch gap-[var(--space-block)] lg:grid-cols-2" data-testid="content-grid">
-        {/* M9's own exception to "sorted by urgency" (docs/UI.md's Aujourd'hui
-            — streak note): a fact about the student, not about any one
-            course, so daysAway has nothing to sort it by — it always leads. */}
-        <StreakCard streak={view.streak} />
-        {courseCards.map((card) => (
-          <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
-        ))}
-        <TodosCard
-          todos={view.todos}
-          documents={documentsQuery.data ?? []}
-          createPending={createTodoMutation.isPending}
-          onToggle={(id, done) => toggleMutation.mutate({ id, done })}
-          onDelete={(id) => deleteTodoMutation.mutate(id)}
-          onCreate={(input) => createTodoMutation.mutate(input)}
-          onPhotoUploaded={onOpenProposals}
-        />
+        {!addOpen && !photoOpen && (
+          <div className="flex items-center gap-[var(--space-related)]">
+            <span className="text-[length:var(--text-label)] text-text-muted">{remaining} restants</span>
+            <button type="button" aria-label="Ajouter depuis une photo" onClick={() => setPhotoOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Camera aria-hidden="true" focusable="false" size={14} strokeWidth={ICON_STROKE_WIDTH} />
+            </button>
+            <button type="button" aria-label="Ajouter un todo" onClick={() => setAddOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Plus aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Full width, below the grid above — not one more grid item
-          (docs/UI.md's Aujourd'hui — pomodoro note): items-stretch's
-          row-matching is for cards competing for the same row, and a
-          pomodoro has nothing to align its height against. It comes last
-          because it accompanies work already chosen above, it is not what
-          a student comes to this screen looking for first. */}
-      <PomodoroCard todos={view.todos} />
+      {todos.length > 0 && (
+        <ul className="flex flex-col gap-[var(--space-block)]">
+          {todos.map((todo) => (
+            <TodoRow
+              key={todo.id}
+              todo={todo}
+              dotColour={todo.documentId ? (courseColourByDocumentId.get(todo.documentId) ?? null) : null}
+              onToggle={(done) => toggleMutation.mutate({ id: todo.id, done })}
+              onDelete={() => deleteMutation.mutate(todo.id)}
+            />
+          ))}
+        </ul>
+      )}
 
-      {/* Same reasoning as PomodoroCard above (docs/UI.md's Aujourd'hui —
-          Spotify note): full width, below the grid, accompanies work
-          already chosen rather than competing with it. */}
-      <SpotifyCard />
-    </main>
+      {addOpen && (
+        <AddTodoForm
+          documents={documents}
+          pending={createMutation.isPending}
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={(input) => createMutation.mutate(input)}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
+      {photoOpen && (
+        <PhotoUploadInput
+          onUploaded={(jobId) => {
+            setPhotoOpen(false);
+            onPhotoUploaded(jobId);
+          }}
+          onClose={() => setPhotoOpen(false)}
+        />
+      )}
+    </Card>
+  );
+}
+
+// The redesign's own ring-and-tabs visual, wired to the real session
+// lifecycle (packages/core/src/workspace's fixed-duration pomodoro,
+// apps/web/src/lib/pomodoro-api.ts) instead of a static "25:00" and an
+// inert "Démarrer". "Pause courte"/"Pause longue" stay decorative: the
+// backend has exactly one fixed duration, no break lengths to select, so
+// wiring them would mean inventing a capability that doesn't exist
+// server-side. The "N séances de concentration" line counts sessions
+// completed since this page was opened (no such count is exposed by the
+// API) — it resets on reload by construction, which reads as "since you got
+// here" rather than a persisted daily total. "Réinitialiser" clears that
+// count back to zero; it is disabled while a session is running (so it can
+// never silently diverge from the real, still-live server session) and once
+// the count is already zero.
+function PomodoroCard() {
+  const activeQuery = useQuery({ queryKey: POMODORO_ACTIVE_QUERY_KEY, queryFn: getActivePomodoro, staleTime: Infinity, refetchOnWindowFocus: false });
+
+  const [phase, setPhase] = useState<"idle" | "running">("idle");
+  const [session, setSession] = useState<PomodoroSession | null>(null);
+  const [resyncNotice, setResyncNotice] = useState(false);
+  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [, forceTick] = useState(0);
+
+  // Runs once, off the mount fetch only, so a later background refetch can
+  // never downgrade a running countdown back to idle just because the
+  // session's own window has since elapsed.
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (activeQuery.status !== "success") return;
+    initializedRef.current = true;
+    if (activeQuery.data) {
+      setSession(activeQuery.data);
+      setPhase("running");
+    }
+  }, [activeQuery.status, activeQuery.data]);
+
+  useEffect(() => {
+    if (phase !== "running") return;
+    const interval = setInterval(() => forceTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const startMutation = useMutation({
+    mutationFn: () => startPomodoro(null),
+    onSuccess: (result) => {
+      setSession(result.session);
+      setPhase("running");
+      setResyncNotice(result.status === "already-active");
+    },
+  });
+
+  const endMutation = useMutation({
+    mutationFn: () => endPomodoro(session!.id),
+    onSuccess: () => {
+      setPhase("idle");
+      setSession(null);
+      setResyncNotice(false);
+      setSessionsCompleted((n) => n + 1);
+    },
+  });
+
+  const countdownDisplay = phase === "running" && session ? formatCountdown(remainingSeconds(session)) : IDLE_DISPLAY;
+
+  return (
+    <Card className="flex flex-col items-center gap-[var(--space-block)]" data-testid="pomodoro-card">
+      <div className="flex w-full items-center gap-[var(--space-related)] text-sm font-semibold">
+        <Timer aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        Pomodoro
+      </div>
+
+      <div className="flex w-full rounded-full bg-canvas p-1 text-[length:var(--text-label)] font-medium">
+        <span className="flex-1 rounded-full bg-surface py-1.5 text-center font-semibold shadow-[0_1px_2px_rgba(16,24,40,.08)]">Concentration</span>
+        <span className="flex-1 py-1.5 text-center text-text-muted">Pause courte</span>
+        <span className="flex-1 py-1.5 text-center text-text-muted">Pause longue</span>
+      </div>
+
+      <div className="flex h-[170px] w-[170px] items-center justify-center rounded-full border-[10px] border-canvas">
+        <div className="flex w-full flex-col items-center gap-1 px-2 text-center">
+          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{countdownDisplay}</span>
+          <span className="text-center text-[length:var(--text-label)] text-text-muted">
+            {sessionsCompleted} séance{sessionsCompleted > 1 ? "s" : ""} de concentration
+          </span>
+          {resyncNotice && <span className="text-[length:var(--text-label)] text-text-muted">Une séance est déjà en cours.</span>}
+        </div>
+      </div>
+
+      <div className="flex w-full items-center gap-[var(--space-related)]">
+        <Button
+          variant="secondary"
+          aria-label="Réinitialiser"
+          disabled={phase === "running" || sessionsCompleted === 0}
+          onClick={() => setSessionsCompleted(0)}
+          className="h-11 w-11 shrink-0 justify-center px-0"
+        >
+          <RotateCcw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        </Button>
+        {phase === "idle" ? (
+          <Button variant="accent" disabled={startMutation.isPending} onClick={() => startMutation.mutate()} className="flex-1 justify-center">
+            <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
+            {startMutation.isPending ? "Démarrage…" : "Démarrer"}
+          </Button>
+        ) : (
+          <Button variant="accent" disabled={endMutation.isPending} onClick={() => endMutation.mutate()} className="flex-1 justify-center">
+            {endMutation.isPending ? "…" : "Terminer"}
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// Still a mock, not yet backed by real audio (unlike the pomodoro above) —
+// wired later, one piece at a time, same as every other section of this
+// screen was.
+function StudySoundsCard() {
+  return (
+    <Card className="flex flex-col gap-[var(--space-block)]" data-testid="study-sounds-card">
+      <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
+        <Music aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        Sons d'ambiance
+      </div>
+
+      <div className="flex items-center gap-[var(--space-related)]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary-soft">
+          <Music aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color="#0f7b5f" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[length:var(--text-label)] text-text-muted">Sons de concentration</span>
+          <span className="text-sm font-bold">Rainy Window</span>
+          <span className="text-[length:var(--text-label)] text-text-muted">Lo-Fi Study Club</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-[var(--space-related)]">
+        <div className="relative h-1 rounded-full bg-border">
+          <div className="absolute left-0 top-0 h-1 w-[16%] rounded-full bg-primary" />
+        </div>
+        <div className="flex justify-between text-[length:var(--text-label)] text-text-muted">
+          <span>0:37</span>
+          <span>3:38</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-[var(--space-block)]">
+        <button type="button" aria-label="Piste précédente" className="text-text-muted">
+          <SkipBack aria-hidden="true" focusable="false" size={18} fill="currentColor" strokeWidth={0} />
+        </button>
+        <button type="button" aria-label="Lecture" className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-primary text-white">
+          <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
+        </button>
+        <button type="button" aria-label="Piste suivante" className="text-text-muted">
+          <SkipForward aria-hidden="true" focusable="false" size={18} fill="currentColor" strokeWidth={0} />
+        </button>
+        <div className="ml-1 flex items-center gap-[var(--space-related)]">
+          <Volume2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="text-text-muted" />
+          <div className="relative h-1 w-[52px] rounded-full bg-border">
+            <div className="absolute left-0 top-0 h-1 w-[65%] rounded-full bg-text-muted" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center justify-between rounded-[var(--radius-button)] bg-primary-soft px-2.5 py-2">
+          <span className="text-sm font-semibold text-primary">Rainy Window</span>
+          <span className="text-[length:var(--text-label)] text-primary">3:38</span>
+        </div>
+        <div className="flex items-center justify-between rounded-[var(--radius-button)] px-2.5 py-2">
+          <span className="text-sm">Deep Focus</span>
+          <span className="text-[length:var(--text-label)] text-text-muted">3:14</span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// The redesigned Aujourd'hui screen (M9's own "Today" prototype, now
+// promoted to replace the previous implementation of this screen wholesale
+// — courses, todos, and the pomodoro are all wired to real data; only the
+// study-sounds player stays mock). username is a prop, not this screen's own
+// useAuth() call, matching this codebase's convention that only App.tsx
+// calls useAuth() directly.
+export function TodayScreen({
+  username,
+  onReviewCourse,
+  onOpenProposals,
+}: {
+  username: string;
+  onReviewCourse?: (documentId: string) => void;
+  onOpenProposals: (jobId: string) => void;
+}) {
+  const query = useQuery({ queryKey: QUERY_KEY, queryFn: getToday });
+  // Only feeds the add-todo form's own course picker: a course with nothing
+  // to signal today never reaches TodayView (see buildCourseCards), but it
+  // must still be selectable when adding a todo by hand.
+  const documentsQuery = useQuery({ queryKey: DOCUMENTS_QUERY_KEY, queryFn: listDocuments });
+
+  return (
+    <div className="flex gap-[var(--space-section)]">
+      <main className="flex flex-1 flex-col gap-[var(--space-section)]">
+        {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
+        {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
+        {query.status === "success" &&
+          (() => {
+            const view = query.data;
+            const courseCards = buildCourseCards(view);
+            const totalDue = view.dueCards.reduce((sum, c) => sum + c.count, 0);
+            const courseColourByDocumentId = new Map(courseCards.filter((c) => c.colour !== null).map((c) => [c.documentId, c.colour as string]));
+
+            return (
+              <>
+                <div className="flex flex-col gap-[var(--space-related)]">
+                  <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, {username}</h1>
+                  {totalDue > 0 ? (
+                    <p className="text-sm text-text-muted">
+                      Tu as <strong className="font-semibold text-text">{totalDue} fiche{totalDue > 1 ? "s" : ""}</strong> à réviser dans {view.dueCards.length} cours. 25
+                      minutes de concentration suffisent pour garder de l'avance.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-text-muted">Rien à réviser pour l'instant. Profites-en pour avancer sur autre chose.</p>
+                  )}
+                </div>
+
+                {courseCards.length > 0 && (
+                  <div className="flex flex-col gap-[var(--space-block)]">
+                    <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
+                      <Calendar aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                      À réviser aujourd'hui
+                    </div>
+                    <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2">
+                      {courseCards.map((course) => (
+                        <CourseCard key={course.documentId} course={course} onReviewCourse={onReviewCourse} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <TodosCard todos={view.todos} documents={documentsQuery.data ?? []} courseColourByDocumentId={courseColourByDocumentId} onPhotoUploaded={onOpenProposals} />
+              </>
+            );
+          })()}
+      </main>
+
+      <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
+        <PomodoroCard />
+        <StudySoundsCard />
+      </div>
+    </div>
   );
 }

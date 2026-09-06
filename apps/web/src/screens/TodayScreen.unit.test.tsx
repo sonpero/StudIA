@@ -4,23 +4,28 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TodayScreen } from "./TodayScreen.js";
 import type { TodayView } from "../lib/today-api.js";
+import { TodayScreen } from "./TodayScreen.js";
 
+// The redesigned Aujourd'hui screen (M9's own "Today" prototype, now the
+// real thing — the previous implementation and its own test file are gone).
+// Courses, todos, the add-todo flow (date, course picker, photo upload) and
+// the pomodoro (start/end/resume) are all wired to real data; the sidebar
+// lives in the app's own AppNav now (apps/web/src/components/AppNav.tsx),
+// not this screen, so it has no tests here. Only the study-sounds player
+// stays mock. Every fetch stub below must answer GET /api/pomodoro/active
+// (404 by default: no session in flight) or the pomodoro card's own mount
+// throws.
 function renderScreen(
-  overrides: Partial<{
-    onOpenProposals: (jobId: string) => void;
-    onOpenCourse: (documentId: string) => void;
-    onReviewCourse: (documentId: string) => void;
-  }> = {},
+  overrides: Partial<{ username: string; onReviewCourse: (documentId: string) => void; onOpenProposals: (jobId: string) => void }> = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <TodayScreen
+        username={overrides.username ?? "alex"}
+        onReviewCourse={overrides.onReviewCourse}
         onOpenProposals={overrides.onOpenProposals ?? (() => undefined)}
-        onOpenCourse={overrides.onOpenCourse ?? (() => undefined)}
-        onReviewCourse={overrides.onReviewCourse ?? (() => undefined)}
       />
     </QueryClientProvider>,
   );
@@ -31,675 +36,302 @@ function stubFetch(view: TodayView | (() => Response)) {
     "fetch",
     vi.fn().mockImplementation((url: string) => {
       if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-      // PomodoroCard's own mount fetch (docs/UI.md's Aujourd'hui — pomodoro
-      // note): no active session by default, so it never falls through to
-      // the branch below and gets misparsed as a PomodoroSession — the
-      // gap that let a malformed session slip through silently before this
-      // stub named the route explicitly.
-      if (typeof url === "string" && url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+      if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
       if (typeof view === "function") return Promise.resolve(view());
       return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
     }),
   );
 }
 
-const emptyView: TodayView = { date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 };
+const emptyView: TodayView = { date: "2026-09-06", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 };
 
-// Both the add-todo form and the photo picker are collapsed by default,
-// behind their own discreet trigger (docs/UI.md's Aujourd'hui note) — every
-// test below that needs the form or the file input open must click its
-// trigger first, the way a real user would.
-async function openAddTodoForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
-}
-
-async function openPhotoPicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
-}
-
-describe("TodayScreen", () => {
+describe("TodayScreen (Aujourd'hui)", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
   });
 
-  it("loading state: shows a skeleton, never a bare spinner", () => {
+  it("loading state: shows a skeleton, never a bare mock", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    expect(screen.getByRole("heading", { name: "Aujourd'hui" })).toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText("Biologie cellulaire et génétique")).not.toBeInTheDocument();
   });
 
-  it("error state: a network failure shows the confused mascot and a retry button, never a raw error code", async () => {
+  it("error state: shows an explicit message", async () => {
     stubFetch(() => new Response(null, { status: 500 }));
     renderScreen();
     await screen.findByText(/impossible de charger/i);
-    expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
-  it("empty state: nothing due, nothing behind, no todos, no deadlines — an invitation, never a bare '0' outside the streak card", async () => {
+  it("greets the real connected user by name, not a hardcoded one", async () => {
     stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    const streakCard = screen.getByTestId("streak-card");
-    const bareZeros = screen.queryAllByText(/^0$/).filter((el) => !streakCard.contains(el));
-    expect(bareZeros).toHaveLength(0);
+    renderScreen({ username: "Camille" });
+    expect(await screen.findByRole("heading", { name: "Bonjour, Camille" })).toBeInTheDocument();
   });
 
-  // docs/UI.md's Aujourd'hui — streak (M9) note: "the one card on this
-  // screen that is never conditional on there being anything else to
-  // show" — a course-free empty state still has a streak, possibly zero.
-  it("empty state: still shows the streak card, even with nothing else to show", async () => {
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const streakCard = screen.getByTestId("streak-card");
-    expect(within(streakCard).getByText("0")).toBeInTheDocument();
-    expect(within(streakCard).getByText(/commencer une série/i)).toBeInTheDocument();
-  });
-
-  it("ready: the streak card is pinned first in the grid, ahead of every course card (docs/UI.md's Aujourd'hui — streak note)", async () => {
-    stubFetch({ ...emptyView, streak: 3, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const grid = screen.getByTestId("content-grid");
-    const firstChild = grid.firstElementChild;
-    expect(firstChild).toHaveAttribute("data-testid", "streak-card");
-  });
-
-  it("ready: the streak card shows the streak length and an encouragement once it is at least 1", async () => {
-    stubFetch({ ...emptyView, streak: 5 });
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const streakCard = screen.getByTestId("streak-card");
-    expect(within(streakCard).getByText("5")).toBeInTheDocument();
-    expect(within(streakCard).getByText("Continue comme ça !")).toBeInTheDocument();
-    expect(within(streakCard).queryByText(/commencer une série/i)).not.toBeInTheDocument();
-  });
-
-  it("ready: the streak number is --text-display, no flame or fire icon anywhere on the card (docs/UI.md's Icons note: plain and literal)", async () => {
-    stubFetch({ ...emptyView, streak: 5 });
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const streakCard = screen.getByTestId("streak-card");
-    expect(within(streakCard).getByText("5").className).toContain("text-[length:var(--text-display)]");
-    expect(streakCard.querySelector("svg")).not.toBeInTheDocument();
-  });
-
-  it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike, not three different ad hoc values (docs/UI.md's Grid and spacing note)", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
-    renderScreen();
-    const loadingMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
-    expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-    cleanup();
-
-    stubFetch(() => new Response(null, { status: 500 }));
-    renderScreen();
-    await screen.findByText(/impossible de charger/i);
-    const errorMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
-    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-    cleanup();
-
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    const readyMain = screen.getByRole("heading", { name: "Aujourd'hui" }).closest("main");
-    expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-  });
-
-  it("ready: shows due cards grouped by course", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-    expect(screen.getByText(/3/)).toBeInTheDocument();
-  });
-
-  it("ready: shows notions below target grouped by course", async () => {
-    stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
-    renderScreen();
-    await screen.findByText("Histoire");
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText(/notions? à consolider avant l'échéance/)).toBeInTheDocument();
-  });
-
-  it("ready: a below-target count with no due count on the same card keeps --text-display — a lone count has no conflict to resolve against (docs/UI.md's Aujourd'hui note)", async () => {
-    stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
-    renderScreen();
-    await screen.findByText("Histoire");
-
-    const digit = screen.getByText("2");
-    expect(digit.className).toContain("text-[length:var(--text-display)]");
-  });
-
-  it("ready: when a course has both a due count and a below-target count, only the due count keeps --text-display — it's the one 'Réviser' acts on; the below-target count demotes to the card's plain-fact register instead of fighting it for the same weight (docs/UI.md's Aujourd'hui note)", async () => {
+  it("renders one card per course from the real due cards and upcoming deadlines", async () => {
     stubFetch({
       ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 5 }],
-      notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 6 }],
+      dueCards: [{ documentId: "doc-1", documentTitle: "Biologie cellulaire et génétique", colour: "#F75757", count: 12 }],
+      upcomingDeadlines: [{ documentId: "doc-1", title: "Biologie cellulaire et génétique", deadlineDate: "2026-09-14", deadlineLabel: null, daysAway: 8 }],
     });
     renderScreen();
-    await screen.findByText("Maths");
 
-    const due = screen.getByText("5");
-    expect(due.className).toContain("text-[length:var(--text-display)]");
-
-    const belowTarget = screen.getByText(/6 notions? à consolider avant l'échéance/);
-    expect(belowTarget.className).not.toMatch(/--text-display/);
-    expect(belowTarget.className).toContain("text-sm");
-
-    // At most one --text-display digit on the whole card (docs/UI.md's
-    // Type note), not just "the due count happens to have it".
-    const card = screen.getByTestId("course-today-card");
-    expect(card.querySelectorAll('[class*="text-\\[length\\:var\\(--text-display\\)\\]"]')).toHaveLength(1);
+    const card = await screen.findByTestId("course-today-card");
+    expect(within(card).getByText("Biologie cellulaire et génétique")).toBeInTheDocument();
+    expect(within(card).getByText("12")).toBeInTheDocument();
+    expect(within(card).getByText(/fiches à revoir/)).toBeInTheDocument();
+    expect(within(card).getByText("Examen dans 8 jours")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
   });
 
-  it("ready: a course card's due count is the dominant number on its line — --text-display and bold, its qualifier small and muted beside it, never the same size (docs/UI.md's Type note)", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 25 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const digit = screen.getByText("25");
-    expect(digit.className).toContain("text-[length:var(--text-display)]");
-    const qualifier = screen.getByText(/fiches à revoir aujourd'hui/);
-    expect(qualifier.className).toContain("text-[length:var(--text-label)]");
-    expect(qualifier.className).not.toContain("text-[length:var(--text-display)]");
-  });
-
-  it("ready: a course card's subject colour is a left border on the whole card, not a small dot beside the title (docs/UI.md's Subject colours note)", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const card = screen.getByTestId("course-today-card");
-    expect(card).toHaveStyle({ borderLeftColor: "#F87171" });
-  });
-
-  it("ready: 'Voir le cours' and 'Réviser' each pair a decorative icon with their label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    for (const name of ["Voir le cours", "Réviser"]) {
-      const button = screen.getByRole("button", { name });
-      const icon = button.querySelector("svg");
-      expect(icon).not.toBeNull();
-      expect(icon).toHaveAttribute("aria-hidden", "true");
-      expect(icon).toHaveAttribute("focusable", "false");
-    }
-  });
-
-  it("ready: a course reached only through an upcoming deadline carries no colour (workspace.md), so its card gets no left-border override", async () => {
-    stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const card = screen.getByTestId("course-today-card");
-    expect(card.style.borderLeftColor).toBe("");
-  });
-
-  it("ready: a course card's title is --text-title, up from the plain body size it shared with everything else before this pass", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    const title = await screen.findByText("Maths");
-    expect(title.className).toContain("text-[length:var(--text-title)]");
-  });
-
-  // M9 reverses this screen's own former "never a countdown" line
-  // (docs/UI.md's Aujourd'hui — deadline note): the absolute date is
-  // dropped in favour of a small badge with only the relative form. Still
-  // not a live `role="timer"` widget — a static fact re-read on each load,
-  // not a ticking countdown.
-  it("ready: shows a course's deadline as a relative countdown badge, 'Examen dans N jours', never the absolute date or a live timer", async () => {
-    stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 }] });
-    renderScreen();
-    await screen.findByText("Examen dans 10 jours");
-    expect(screen.queryByRole("timer")).not.toBeInTheDocument();
-    expect(screen.queryByText("2026-03-12")).not.toBeInTheDocument();
-    expect(screen.queryByText(/12 mars/i)).not.toBeInTheDocument();
-    // The custom label (deadlineLabel) is not shown here — the badge is a
-    // fixed, generic word ("Examen"), the reference screenshot's own copy,
-    // not a repaint of Progression's own custom-labelled sentence.
-    expect(screen.queryByText(/contrôle/i)).not.toBeInTheDocument();
-  });
-
-  it("ready: the countdown badge reads 'aujourd'hui'/'demain' at daysAway 0/1, not 'dans 0 jour'/'dans 1 jour'", async () => {
+  it("shows 'Tout est à jour' and a disabled button for a course with nothing due", async () => {
     stubFetch({
       ...emptyView,
-      upcomingDeadlines: [
-        { documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-02", deadlineLabel: null, daysAway: 0 },
-        { documentId: "doc-2", title: "Histoire", deadlineDate: "2026-03-03", deadlineLabel: null, daysAway: 1 },
-      ],
+      upcomingDeadlines: [{ documentId: "doc-1", title: "Fonctions quadratiques", deadlineDate: "2026-09-23", deadlineLabel: null, daysAway: 17 }],
     });
     renderScreen();
-    await screen.findByText("Examen aujourd'hui");
-    expect(screen.getByText("Examen demain")).toBeInTheDocument();
+
+    const card = await screen.findByTestId("course-today-card");
+    expect(within(card).getByText("Tout est à jour")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Rien à réviser" })).toBeDisabled();
   });
 
-  it("ready: the countdown badge is styled bg-warning/10 text-warning in a small rounded pill — the same idiom as ReviewScreen's own 'Maîtrisée' badge (docs/UI.md's Aujourd'hui — deadline note)", async () => {
-    stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: null, daysAway: 10 }] });
-    renderScreen();
-    const badge = await screen.findByText("Examen dans 10 jours");
-    expect(badge.className).toMatch(/bg-warning\/10/);
-    expect(badge.className).toMatch(/text-warning/);
-    expect(badge.className).toMatch(/rounded-full/);
-  });
-
-  it("ready: a course due today and a course below target before its deadline render as one card each, not one per signal, and the two counts are worded differently", async () => {
-    stubFetch({
-      ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 25 }],
-      notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 7 }],
-    });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    expect(screen.getAllByText("Maths")).toHaveLength(1);
-    // The due digit and its qualifier stay separate elements (docs/UI.md's
-    // Type note: the number dominates, the qualifier stays small beside
-    // it). The below-target count, once a due count is also on the card,
-    // demotes to one plain sentence instead (docs/UI.md's Aujourd'hui
-    // note: at most one --text-display digit per card, and the due count
-    // wins it here), so it's asserted as a single text run, not two.
-    expect(screen.getByText("25")).toBeInTheDocument();
-    expect(screen.getByText(/fiches à revoir aujourd'hui/)).toBeInTheDocument();
-    expect(screen.getByText(/7 notions à consolider avant l'échéance/)).toBeInTheDocument();
-  });
-
-  it("ready: a course card offers 'Voir le cours', which opens that course", async () => {
-    const onOpenCourse = vi.fn();
-    stubFetch({ ...emptyView, notionsBelowTarget: [{ documentId: "doc-1", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }] });
-    const user = userEvent.setup();
-    renderScreen({ onOpenCourse });
-    await screen.findByText("Histoire");
-
-    await user.click(screen.getByRole("button", { name: "Voir le cours" }));
-
-    expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
-  });
-
-  it("ready: a course card offers 'Réviser' only when something is due today", async () => {
+  it("clicking 'Réviser' calls onReviewCourse with the course's documentId", async () => {
+    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F75757", count: 3 }] });
     const onReviewCourse = vi.fn();
-    stubFetch({
-      ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
-      notionsBelowTarget: [{ documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }],
-    });
     const user = userEvent.setup();
     renderScreen({ onReviewCourse });
-    const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="course-today-card"]') as HTMLElement;
-    const histoireCard = screen.getByText("Histoire").closest('[data-testid="course-today-card"]') as HTMLElement;
 
-    expect(within(mathsCard).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
-    expect(within(histoireCard).queryByRole("button", { name: "Réviser" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Réviser" }));
 
-    await user.click(within(mathsCard).getByRole("button", { name: "Réviser" }));
     expect(onReviewCourse).toHaveBeenCalledWith("doc-1");
   });
 
-  it("ready: 'Réviser' is the card's one --accent action, 'Voir le cours' stays --secondary — even on a card where 'Voir le cours' is the only button (docs/UI.md's Colour note)", async () => {
-    stubFetch({
-      ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
-      notionsBelowTarget: [{ documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }],
-    });
+  it("empty state: no courses have anything to show today", async () => {
+    stubFetch(emptyView);
     renderScreen();
-    const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="course-today-card"]') as HTMLElement;
-    const histoireCard = screen.getByText("Histoire").closest('[data-testid="course-today-card"]') as HTMLElement;
-
-    const reviser = within(mathsCard).getByRole("button", { name: "Réviser" });
-    expect(reviser.className).toMatch(/bg-primary/);
-    expect(reviser.className).toMatch(/text-white/);
-
-    const voirMaths = within(mathsCard).getByRole("button", { name: "Voir le cours" });
-    expect(voirMaths.className).not.toMatch(/bg-primary/);
-    expect(voirMaths.className).toMatch(/border-border/);
-
-    // Histoire has no due count, so no Réviser at all — its lone remaining
-    // button must not be promoted to accent just because it is now alone.
-    const voirHistoire = within(histoireCard).getByRole("button", { name: "Voir le cours" });
-    expect(voirHistoire.className).not.toMatch(/bg-primary/);
-    expect(voirHistoire.className).toMatch(/border-border/);
-
-    // Never more than one accent element inside a single card (docs/UI.md).
-    expect(within(mathsCard).getAllByRole("button").filter((b) => /bg-primary/.test(b.className))).toHaveLength(1);
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    expect(screen.queryByTestId("course-today-card")).not.toBeInTheDocument();
   });
 
-  it("ready: the accent action's colour is fixed — never the course's own subject colour, whatever that colour is (docs/UI.md's Colour note: --accent belongs to the app, never to a course)", async () => {
+  it("the greeting's summary counts the real due cards and courses", async () => {
     stubFetch({
       ...emptyView,
       dueCards: [
-        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
-        { documentId: "doc-2", documentTitle: "Histoire", colour: "#38BDF8", count: 1 },
+        { documentId: "doc-1", documentTitle: "Maths", colour: "#F75757", count: 3 },
+        { documentId: "doc-2", documentTitle: "Histoire", colour: "#F36016", count: 4 },
       ],
     });
     renderScreen();
-    const mathsCard = (await screen.findByText("Maths")).closest('[data-testid="course-today-card"]') as HTMLElement;
-    const histoireCard = screen.getByText("Histoire").closest('[data-testid="course-today-card"]') as HTMLElement;
-
-    const mathsReviser = within(mathsCard).getByRole("button", { name: "Réviser" });
-    const histoireReviser = within(histoireCard).getByRole("button", { name: "Réviser" });
-
-    // Same fixed class on both, regardless of each card's own distinct
-    // subject colour — the button's style never reads from card.colour.
-    expect(mathsReviser.className).toMatch(/bg-primary/);
-    expect(histoireReviser.className).toMatch(/bg-primary/);
-    expect(mathsReviser.style.backgroundColor).toBe("");
-    expect(histoireReviser.style.backgroundColor).toBe("");
+    const summary = await screen.findByText(/à réviser dans 2 cours/);
+    expect(summary.textContent).toMatch(/7 fiches/);
   });
 
-  it("ready: course cards and the todos card share one grid — two columns wide, items stretched to the row's own height (docs/UI.md's Grid and spacing note, reversed from this pass's earlier items-start)", async () => {
-    // No accessible role or label distinguishes a grid from a stack, or
-    // items-stretch from items-start (docs/TESTING.md's exception for
-    // genuinely inaccessible structure): the one place in this file that
-    // asserts on a class name.
-    stubFetch({
-      ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
-      todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
-    });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const grid = screen.getByTestId("content-grid");
-    expect(grid.className).toMatch(/\bgrid\b/);
-    expect(grid.className).toMatch(/items-stretch/);
-    expect(grid.className).not.toMatch(/items-start/);
-    expect(grid.className).not.toMatch(/flex-col/);
-    // Cards are distinct blocks within one section (docs/UI.md's Grid and
-    // spacing note): the grid's own gutter is --space-block, not a bare gap-4.
-    expect(grid.className).toMatch(/gap-\[var\(--space-block\)\]/);
-
-    const courseCard = screen.getByTestId("course-today-card");
-    const todosCard = screen.getByTestId("todos-card");
-    expect(grid).toContainElement(courseCard);
-    expect(grid).toContainElement(todosCard);
-  });
-
-  it("ready: a course card's action row is pushed to the card's own bottom edge (mt-auto) — what keeps items-stretch from leaving it floating over a gap on a short card (docs/UI.md's Grid and spacing note)", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const reviser = screen.getByRole("button", { name: "Réviser" });
-    const actionRow = reviser.closest("div");
-    expect(actionRow?.className).toMatch(/mt-auto/);
-  });
-
-  it("ready: course cards are sorted by urgency, nearest deadline first, no-deadline courses last (docs/UI.md's Aujourd'hui note)", async () => {
-    stubFetch({
-      ...emptyView,
-      dueCards: [
-        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
-        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
-        { documentId: "doc-3", documentTitle: "SVT", colour: "#109DA0", count: 2 },
-      ],
-      upcomingDeadlines: [
-        { documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 },
-        { documentId: "doc-2", title: "Histoire", deadlineDate: "2026-03-04", deadlineLabel: "Contrôle", daysAway: 2 },
-        // doc-3 (SVT) has no deadline at all — must sort last, after every
-        // course that has one, however far out.
-      ],
-    });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const cards = screen.getAllByTestId("course-today-card");
-    const titles = cards.map((card) => within(card).getByRole("heading").textContent);
-    expect(titles).toEqual(["Histoire", "Maths", "SVT"]);
-  });
-
-  it("ready: courses tied on urgency (same daysAway, or no deadline at all) keep their original order — a stable sort, not a coincidental one", async () => {
-    stubFetch({
-      ...emptyView,
-      dueCards: [
-        { documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 },
-        { documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 1 },
-      ],
-      // Neither has a deadline: both compare equal (Infinity), so a stable
-      // sort must leave them in buildCourseCards's own original order.
-    });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    const cards = screen.getAllByTestId("course-today-card");
-    const titles = cards.map((card) => within(card).getByRole("heading").textContent);
-    expect(titles).toEqual(["Maths", "Histoire"]);
-  });
-
-  it("ready: the todos card always occupies exactly one grid column, the same footprint as a course card — no longer widened to fill a stranded row (docs/UI.md's Grid and spacing note, reversed from an earlier version of this pass)", async () => {
-    // Even course-card count: previously the trigger for lg:col-span-2.
-    // Also a class-name assertion, same exception as the grid-sharing test
-    // above: a missing col-span has no accessible trace, it is the point.
-    stubFetch({
-      ...emptyView,
-      dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }],
-      notionsBelowTarget: [{ documentId: "doc-2", documentTitle: "Histoire", colour: "#60A5FA", count: 2 }],
-    });
-    renderScreen();
-    await screen.findByText("Maths");
-    await screen.findByText("Histoire");
-
-    expect(screen.getByTestId("todos-card").className).not.toMatch(/col-span/);
-  });
-
-  it("ready: the todos card stays single-column on an odd course-card count too — unconditional now, not a special case", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-
-    expect(screen.getByTestId("todos-card").className).not.toMatch(/col-span/);
-  });
-
-  it("ready: todo rows are separated by --space-block, not the tighter --space-related a checkbox shares with its own label inside one row (docs/UI.md's Aujourd'hui note)", async () => {
+  it("renders real todos, with a due date when there is one and none when there isn't", async () => {
     stubFetch({
       ...emptyView,
       todos: [
-        { id: "t1", label: "Un", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
-        { id: "t2", label: "Deux", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
+        { id: "t1", label: "Sans date", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" },
+        { id: "t2", label: "Avec date", dueDate: "2026-09-10", documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" },
       ],
     });
     renderScreen();
-    // A todo not yet done also appears as an <option> in PomodoroCard's own
-    // select (docs/UI.md's Aujourd'hui — pomodoro note); scoped to
-    // todos-card so this stays unambiguous rather than matching both.
-    const todosCard = await screen.findByTestId("todos-card");
-    const list = within(todosCard).getByText("Un").closest("ul");
-    expect(list?.className).toMatch(/gap-\[var\(--space-block\)\]/);
+
+    await screen.findByText("Sans date");
+    const dated = screen.getByText("Avec date").closest('[data-testid="today-todo-row"]') as HTMLElement;
+    expect(within(dated).getByText("10 septembre 2026")).toBeInTheDocument();
+    const undated = screen.getByText("Sans date").closest('[data-testid="today-todo-row"]') as HTMLElement;
+    expect(within(undated).queryByText(/\d{4}/)).not.toBeInTheDocument();
   });
 
-  it("ready: the checklist is a bounded, scrollable panel — capped in height, but every todo stays mounted and reachable, none removed from the page (docs/UI.md's Shape and depth note)", async () => {
-    const todos = Array.from({ length: 12 }, (_, i) => ({
-      id: `t${i}`,
-      label: `Todo ${i}`,
-      dueDate: null,
-      documentId: null,
-      done: false,
-      source: "manual" as const,
-      createdAt: "2026-03-01T00:00:00.000Z",
-    }));
-    stubFetch({ ...emptyView, todos });
-    renderScreen();
-    // Scoped for the same reason as the --space-block test above: every
-    // one of these todos is also a PomodoroCard select option.
-    const todosCard = await screen.findByTestId("todos-card");
-    const list = within(todosCard).getByText("Todo 0").closest("ul");
-    expect(list?.className).toMatch(/overflow-y-auto/);
-    expect(list?.className).toMatch(/max-h-/);
-    // A capped height is a viewport onto the list, not a smaller list:
-    // every row stays in the document, reachable by Tab past the visible
-    // fold — this is not the infinite scroll docs/UI.md's Forbidden list
-    // bans, since nothing here is lazily loaded.
-    expect(screen.getAllByRole("checkbox")).toHaveLength(12);
-  });
-
-  it("ready: the checklist, the add-todo trigger and the photo trigger live in one todos card, not three separate pieces (docs/UI.md)", async () => {
-    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
-    renderScreen();
-    // Not screen.findByText: an undone todo's label is also a PomodoroCard
-    // select option (docs/UI.md's Aujourd'hui — pomodoro note), so a plain
-    // text match here is ambiguous. todos-card's own existence is enough
-    // to know the ready state has loaded.
-    const todosCard = await screen.findByTestId("todos-card");
-    expect(within(todosCard).getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeInTheDocument();
-    expect(within(todosCard).getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-    expect(within(todosCard).getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
-  });
-
-  it("ready: the two collapsed triggers share the same width via a single-column inline-grid, not each sized to its own label (docs/UI.md's Shape and depth note)", async () => {
-    // jsdom does no real layout, so equal on-screen width can't be asserted
-    // numerically here (verified live instead); this checks the mechanism
-    // that produces it is actually present — the one class-name assertion
-    // this test makes, same exception as the grid-stretch tests above.
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const addTrigger = screen.getByRole("button", { name: "Ajouter un todo" });
-    const photoTrigger = screen.getByRole("button", { name: /ajouter depuis une photo/i });
-    const wrapper = addTrigger.parentElement;
-
-    expect(wrapper).toBe(photoTrigger.parentElement);
-    expect(wrapper?.className).toMatch(/\binline-grid\b/);
-    expect(wrapper?.className).toMatch(/grid-cols-1/);
-  });
-
-  it("ready: 'Todos' is a section label, --text-label, not body text — a label, not a title (docs/UI.md's Type note)", async () => {
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    expect(screen.getByText("Todos").className).toContain("text-[length:var(--text-label)]");
-  });
-
-  it("ready: the date and course fields get design-system styling, not the raw native control (docs/UI.md)", async () => {
-    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
-    const user = userEvent.setup();
-    renderScreen();
-    // Not screen.findByText("x"): that label is also a PomodoroCard select
-    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
-    // note), so a plain text match is ambiguous. todos-card's presence is
-    // enough to know the ready state has loaded.
-    await screen.findByTestId("todos-card");
-    await openAddTodoForm(user);
-
-    expect(screen.getByLabelText(/date/i).className).toMatch(/appearance-none/);
-    expect(screen.getByLabelText(/^cours/i).className).toMatch(/appearance-none/);
-  });
-
-  it("each todo offers a discreet delete action, wired to DELETE, no confirmation dialog", async () => {
-    const calls: { url: string; method: string | undefined }[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (init?.method === "DELETE") {
-          calls.push({ url, method: init.method });
-          return Promise.resolve(new Response(null, { status: 204 }));
-        }
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              ...emptyView,
-              todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
-            }),
-            { status: 200 },
-          ),
-        );
-      }),
-    );
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText("Réviser le chapitre 3");
-
-    await user.click(screen.getByRole("button", { name: /supprimer.*réviser le chapitre 3/i }));
-
-    expect(calls).toEqual([{ url: "/api/todos/t1", method: "DELETE" }]);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  });
-
-  it("never shows 'Retour': this is the destination the header's own links lead to, not a place left and returned to", async () => {
-    stubFetch({ ...emptyView, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 1 }] });
-    renderScreen();
-    await screen.findByText("Maths");
-    expect(screen.queryByText(/retour/i)).not.toBeInTheDocument();
-  });
-
-  it("ready: each todo has a checkbox reflecting its done state", async () => {
+  it("a done todo renders struck through, and '1 restants' counts only the pending ones", async () => {
     stubFetch({
       ...emptyView,
-      todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
+      todos: [
+        { id: "t1", label: "Fait", dueDate: null, documentId: null, done: true, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" },
+        { id: "t2", label: "À faire", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" },
+      ],
     });
     renderScreen();
-    // Not screen.findByText: this label is also a PomodoroCard select
-    // option (docs/UI.md's Aujourd'hui — pomodoro note).
-    await screen.findByTestId("todos-card");
-    expect(screen.getByRole("checkbox", { name: "Réviser le chapitre 3" })).not.toBeChecked();
+
+    const done = await screen.findByText("Fait");
+    expect(done.className).toMatch(/line-through/);
+    expect(screen.getByText("1 restants")).toBeInTheDocument();
   });
 
-  it("checking a todo's checkbox sends done: true for that todo, and only that one", async () => {
+  it("a todo's checkbox renders as a plain circle (rounded-full), matching the mockup — not the browser's own square checkbox", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [{ id: "t1", label: "Réviser", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }],
+    });
+    renderScreen();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Réviser" });
+    expect(checkbox.className).toMatch(/rounded-full/);
+  });
+
+  it("checking a todo's checkbox sends done: true for that one, refreshing the list", async () => {
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "PATCH") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(null, { status: 200 }));
         }
         return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              ...emptyView,
-              todos: [{ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
-            }),
-            { status: 200 },
-          ),
+          new Response(JSON.stringify({ ...emptyView, todos: [{ id: "t1", label: "Réviser", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }] }), { status: 200 }),
         );
       }),
     );
     const user = userEvent.setup();
     renderScreen();
-    await screen.findByText("Réviser le chapitre 3");
+    await screen.findByText("Réviser");
 
-    await user.click(screen.getByRole("checkbox", { name: "Réviser le chapitre 3" }));
+    await user.click(screen.getByRole("checkbox", { name: "Réviser" }));
 
     expect(calls).toEqual([{ url: "/api/todos/t1", body: { done: true } }]);
   });
 
-  it("offers a way to add todos from a planner photo, revealed behind a discreet trigger rather than a permanently open input", async () => {
+  it("the delete button removes that todo, no confirmation dialog", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (init?.method === "DELETE") {
+          calls.push({ url, method: init.method });
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ ...emptyView, todos: [{ id: "t1", label: "À supprimer", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }] }), { status: 200 }),
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText("À supprimer");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer « À supprimer »" }));
+
+    expect(calls).toEqual([{ url: "/api/todos/t1", method: "DELETE" }]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("the '+' button reveals the full add-todo form (label, date, course); submitting a bare label posts it with null date and course", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (init?.method === "POST" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Nouveau todo", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Nouveau todo");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Nouveau todo", dueDate: null, documentId: null } }]);
+    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
+  });
+
+  it("filling in the date field posts it as the todo's dueDate", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (init?.method === "POST" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser", dueDate: "2026-09-20", documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser");
+    await user.type(screen.getByLabelText(/date/i), "2026-09-20");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser", dueDate: "2026-09-20", documentId: null } }]);
+  });
+
+  it("picking a course in the add-todo form posts its documentId", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) {
+          return Promise.resolve(new Response(JSON.stringify([{ id: "doc-1", title: "Maths", createdAt: "2026-01-01T00:00:00.000Z" }]), { status: 200 }));
+        }
+        if (init?.method === "POST" && url === "/api/todos") {
+          calls.push({ url, body: JSON.parse(init.body as string) });
+          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser", dueDate: null, documentId: "doc-1", done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Ajouter un todo" }));
+    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser");
+    await user.selectOptions(screen.getByLabelText(/^cours/i), "doc-1");
+    await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser", dueDate: null, documentId: "doc-1" } }]);
+  });
+
+  it("offers a second, discreet trigger to add a todo from a planner photo, closed by default", async () => {
     stubFetch(emptyView);
     const user = userEvent.setup();
     renderScreen();
-    await screen.findByText(/rien de prévu/i);
+    await screen.findByText(/rien à réviser pour l'instant/i);
 
     expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
 
-    await openPhotoPicker(user);
+    await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
 
     expect(screen.getByLabelText(/photo de l'agenda/i)).toBeInTheDocument();
   });
 
-  it("uploading a photo opens the proposals screen for the returned job", async () => {
+  it("uploading a photo calls onOpenProposals with the returned job id", async () => {
     const onOpenProposals = vi.fn();
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
           return Promise.resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
         }
-        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
       }),
     );
     const user = userEvent.setup();
     renderScreen({ onOpenProposals });
-    await screen.findByText(/rien de prévu/i);
-    await openPhotoPicker(user);
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    await user.click(screen.getByRole("button", { name: /ajouter depuis une photo/i }));
 
     const input = screen.getByLabelText(/photo de l'agenda/i);
     const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
@@ -708,284 +340,131 @@ describe("TodayScreen", () => {
     expect(onOpenProposals).toHaveBeenCalledWith("job-1");
   });
 
-  it("ready: a done todo is visually distinguished from a pending one", async () => {
-    stubFetch({
-      ...emptyView,
-      todos: [
-        { id: "t1", label: "Fait", dueDate: null, documentId: null, done: true, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
-        { id: "t2", label: "À faire", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
-      ],
-    });
-    renderScreen();
-    // Scoped to todos-card: "À faire" (not done) is also a PomodoroCard
-    // select option (docs/UI.md's Aujourd'hui — pomodoro note).
-    const todosCard = await screen.findByTestId("todos-card");
-    const done = within(todosCard).getByText("Fait");
-    const pending = within(todosCard).getByText("À faire");
-    expect(done).toHaveClass("line-through");
-    expect(pending).not.toHaveClass("line-through");
-  });
-
-  it("no mascot in the ready state: this is a data-dense view (docs/UI.md)", async () => {
-    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
-    renderScreen();
-    // Not screen.findByText("x"): that label is also a PomodoroCard select
-    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
-    // note), so a plain text match is ambiguous. todos-card's presence is
-    // enough to know the ready state has loaded.
-    await screen.findByTestId("todos-card");
-    expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
-  });
-
-  it("ready: offers a minimal form to add a todo by hand — label required, date and course optional, nothing else", async () => {
-    stubFetch({ ...emptyView, todos: [{ id: "t1", label: "x", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }] });
-    const user = userEvent.setup();
-    renderScreen();
-    // Not screen.findByText("x"): that label is also a PomodoroCard select
-    // option once the todo isn't done (docs/UI.md's Aujourd'hui — pomodoro
-    // note), so a plain text match is ambiguous. todos-card's presence is
-    // enough to know the ready state has loaded.
-    await screen.findByTestId("todos-card");
-    await openAddTodoForm(user);
-
-    const labelInput = screen.getByLabelText(/nouveau todo/i);
-    expect(labelInput).toBeRequired();
-    expect(screen.getByLabelText(/date/i)).not.toBeRequired();
-    expect(screen.getByLabelText(/^cours/i)).not.toBeRequired();
-  });
-
-  it("adding a todo by hand posts its label, refreshes the list and collapses the form", async () => {
-    const calls: { url: string; body: unknown }[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (init?.method === "POST" && typeof url === "string" && url === "/api/todos") {
-          calls.push({ url, body: JSON.parse(init.body as string) });
-          return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser le chapitre 3", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }), { status: 201 }));
-        }
-        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
-      }),
-    );
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    await user.type(screen.getByLabelText(/nouveau todo/i), "Réviser le chapitre 3");
-    await user.click(screen.getByRole("button", { name: "Ajouter" }));
-
-    expect(calls).toEqual([{ url: "/api/todos", body: { label: "Réviser le chapitre 3", dueDate: null, documentId: null } }]);
-    // Collapsed back behind its trigger, and the label field is gone with it.
-    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
-  });
-
-  it("opening the add-todo form moves focus to the label field", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    await openAddTodoForm(user);
-
-    expect(screen.getByLabelText(/nouveau todo/i)).toHaveFocus();
-  });
-
-  it("Escape closes the add-todo form without discarding a non-empty draft — reopening it shows the same values", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
-    await user.keyboard("{Escape}");
-
-    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-
-    await openAddTodoForm(user);
-    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("Brouillon");
-  });
-
-  it("Escape closes the add-todo form directly when the label is empty — nothing to preserve", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    await user.keyboard("{Escape}");
-
-    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-
-    await openAddTodoForm(user);
-    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("");
-  });
-
-  it("the add-todo form has a visible 'Fermer' button — Escape alone is a keyboard-only path with no on-screen equivalent (docs/UI.md's Shape and depth note)", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    expect(screen.getByRole("button", { name: "Fermer" })).toBeInTheDocument();
-  });
-
-  it("clicking 'Fermer' closes the add-todo form without discarding a non-empty draft — reopening it shows the same values, exactly like Escape", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
-    await user.click(screen.getByRole("button", { name: "Fermer" }));
-
-    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajouter un todo" })).toBeInTheDocument();
-
-    await openAddTodoForm(user);
-    expect(screen.getByLabelText(/nouveau todo/i)).toHaveValue("Brouillon");
-  });
-
-  it("the add-todo form's 'Fermer' button is reachable by Tab and activatable by keyboard, not just by mouse", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openAddTodoForm(user);
-
-    // A label is required for "Ajouter" to be enabled at all — an empty
-    // field would leave it disabled and skipped in tab order, silently
-    // shifting every count below by one.
-    await user.type(screen.getByLabelText(/nouveau todo/i), "Brouillon");
-    await user.tab(); // date
-    await user.tab(); // cours
-    await user.tab(); // Ajouter (submit)
-    await user.tab(); // Fermer
-    expect(screen.getByRole("button", { name: "Fermer" })).toHaveFocus();
-
-    await user.keyboard("{Enter}");
-    expect(screen.queryByLabelText(/nouveau todo/i)).not.toBeInTheDocument();
-  });
-
-  it("offers a way to close the photo picker without picking a file — it had no closing mechanism at all before this pass (docs/UI.md's Shape and depth note)", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openPhotoPicker(user);
-
-    await user.click(screen.getByRole("button", { name: "Fermer" }));
-
-    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
-  });
-
-  it("Escape also closes the photo picker, exactly what its visible 'Fermer' button does", async () => {
-    stubFetch(emptyView);
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openPhotoPicker(user);
-
-    await user.keyboard("{Escape}");
-
-    expect(screen.queryByLabelText(/photo de l'agenda/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ajouter depuis une photo/i })).toBeInTheDocument();
-  });
-
-  it("the photo picker's 'Fermer' button is disabled while a photo is already uploading — same guard UploadCard's own 'Annuler' applies to its confirm step", async () => {
-    let resolveUpload: (() => void) | undefined;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
-          return new Promise((resolve) => {
-            resolveUpload = () => resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
-          });
-        }
-        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
-      }),
-    );
-    const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText(/rien de prévu/i);
-    await openPhotoPicker(user);
-
-    const input = screen.getByLabelText(/photo de l'agenda/i);
-    const file = new File(["fake-bytes"], "agenda.jpg", { type: "image/jpeg" });
-    await user.upload(input, file);
-
-    expect(screen.getByRole("button", { name: "Fermer" })).toBeDisabled();
-    resolveUpload?.();
-  });
-
-  it("ready: a todo's due date shows on its row, discreet and placed right before the delete button — and nothing shows when it has none", async () => {
-    stubFetch({
-      ...emptyView,
-      todos: [
-        { id: "t1", label: "Avec échéance", dueDate: "2026-03-20", documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
-        { id: "t2", label: "Sans échéance", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" },
-      ],
-    });
-    renderScreen();
-    // Not screen.findByText: both labels are also PomodoroCard select
-    // options (docs/UI.md's Aujourd'hui — pomodoro note), so subsequent
-    // lookups are scoped to todos-card.
-    const todosCard = await screen.findByTestId("todos-card");
-
-    const datedRow = within(todosCard).getByText("Avec échéance").closest('[data-testid="todo-row"]') as HTMLElement;
-    const dateText = within(datedRow).getByText(/20 mars 2026/);
-    const deleteButton = within(datedRow).getByRole("button", { name: /supprimer/i });
-    const rowChildren = Array.from(datedRow.children);
-    expect(rowChildren.indexOf(dateText)).toBe(rowChildren.indexOf(deleteButton) - 1);
-
-    const undatedRow = within(todosCard).getByText("Sans échéance").closest('[data-testid="todo-row"]') as HTMLElement;
-    expect(within(undatedRow).queryByText(/\d/)).not.toBeInTheDocument();
-    expect(within(undatedRow).queryByText("-")).not.toBeInTheDocument();
-    expect(within(undatedRow).queryByText(/sans date/i)).not.toBeInTheDocument();
-  });
-
-  it("ready: a past due date renders exactly like any other date — a plain fact, no warning colour (docs/UI.md)", async () => {
-    stubFetch({
-      ...emptyView,
-      todos: [{ id: "t1", label: "En retard", dueDate: "2020-01-05", documentId: null, done: false, source: "manual", createdAt: "2026-03-01T00:00:00.000Z" }],
-    });
-    renderScreen();
-    // Not screen.findByText: "En retard" is also a PomodoroCard select
-    // option (docs/UI.md's Aujourd'hui — pomodoro note).
-    await screen.findByTestId("todos-card");
-
-    const dateText = screen.getByText(/5 janvier 2020/);
-    expect(dateText.className).not.toMatch(/warning/);
-  });
-
-  it("ready: the Pomodoro block renders below the grid, not as one more item inside it (docs/UI.md's Aujourd'hui — pomodoro note)", async () => {
+  it("renders the pomodoro card with its segmented tabs, a start action, and a centered, real (initially zero) session count", async () => {
     stubFetch(emptyView);
     renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const pomodoroCard = screen.getByTestId("pomodoro-card");
-    const grid = screen.getByTestId("content-grid");
-    expect(grid).not.toContainElement(pomodoroCard);
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    expect(screen.getByText("Pomodoro")).toBeInTheDocument();
+    expect(screen.getByText("25:00")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Démarrer" })).toBeInTheDocument();
+    const count = screen.getByText("0 séance de concentration");
+    expect(count.className).toMatch(/text-center/);
   });
 
-  it("ready: the Spotify block renders below the grid too, not inside it (docs/UI.md's Aujourd'hui — Spotify note)", async () => {
+  it("resumes an already-active pomodoro session on mount, showing a live countdown directly", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date(Date.now() - 60_000).toISOString(), endedAt: null, durationSeconds: 1500 }),
+              { status: 200 },
+            ),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    renderScreen();
+
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+  });
+
+  it("clicking 'Démarrer' starts a real pomodoro session (POST /api/pomodoro) and shows a live countdown", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          calls.push({ url, method: init.method });
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+    expect(calls).toEqual([{ url: "/api/pomodoro", method: "POST" }]);
+  });
+
+  it("clicking 'Terminer' ends the session (POST /api/pomodoro/:id/end), increments the real session count, and returns to idle", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+    await screen.findByRole("button", { name: "Terminer" });
+
+    await user.click(screen.getByRole("button", { name: "Terminer" }));
+
+    expect(await screen.findByRole("button", { name: "Démarrer" })).toBeInTheDocument();
+    expect(screen.getByText("1 séance de concentration")).toBeInTheDocument();
+  });
+
+  it("'Réinitialiser' clears the session count once at least one is completed, and stays disabled while a session runs or the count is zero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+    await screen.findByRole("button", { name: "Terminer" });
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Terminer" }));
+    await screen.findByRole("button", { name: "Démarrer" });
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).not.toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Réinitialiser" }));
+
+    expect(screen.getByText("0 séance de concentration")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
+  });
+
+  it("renders the study sounds card (still mock)", async () => {
     stubFetch(emptyView);
     renderScreen();
-    await screen.findByText(/rien de prévu/i);
-
-    const spotifyCard = screen.getByTestId("spotify-card");
-    const grid = screen.getByTestId("content-grid");
-    expect(grid).not.toContainElement(spotifyCard);
-    expect(screen.getByRole("button", { name: "Écouter" })).toBeInTheDocument();
-    expect(document.querySelector("iframe")).not.toBeInTheDocument();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    expect(screen.getByText("Sons d'ambiance")).toBeInTheDocument();
+    expect(screen.getAllByText("Rainy Window")).toHaveLength(2);
   });
 });
