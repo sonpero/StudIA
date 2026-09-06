@@ -176,72 +176,64 @@ export function DocumentsScreen({
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["documents"] });
 
-  const uploadPanel = <UploadCard onCreated={refresh} />;
-
-  if (query.status === "pending") {
-    return (
-      <main className="flex gap-[var(--space-section)] p-8">
-        <div className="flex-1">
-          <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-          <div className="flex flex-col gap-[var(--space-block)]">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
-            ))}
-          </div>
-        </div>
-        <div className="w-[320px] shrink-0">{uploadPanel}</div>
-      </main>
-    );
-  }
-
-  if (query.status === "error") {
-    return (
-      <main className="flex gap-[var(--space-section)] p-8">
-        <div className="flex flex-1 flex-col items-center gap-[var(--space-section)] text-center">
-          <Confused />
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-          <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
-          <Button onClick={() => void query.refetch()}>Réessayer</Button>
-        </div>
-        <div className="w-[320px] shrink-0">{uploadPanel}</div>
-      </main>
-    );
-  }
-
   const documents = query.data;
   const dueCountByDocumentId = new Map(todayQuery.data?.dueCards.map((c) => [c.documentId, c.count]) ?? []);
   const deadlineByDocumentId = new Map(todayQuery.data?.upcomingDeadlines.map((d) => [d.documentId, d.daysAway]) ?? []);
 
   return (
-    <main className="flex gap-[var(--space-section)] p-8">
-      <div className="flex-1">
+    <main className="flex flex-col gap-[var(--space-section)] p-8">
+      <div>
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
-        <p className="mb-[var(--space-section)] text-sm text-text-muted">
-          Importe tes notes et StudIA les transforme en notions, fiches et un plan de révision.
-        </p>
-
-        {documents.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <Reading />
-            <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-[var(--space-block)]">
-            {documents.map((document) => (
-              <DocumentCard
-                key={document.id}
-                document={document}
-                dueCount={dueCountByDocumentId.get(document.id) ?? 0}
-                deadlineDaysAway={deadlineByDocumentId.get(document.id) ?? null}
-                onChanged={refresh}
-                onOpenReader={onOpenReader}
-                onReviewCourse={onReviewCourse}
-              />
-            ))}
-          </div>
-        )}
+        <p className="text-sm text-text-muted">Importe tes notes et StudIA les transforme en notions, fiches et un plan de révision.</p>
       </div>
-      <div className="w-[320px] shrink-0">{uploadPanel}</div>
+
+      {/* A plain flex row, not the title's own column — the upload panel's
+          own top edge lines up with the first course card (this row's
+          other top item), not with the title sitting above it. */}
+      <div className="flex gap-[var(--space-section)]">
+        <div className="flex-1">
+          {query.status === "pending" && (
+            <div className="flex flex-col gap-[var(--space-block)]">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
+              ))}
+            </div>
+          )}
+
+          {query.status === "error" && (
+            <div className="flex flex-col items-center gap-[var(--space-section)] text-center">
+              <Confused />
+              <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
+              <Button onClick={() => void query.refetch()}>Réessayer</Button>
+            </div>
+          )}
+
+          {documents &&
+            (documents.length === 0 ? (
+              <div className="flex flex-col items-center gap-4 py-12 text-center">
+                <Reading />
+                <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[var(--space-block)]">
+                {documents.map((document) => (
+                  <DocumentCard
+                    key={document.id}
+                    document={document}
+                    dueCount={dueCountByDocumentId.get(document.id) ?? 0}
+                    deadlineDaysAway={deadlineByDocumentId.get(document.id) ?? null}
+                    onChanged={refresh}
+                    onOpenReader={onOpenReader}
+                    onReviewCourse={onReviewCourse}
+                  />
+                ))}
+              </div>
+            ))}
+        </div>
+        <div className="w-[320px] shrink-0">
+          <UploadCard onCreated={refresh} />
+        </div>
+      </div>
     </main>
   );
 }

@@ -91,7 +91,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
   return (
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="upload-card">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <Plus aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        <Plus aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="text-primary" />
         Ajouter un cours
       </div>
       <p className="text-sm text-text-muted">PDF ou photos de notes manuscrites.</p>
