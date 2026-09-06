@@ -21,15 +21,21 @@ test.describe("generate cards and review", () => {
     test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours à réviser");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours à réviser" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
 
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours à réviser", exact: true }).click();
 
     // content splits notions automatically after extraction
     // (docs/modules/content.md); NotionsScreen polls while empty, so this
@@ -67,7 +73,11 @@ test.describe("generate cards and review", () => {
     const firstDueCardId = dueBefore[0]!.cardId;
     const firstDueNotionId = dueBefore[0]!.notionId;
 
-    await page.getByRole("button", { name: "Réviser", exact: true }).click();
+    // The whole-course review entry point (its own "Réviser N fiches"
+    // button, distinct from each notion card's own plain "Réviser") — this
+    // fixture document has 5 notions (fixture-notion-splitter.ts), so a bare
+    // exact "Réviser" match would hit more than one of those instead.
+    await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
 
     await expect(page.getByRole("button", { name: "Révéler la réponse" })).toBeVisible({ timeout: 10_000 });
     // The review screen shows the fiche's due date (formerly missing
@@ -101,8 +111,8 @@ test.describe("generate cards and review", () => {
 
     await page.getByRole("button", { name: "Quitter" }).click();
     const ratedNotionCard = page.getByTestId("notion-card").filter({ hasText: firstDueNotionTitle });
-    await expect(ratedNotionCard.getByRole("button", { name: "Réviser cette notion" })).toBeVisible({ timeout: 10_000 });
-    await ratedNotionCard.getByRole("button", { name: "Réviser cette notion" }).click();
+    await expect(ratedNotionCard.getByRole("button", { name: "Réviser", exact: true })).toBeVisible({ timeout: 10_000 });
+    await ratedNotionCard.getByRole("button", { name: "Réviser", exact: true }).click();
 
     // Rate every card still due for this notion alone (1 to 5 per notion,
     // docs/modules/generation.md) until it has none left — this only
@@ -136,14 +146,21 @@ test.describe("generate cards and review", () => {
 
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours horaire");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours horaire" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours horaire", exact: true }).click();
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
@@ -190,7 +207,7 @@ test.describe("generate cards and review", () => {
     if (!notionTitle) throw new Error("expected to find the seeded card's notion");
 
     const notionCard = notionCards.filter({ hasText: notionTitle });
-    await notionCard.getByRole("button", { name: "Réviser cette notion" }).click();
+    await notionCard.getByRole("button", { name: "Réviser", exact: true }).click();
 
     // Due cards sort before new (unscheduled) ones (docs/modules/review.md);
     // the seeded card is the only one with a schedule in this notion, so it

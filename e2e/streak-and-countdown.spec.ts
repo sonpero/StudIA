@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { TEST_USERNAME } from "./support/env.js";
 
 // A local calendar-day key, computed the same way the browser's own
 // todayDateKey (apps/web/src/lib/day-boundary.ts) does — local year/month/
@@ -24,14 +25,21 @@ test.describe("streak and countdown badge (M9)", () => {
     test.setTimeout(60_000);
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours du streak");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours du streak" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours du streak", exact: true }).click();
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
@@ -65,7 +73,9 @@ test.describe("streak and countdown badge (M9)", () => {
     await expect(progressCard.getByText(/dans 14 jours/i)).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
-    await expect(page.getByRole("heading", { name: "Aujourd'hui" })).toBeVisible();
+    // Aujourd'hui's own heading is the greeting now (M9's redesign), not the
+    // page name — the nav item's own active state already covers that.
+    await expect(page.getByRole("heading", { name: `Bonjour, ${TEST_USERNAME}` })).toBeVisible();
 
     const courseCard = page.getByTestId("course-today-card").filter({ hasText: "Cours du streak" });
     await expect(courseCard).toBeVisible({ timeout: 10_000 });
@@ -83,17 +93,23 @@ test.describe("streak and countdown badge (M9)", () => {
     await page.getByRole("button", { name: "Correct" }).click();
     await page.getByRole("button", { name: "Quitter" }).click();
 
+    // The streak card now lives in the persistent nav sidebar (promoted
+    // app-wide, not just on Aujourd'hui), with no dedicated count element —
+    // just "Série de N jour(s)" as one string.
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
-    const streakCard = page.getByTestId("streak-card");
-    await expect(streakCard).toBeVisible({ timeout: 10_000 });
+    const streakText = page.getByText(/Série de \d+ jours?/);
+    await expect(streakText).toBeVisible({ timeout: 10_000 });
 
     // Polled, not read once: this mount's own ["today"] query can render
     // once from a still-cached pre-review value before its background
     // refetch (TanStack Query's default staleTime: 0) resolves — a real
     // async gap in the page, not a reason to fake a passing test.
     await expect
-      .poll(async () => Number(await streakCard.getByTestId("streak-count").textContent()), { timeout: 10_000, message: "waiting for the streak to reflect the review just submitted" })
+      .poll(
+        async () => Number(/Série de (\d+) jours?/.exec((await streakText.textContent()) ?? "")?.[1] ?? "0"),
+        { timeout: 10_000, message: "waiting for the streak to reflect the review just submitted" },
+      )
       .toBeGreaterThanOrEqual(1);
-    await expect(streakCard.getByText("Continue comme ça !")).toBeVisible();
+    await expect(page.getByText("Continue comme ça !")).toBeVisible();
   });
 });

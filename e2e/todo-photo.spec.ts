@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { TEST_USERNAME } from "./support/env.js";
 
 // docs/MILESTONES.md's M6 demo: "Photograph a school planner page, get todo
 // items, tick them off." The fixture extractor (LLM_ADAPTER=fixture,
@@ -13,7 +14,9 @@ test.describe("todo photo extraction", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
-    await expect(page.getByRole("heading", { name: "Aujourd'hui" })).toBeVisible();
+    // Aujourd'hui's own heading is the greeting now (M9's redesign), not the
+    // page name — the nav item's own active state already covers that.
+    await expect(page.getByRole("heading", { name: `Bonjour, ${TEST_USERNAME}` })).toBeVisible();
 
     // Collapsed by default behind its own trigger (docs/UI.md).
     await page.getByRole("button", { name: /ajouter depuis une photo/i }).click();
@@ -32,7 +35,9 @@ test.describe("todo photo extraction", () => {
 
     await page.getByRole("button", { name: "Confirmer la sélection" }).click();
 
-    await expect(page.getByRole("heading", { name: "Aujourd'hui" })).toBeVisible();
+    // Aujourd'hui's own heading is the greeting now (M9's redesign), not the
+    // page name — the nav item's own active state already covers that.
+    await expect(page.getByRole("heading", { name: `Bonjour, ${TEST_USERNAME}` })).toBeVisible();
     const todoCheckbox = page.getByRole("checkbox", { name: "Rendre le devoir de maths" });
     await expect(todoCheckbox).toBeVisible();
     await expect(todoCheckbox).not.toBeChecked();

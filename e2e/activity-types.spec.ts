@@ -10,14 +10,21 @@ test.describe("activity types", () => {
     test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours QCM");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours QCM" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours QCM", exact: true }).click();
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
@@ -44,7 +51,11 @@ test.describe("activity types", () => {
       )
       .toBe(notionCount);
 
-    await page.getByRole("button", { name: "Réviser", exact: true }).click();
+    // The whole-course review entry point (its own "Réviser N fiches"
+    // button, distinct from each notion card's own plain "Réviser") — this
+    // fixture document has 5 notions (fixture-notion-splitter.ts), so a bare
+    // exact "Réviser" match would hit more than one of those instead.
+    await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
 
     // The fixture generator (llmAdapter=fixture) produces deterministic mcq
     // cards: "Question N ?" paired with the correct option "Bonne réponse N"
@@ -68,14 +79,21 @@ test.describe("activity types", () => {
     test.setTimeout(60_000); // extra room for the generation poll
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours question ouverte");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours question ouverte" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours question ouverte", exact: true }).click();
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
@@ -99,7 +117,11 @@ test.describe("activity types", () => {
       )
       .toBe(notionCount);
 
-    await page.getByRole("button", { name: "Réviser", exact: true }).click();
+    // The whole-course review entry point (its own "Réviser N fiches"
+    // button, distinct from each notion card's own plain "Réviser") — this
+    // fixture document has 5 notions (fixture-notion-splitter.ts), so a bare
+    // exact "Réviser" match would hit more than one of those instead.
+    await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
 
     await page.getByLabel("Ta réponse").fill("Une réponse rédigée par l'apprenant.");
     await page.getByRole("button", { name: "Valider ma réponse" }).click();

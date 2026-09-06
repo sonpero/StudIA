@@ -20,13 +20,15 @@ test.describe("tutor", () => {
     test.setTimeout(30_000);
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours pour le tuteur");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const card = page.getByTestId("document-card").filter({ hasText: "Cours pour le tuteur" });
-    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 20_000 });
+    await expect(card.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 20_000 });
 
     await page.getByRole("button", { name: "Tuteur", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Tuteur" })).toBeVisible();

@@ -13,10 +13,12 @@ test.describe("upload and extraction", () => {
     test.setTimeout(60_000); // extra room for the extraction poll: three pages, each its own extraction round
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Trois photos");
 
-    const fileInput = page.getByLabel("Photos ou document");
+    const fileInput = page.getByLabel(/dépose un fichier/i);
     await fileInput.setInputFiles([
       { name: "page1.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page-1") },
       { name: "page2.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page-2") },
@@ -28,11 +30,11 @@ test.describe("upload and extraction", () => {
     await expect(page.getByText("page2.jpg")).toBeVisible();
     await expect(page.getByText("page3.jpg")).toBeVisible();
 
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const card = page.getByTestId("document-card").filter({ hasText: "Trois photos" });
     await expect(card.getByText("3 pages")).toBeVisible();
-    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
+    await expect(card.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 30_000 });
 
     await card.getByRole("button", { name: "Lire le cours" }).click();
     // FixtureDocumentExtractor's "valid" case (docs/TESTING.md's required
@@ -55,10 +57,12 @@ test.describe("upload and extraction", () => {
     test.setTimeout(60_000); // extra room for the initial extraction plus the retry's own
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours en échec");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const card = page.getByTestId("document-card").filter({ hasText: "Cours en échec" });
     await expect(card.getByText(/en attente|lecture en cours/i)).toBeVisible();
@@ -85,6 +89,6 @@ test.describe("upload and extraction", () => {
     await retryButton.click();
 
     // Extra room: the retry's own extraction round through the background worker.
-    await expect(card.getByText("Terminé")).toBeVisible({ timeout: 30_000 });
+    await expect(card.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 30_000 });
   });
 });

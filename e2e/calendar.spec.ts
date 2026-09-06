@@ -12,14 +12,21 @@ test.describe("calendar", () => {
 
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours du calendrier");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours du calendrier" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours du calendrier", exact: true }).click();
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
@@ -44,7 +51,7 @@ test.describe("calendar", () => {
     await page.getByRole("button", { name: "Ajouter", exact: true }).click();
     await expect(page.getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole("button", { name: "Calendrier" }).click();
+    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Mars 2026" })).toBeVisible();
 
     const deadlineDay = page.getByTestId("calendar-day-2026-03-20");
@@ -62,7 +69,7 @@ test.describe("calendar", () => {
 
     // The todo's day: read-only in the panel, no course link, since it
     // has no course.
-    await page.getByRole("button", { name: "Calendrier" }).click();
+    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
     await todoDay.click();
     await expect(panel.getByText("Réviser le chapitre 3")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Voir le cours" })).toHaveCount(0);

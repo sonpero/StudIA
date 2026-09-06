@@ -13,14 +13,21 @@ test.describe("progress", () => {
 
     await page.goto("/");
 
-    await page.getByText("+ Ajouter un cours").click();
+    // The app's home is now Aujourd'hui (M9), not Mes cours — UploadCard is
+    // always open once there, no "+ Ajouter un cours" toggle to click through.
+    await page.getByRole("button", { name: "Mes cours", exact: true }).click();
     await page.getByLabel("Titre du cours").fill("Cours à suivre");
-    await page.getByLabel("Photos ou document").setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
-    await page.getByRole("button", { name: "Confirmer" }).click();
+    await page.getByLabel(/dépose un fichier/i).setInputFiles({ name: "page.jpg", mimeType: "image/jpeg", buffer: Buffer.from("page") });
+    await page.getByRole("button", { name: "Créer le cours" }).click();
 
     const documentCard = page.getByTestId("document-card").filter({ hasText: "Cours à suivre" });
-    await expect(documentCard.getByText("Terminé")).toBeVisible({ timeout: 15_000 });
-    await documentCard.getByRole("button", { name: "Voir les notions" }).click();
+    await expect(documentCard.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 15_000 });
+
+    // Notions no longer has its own per-card entry point on Mes cours (M9's
+    // later redesign): the nav's own "Notions" destination, then this
+    // course's own pill, land on its notions directly.
+    await page.getByRole("button", { name: "Notions", exact: true }).click();
+    await page.getByRole("button", { name: "Cours à suivre", exact: true }).click();
 
     // content splits notions automatically after extraction
     // (docs/modules/content.md); NotionsScreen polls while empty.
@@ -28,13 +35,14 @@ test.describe("progress", () => {
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
     const notionCount = await notionCards.count();
 
-    // Lecteur opened from Notions du cours returns there, not to Mes cours
-    // (docs/UI.md's Lecteur note — same fromDocumentId-shaped mechanic as
-    // this screen's own Progression round trip, checked further down).
+    // Lecteur opened from a course's own Notions page returns there, not to
+    // Mes cours (docs/UI.md's Lecteur note — same fromDocumentId-shaped
+    // mechanic as this screen's own Progression round trip, checked further
+    // down).
     await page.getByRole("button", { name: "Lire le cours" }).click();
     await expect(page.getByRole("heading", { name: "Lecture" })).toBeVisible();
     await page.getByRole("button", { name: "Retour" }).click();
-    await expect(page.getByRole("heading", { name: "Notions du cours" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cours à suivre" })).toBeVisible();
 
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
@@ -85,7 +93,11 @@ test.describe("progress", () => {
     // leaving and returning, the way a real user would.
     await page.getByText("Retour").click();
     await expect(notionCards.first()).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Réviser", exact: true }).click();
+    // The whole-course review entry point (its own "Réviser N fiches"
+    // button, distinct from each notion card's own plain "Réviser") — this
+    // fixture document has 5 notions (fixture-notion-splitter.ts), so a bare
+    // exact "Réviser" match would hit more than one of those instead.
+    await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
     await expect(page.getByRole("button", { name: "Révéler la réponse" })).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: "Révéler la réponse" }).click();
     await page.getByRole("button", { name: "Correct" }).click();
