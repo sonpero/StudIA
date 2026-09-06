@@ -18,11 +18,12 @@ import {
   Volume2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession } from "../lib/pomodoro-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type Todo } from "../lib/today-api.js";
 import {
   AddTodoForm,
@@ -34,9 +35,15 @@ import {
   type CourseCard as CourseCardData,
   type TodoDraft,
 } from "./TodayScreen.js";
+import { formatCountdown, remainingSeconds } from "./PomodoroCard.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
+const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
+// The backend's own pomodoro duration is fixed (packages/core/src/workspace),
+// never selectable — hardcoded here rather than discovered, since there is
+// no session yet to read a real durationSeconds from before one starts.
+const IDLE_DISPLAY = "25:00";
 
 // Front-end prototype, approved from a design mockup (see the reviewed
 // artifact), reachable from App.tsx's own nav as a temporary staging
@@ -96,6 +103,17 @@ function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onRevi
   );
 }
 
+// A plain white ring when unchecked, a filled green circle with a white
+// checkmark once done — the mockup's own round todo bullets, in place of
+// the browser's native square checkbox. Still a real <input type="checkbox">
+// under the styling (appearance-none only strips its default paint, not its
+// role/keyboard behaviour), so it stays a checkbox for assistive tech and
+// for existing getByRole("checkbox") queries; the checkmark itself is a
+// small inline SVG data URI, swapped in only once checked, since a native
+// checkbox has no child elements to render one into.
+const CHECK_MARK_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 13 10 18 19 7'/%3E%3C/svg%3E";
+
 function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColour: string | null; onToggle: (done: boolean) => void; onDelete: () => void }) {
   return (
     <li data-testid="today-todo-row" className="flex items-center gap-[var(--space-related)]">
@@ -104,7 +122,8 @@ function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColou
         checked={todo.done}
         onChange={(e) => onToggle(e.target.checked)}
         aria-label={todo.label}
-        className="h-[18px] w-[18px] shrink-0 accent-success"
+        className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface bg-center bg-no-repeat checked:border-success checked:bg-success"
+        style={{ backgroundSize: "11px 11px", backgroundImage: todo.done ? `url("${CHECK_MARK_SVG}")` : undefined }}
       />
       <span className={todo.done ? "flex-1 text-sm text-text-muted line-through" : "flex-1 text-sm"}>{todo.label}</span>
       {todo.dueDate && <span className="whitespace-nowrap text-[length:var(--text-label)] text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
@@ -217,7 +236,72 @@ function TodosCard({
   );
 }
 
+// The mockup's own ring-and-tabs visual, wired to the real session
+// lifecycle (packages/core/src/workspace's fixed-duration pomodoro,
+// apps/web/src/lib/pomodoro-api.ts) instead of a static "25:00" and an
+// inert "Démarrer" — the same start/end/resume mechanics TodayScreen.tsx's
+// own PomodoroCard already ships, reusing its remainingSeconds/
+// formatCountdown rather than a second copy. "Pause courte"/"Pause longue"
+// stay decorative: the backend has exactly one fixed duration, no break
+// lengths to select, so wiring them would mean inventing a capability that
+// doesn't exist server-side. The "N séances de concentration" line counts
+// sessions completed since this page was opened (no such count is exposed
+// by the API) — it resets on reload by construction, which reads as "since
+// you got here" rather than a persisted daily total. "Réinitialiser" clears
+// that count back to zero; it is disabled while a session is running (so it
+// can never silently diverge from the real, still-live server session) and
+// once the count is already zero.
 function PomodoroCard() {
+  const activeQuery = useQuery({ queryKey: POMODORO_ACTIVE_QUERY_KEY, queryFn: getActivePomodoro, staleTime: Infinity, refetchOnWindowFocus: false });
+
+  const [phase, setPhase] = useState<"idle" | "running">("idle");
+  const [session, setSession] = useState<PomodoroSession | null>(null);
+  const [resyncNotice, setResyncNotice] = useState(false);
+  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [, forceTick] = useState(0);
+
+  // Mirrors PomodoroCard.tsx's own mount-resume effect: runs once, off the
+  // initial fetch only, so a later background refetch can never downgrade a
+  // running countdown back to idle just because the session's own window
+  // has since elapsed.
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (activeQuery.status !== "success") return;
+    initializedRef.current = true;
+    if (activeQuery.data) {
+      setSession(activeQuery.data);
+      setPhase("running");
+    }
+  }, [activeQuery.status, activeQuery.data]);
+
+  useEffect(() => {
+    if (phase !== "running") return;
+    const interval = setInterval(() => forceTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const startMutation = useMutation({
+    mutationFn: () => startPomodoro(null),
+    onSuccess: (result) => {
+      setSession(result.session);
+      setPhase("running");
+      setResyncNotice(result.status === "already-active");
+    },
+  });
+
+  const endMutation = useMutation({
+    mutationFn: () => endPomodoro(session!.id),
+    onSuccess: () => {
+      setPhase("idle");
+      setSession(null);
+      setResyncNotice(false);
+      setSessionsCompleted((n) => n + 1);
+    },
+  });
+
+  const countdownDisplay = phase === "running" && session ? formatCountdown(remainingSeconds(session)) : IDLE_DISPLAY;
+
   return (
     <Card className="flex flex-col items-center gap-[var(--space-block)]">
       <div className="flex w-full items-center gap-[var(--space-related)] text-sm font-semibold">
@@ -232,20 +316,35 @@ function PomodoroCard() {
       </div>
 
       <div className="flex h-[170px] w-[170px] items-center justify-center rounded-full border-[10px] border-canvas">
-        <div className="flex flex-col items-center gap-1">
-          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">25:00</span>
-          <span className="text-[length:var(--text-label)] text-text-muted">2 séances de concentration</span>
+        <div className="flex w-full flex-col items-center gap-1 px-2 text-center">
+          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{countdownDisplay}</span>
+          <span className="text-center text-[length:var(--text-label)] text-text-muted">
+            {sessionsCompleted} séance{sessionsCompleted > 1 ? "s" : ""} de concentration
+          </span>
+          {resyncNotice && <span className="text-[length:var(--text-label)] text-text-muted">Une séance est déjà en cours.</span>}
         </div>
       </div>
 
       <div className="flex w-full items-center gap-[var(--space-related)]">
-        <Button variant="secondary" aria-label="Réinitialiser" className="h-11 w-11 shrink-0 justify-center px-0">
+        <Button
+          variant="secondary"
+          aria-label="Réinitialiser"
+          disabled={phase === "running" || sessionsCompleted === 0}
+          onClick={() => setSessionsCompleted(0)}
+          className="h-11 w-11 shrink-0 justify-center px-0"
+        >
           <RotateCcw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
-        <Button variant="accent" className="flex-1 justify-center">
-          <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
-          Démarrer
-        </Button>
+        {phase === "idle" ? (
+          <Button variant="accent" disabled={startMutation.isPending} onClick={() => startMutation.mutate()} className="flex-1 justify-center">
+            <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
+            {startMutation.isPending ? "Démarrage…" : "Démarrer"}
+          </Button>
+        ) : (
+          <Button variant="accent" disabled={endMutation.isPending} onClick={() => endMutation.mutate()} className="flex-1 justify-center">
+            {endMutation.isPending ? "…" : "Terminer"}
+          </Button>
+        )}
       </div>
     </Card>
   );

@@ -8,12 +8,12 @@ import type { Todo } from "../lib/today-api.js";
 
 const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
 
-function remainingSeconds(session: PomodoroSession): number {
+export function remainingSeconds(session: PomodoroSession): number {
   const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
   return Math.max(0, session.durationSeconds - elapsed);
 }
 
-function formatCountdown(totalSeconds: number): string {
+export function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
     .padStart(2, "0");

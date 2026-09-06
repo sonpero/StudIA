@@ -17,7 +17,12 @@ import { Today } from "./Today.js";
 // useAuth, not this component's own mock) — the sidebar itself moved out
 // of this file entirely, promoted to the app's real AppNav
 // (apps/web/src/components/AppNav.tsx), so it has no tests here any more.
-// Pomodoro and study sounds stay mock.
+// Pomodoro is wired to the real API too (start/end/resume, reusing
+// PomodoroCard.tsx's own remainingSeconds/formatCountdown), inside this
+// screen's own ring-styled visual rather than the shipped screen's simpler
+// card — every fetch stub below must answer GET /api/pomodoro/active (404
+// by default: no session in flight) or its own mount throws. Only the
+// study-sounds player stays mock.
 function renderScreen(
   overrides: Partial<{ username: string; onReviewCourse: (documentId: string) => void; onOpenProposals: (jobId: string) => void }> = {},
 ) {
@@ -38,6 +43,7 @@ function stubFetch(view: TodayView | (() => Response)) {
     "fetch",
     vi.fn().mockImplementation((url: string) => {
       if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
       if (typeof view === "function") return Promise.resolve(view());
       return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
     }),
@@ -161,12 +167,24 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     expect(screen.getByText("1 restants")).toBeInTheDocument();
   });
 
+  it("a todo's checkbox renders as a plain circle (rounded-full), matching the mockup — not the browser's own square checkbox", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [{ id: "t1", label: "Réviser", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }],
+    });
+    renderScreen();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Réviser" });
+    expect(checkbox.className).toMatch(/rounded-full/);
+  });
+
   it("checking a todo's checkbox sends done: true for that one, refreshing the list", async () => {
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "PATCH") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(null, { status: 200 }));
@@ -191,6 +209,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "DELETE") {
           calls.push({ url, method: init.method });
           return Promise.resolve(new Response(null, { status: 204 }));
@@ -216,6 +235,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "POST" && url === "/api/todos") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Nouveau todo", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
@@ -242,6 +262,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "POST" && url === "/api/todos") {
           calls.push({ url, body: JSON.parse(init.body as string) });
           return Promise.resolve(new Response(JSON.stringify({ id: "t1", label: "Réviser", dueDate: "2026-09-20", documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }), { status: 201 }));
@@ -307,6 +328,7 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
       "fetch",
       vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
         if (init?.method === "POST" && typeof url === "string" && url.includes("from-photo")) {
           return Promise.resolve(new Response(JSON.stringify({ jobId: "job-1" }), { status: 202 }));
         }
@@ -325,13 +347,124 @@ describe("Today (front-end prototype — courses and todos wired to real data)",
     expect(onOpenProposals).toHaveBeenCalledWith("job-1");
   });
 
-  it("renders the pomodoro card with its segmented tabs and a start action (still mock)", async () => {
+  it("renders the pomodoro card with its segmented tabs, a start action, and a centered, real (initially zero) session count", async () => {
     stubFetch(emptyView);
     renderScreen();
     await screen.findByText(/rien à réviser pour l'instant/i);
     expect(screen.getByText("Pomodoro")).toBeInTheDocument();
     expect(screen.getByText("25:00")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Démarrer" })).toBeInTheDocument();
+    const count = screen.getByText("0 séance de concentration");
+    expect(count.className).toMatch(/text-center/);
+  });
+
+  it("resumes an already-active pomodoro session on mount, showing a live countdown directly", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date(Date.now() - 60_000).toISOString(), endedAt: null, durationSeconds: 1500 }),
+              { status: 200 },
+            ),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    renderScreen();
+
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+  });
+
+  it("clicking 'Démarrer' starts a real pomodoro session (POST /api/pomodoro) and shows a live countdown", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          calls.push({ url, method: init.method });
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+    expect(calls).toEqual([{ url: "/api/pomodoro", method: "POST" }]);
+  });
+
+  it("clicking 'Terminer' ends the session (POST /api/pomodoro/:id/end), increments the real session count, and returns to idle", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+    await screen.findByRole("button", { name: "Terminer" });
+
+    await user.click(screen.getByRole("button", { name: "Terminer" }));
+
+    expect(await screen.findByRole("button", { name: "Démarrer" })).toBeInTheDocument();
+    expect(screen.getByText("1 séance de concentration")).toBeInTheDocument();
+  });
+
+  it("'Réinitialiser' clears the session count once at least one is completed, and stays disabled while a session runs or the count is zero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+    await screen.findByRole("button", { name: "Terminer" });
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Terminer" }));
+    await screen.findByRole("button", { name: "Démarrer" });
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).not.toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Réinitialiser" }));
+
+    expect(screen.getByText("0 séance de concentration")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
   });
 
   it("renders the study sounds card (still mock)", async () => {
