@@ -184,7 +184,7 @@ function PhotoUploadInput({ onUploaded, onClose }: { onUploaded: (jobId: string)
           {error}
         </p>
       )}
-      <Button type="button" variant="secondary" disabled={uploading} onClick={onClose} className="self-start">
+      <Button type="button" variant="secondary" disabled={uploading} onClick={onClose} className="self-start rounded-2xl">
         Fermer
       </Button>
     </div>
@@ -281,14 +281,14 @@ function AddTodoForm({
         </select>
       </label>
       <div className="flex gap-2">
-        <Button type="submit" variant="secondary" disabled={pending || !draft.label.trim()}>
+        <Button type="submit" variant="secondary" className="rounded-2xl" disabled={pending || !draft.label.trim()}>
           {pending ? "Ajout…" : "Ajouter"}
         </Button>
         {/* Closes without discarding the draft (docs/UI.md's Shape and
             depth note) — not "Annuler", which elsewhere in this app means
             the revealed area's own state does not survive closing; this
             one's draft lives in the parent and is still there next open. */}
-        <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>
+        <Button type="button" variant="secondary" className="rounded-2xl" disabled={pending} onClick={onClose}>
           Fermer
         </Button>
       </div>
@@ -334,12 +334,12 @@ function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onRevi
       )}
 
       {course.dueCount > 0 ? (
-        <Button variant="accent" className="w-full justify-center" onClick={() => onReviewCourse?.(course.documentId)}>
+        <Button variant="accent" className="w-full justify-center rounded-2xl" onClick={() => onReviewCourse?.(course.documentId)}>
           Réviser
           <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
       ) : (
-        <Button variant="secondary" disabled className="w-full justify-center">
+        <Button variant="secondary" disabled className="w-full justify-center rounded-2xl">
           Rien à réviser
         </Button>
       )}
@@ -567,17 +567,17 @@ function PomodoroCard() {
           aria-label="Réinitialiser"
           disabled={phase === "running" || sessionsCompleted === 0}
           onClick={() => setSessionsCompleted(0)}
-          className="h-11 w-11 shrink-0 justify-center px-0"
+          className="h-11 w-11 shrink-0 justify-center rounded-2xl px-0"
         >
           <RotateCcw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
         {phase === "idle" ? (
-          <Button variant="accent" disabled={startMutation.isPending} onClick={() => startMutation.mutate()} className="flex-1 justify-center">
+          <Button variant="accent" disabled={startMutation.isPending} onClick={() => startMutation.mutate()} className="flex-1 justify-center rounded-2xl">
             <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
             {startMutation.isPending ? "Démarrage…" : "Démarrer"}
           </Button>
         ) : (
-          <Button variant="accent" disabled={endMutation.isPending} onClick={() => endMutation.mutate()} className="flex-1 justify-center">
+          <Button variant="accent" disabled={endMutation.isPending} onClick={() => endMutation.mutate()} className="flex-1 justify-center rounded-2xl">
             {endMutation.isPending ? "…" : "Terminer"}
           </Button>
         )}
@@ -671,55 +671,60 @@ export function TodayScreen({
   // must still be selectable when adding a todo by hand.
   const documentsQuery = useQuery({ queryKey: DOCUMENTS_QUERY_KEY, queryFn: listDocuments });
 
+  const view = query.data;
+  const courseCards = view ? buildCourseCards(view) : [];
+  const totalDue = view ? view.dueCards.reduce((sum, c) => sum + c.count, 0) : 0;
+  const courseColourByDocumentId = new Map(courseCards.filter((c) => c.colour !== null).map((c) => [c.documentId, c.colour as string]));
+
   return (
-    <div className="flex gap-[var(--space-section)]">
-      <main className="flex flex-1 flex-col gap-[var(--space-section)]">
-        {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
-        {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
-        {query.status === "success" &&
-          (() => {
-            const view = query.data;
-            const courseCards = buildCourseCards(view);
-            const totalDue = view.dueCards.reduce((sum, c) => sum + c.count, 0);
-            const courseColourByDocumentId = new Map(courseCards.filter((c) => c.colour !== null).map((c) => [c.documentId, c.colour as string]));
+    <div className="flex flex-col gap-[var(--space-section)]">
+      {/* Full width, above the two-column row below — not sharing that
+          row with the sidebar's own Pomodoro card, so Pomodoro's own top
+          edge lines up with "À réviser aujourd'hui" (this row's own first
+          item), not with this greeting sitting above it. */}
+      {view && (
+        <div className="flex flex-col gap-[var(--space-related)]">
+          <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, {username}</h1>
+          {totalDue > 0 ? (
+            <p className="text-sm text-text-muted">
+              Tu as <strong className="font-semibold text-text">{totalDue} fiche{totalDue > 1 ? "s" : ""}</strong> à réviser dans {view.dueCards.length} cours. 25
+              minutes de concentration suffisent pour garder de l'avance.
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted">Rien à réviser pour l'instant. Profites-en pour avancer sur autre chose.</p>
+          )}
+        </div>
+      )}
 
-            return (
-              <>
-                <div className="flex flex-col gap-[var(--space-related)]">
-                  <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, {username}</h1>
-                  {totalDue > 0 ? (
-                    <p className="text-sm text-text-muted">
-                      Tu as <strong className="font-semibold text-text">{totalDue} fiche{totalDue > 1 ? "s" : ""}</strong> à réviser dans {view.dueCards.length} cours. 25
-                      minutes de concentration suffisent pour garder de l'avance.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-text-muted">Rien à réviser pour l'instant. Profites-en pour avancer sur autre chose.</p>
-                  )}
-                </div>
-
-                {courseCards.length > 0 && (
-                  <div className="flex flex-col gap-[var(--space-block)]">
-                    <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
-                      <Calendar aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-                      À réviser aujourd'hui
-                    </div>
-                    <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2">
-                      {courseCards.map((course) => (
-                        <CourseCard key={course.documentId} course={course} onReviewCourse={onReviewCourse} />
-                      ))}
-                    </div>
+      <div className="flex gap-[var(--space-section)]">
+        <main className="flex flex-1 flex-col gap-[var(--space-section)]">
+          {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
+          {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
+          {view && (
+            <>
+              {courseCards.length > 0 && (
+                <div className="flex flex-col gap-[var(--space-block)]">
+                  <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
+                    <Calendar aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                    À réviser aujourd'hui
                   </div>
-                )}
+                  <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2">
+                    {courseCards.map((course) => (
+                      <CourseCard key={course.documentId} course={course} onReviewCourse={onReviewCourse} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                <TodosCard todos={view.todos} documents={documentsQuery.data ?? []} courseColourByDocumentId={courseColourByDocumentId} onPhotoUploaded={onOpenProposals} />
-              </>
-            );
-          })()}
-      </main>
+              <TodosCard todos={view.todos} documents={documentsQuery.data ?? []} courseColourByDocumentId={courseColourByDocumentId} onPhotoUploaded={onOpenProposals} />
+            </>
+          )}
+        </main>
 
-      <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
-        <PomodoroCard />
-        <StudySoundsCard />
+        <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
+          <PomodoroCard />
+          <StudySoundsCard />
+        </div>
       </div>
     </div>
   );
