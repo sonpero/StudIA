@@ -25,7 +25,7 @@ const DOCUMENTS_QUERY_KEY = ["documents"];
 // displayed day never shifts by one under a non-UTC timezone.
 const TODO_DUE_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-function formatTodoDueDate(dueDate: string): string {
+export function formatTodoDueDate(dueDate: string): string {
   const year = Number(dueDate.slice(0, 4));
   const month = Number(dueDate.slice(5, 7));
   const day = Number(dueDate.slice(8, 10));
@@ -38,7 +38,7 @@ function formatTodoDueDate(dueDate: string): string {
 // unchanged), this just folds them into one row per course in memory. A
 // course absent from all three contributes no card at all — this screen
 // answers "what do I do now", not "what are all my courses".
-type CourseCard = {
+export type CourseCard = {
   documentId: string;
   documentTitle: string;
   colour: string | null;
@@ -54,13 +54,13 @@ type CourseCard = {
 // "Examen aujourd'hui"/"Examen demain" at 0/1, never "dans 0 jour"/"dans 1
 // jour" (docs/UI.md's Aujourd'hui — deadline note). daysAway is always >= 0
 // here: upcomingDeadlines already excludes a lapsed deadline.
-function countdownLabel(daysAway: number): string {
+export function countdownLabel(daysAway: number): string {
   if (daysAway === 0) return "Examen aujourd'hui";
   if (daysAway === 1) return "Examen demain";
   return `Examen dans ${daysAway} jours`;
 }
 
-function buildCourseCards(view: TodayView): CourseCard[] {
+export function buildCourseCards(view: TodayView): CourseCard[] {
   const byId = new Map<string, CourseCard>();
 
   function ensure(documentId: string, documentTitle: string, colour: string | null): CourseCard {

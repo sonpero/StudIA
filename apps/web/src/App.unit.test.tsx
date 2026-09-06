@@ -15,6 +15,14 @@ function stubAuthenticatedFetch() {
         const params = new URLSearchParams(url.split("?")[1]);
         return Promise.resolve(new Response(JSON.stringify({ start: params.get("start"), end: params.get("end"), days: [] }), { status: 200 }));
       }
+      // Both the real "Aujourd'hui" and the "Today" prototype call this
+      // same endpoint (courses/todos are wired to real data now) — a
+      // valid empty TodayView, not the bare [] every other route gets.
+      if (typeof url === "string" && url.startsWith("/api/today")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+        );
+      }
       return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
     }),
   );

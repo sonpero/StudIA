@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   BookOpen,
@@ -5,20 +6,16 @@ import {
   Calendar,
   Check,
   Clock,
-  Feather,
   Flame,
   GraduationCap,
   Home,
-  Landmark,
   Layers,
-  Leaf,
   ListChecks,
   MessageCircle,
   Music,
   Play,
   Plus,
   RotateCcw,
-  Sigma,
   SkipBack,
   SkipForward,
   Timer,
@@ -27,16 +24,23 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { FIELD_CLASS } from "../components/ui/field-styles.js";
 import { ICON_SIZE_INLINE, ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { createTodo, deleteTodo, getToday, toggleTodo, type Todo } from "../lib/today-api.js";
+import { buildCourseCards, countdownLabel, formatTodoDueDate, type CourseCard as CourseCardData } from "./TodayScreen.js";
+
+const QUERY_KEY = ["today"];
 
 // Front-end prototype, approved from a design mockup (see the reviewed
-// artifact) — not yet wired to any real endpoint and not yet reachable
-// from App.tsx's own routing (a deliberate choice: it must not show mock
-// data to a real user on the live "Aujourd'hui" destination). Every value
-// below is hardcoded; wiring each section to its real data source is
-// future, incremental work, one piece at a time.
+// artifact), reachable from App.tsx's own nav as a temporary staging
+// entry. Courses and todos are wired to the real GET /api/today (the same
+// endpoint and the same buildCourseCards fold the shipped Aujourd'hui
+// already uses — re-exported from TodayScreen.tsx rather than
+// duplicated); the streak, the user chip, the pomodoro card and the
+// study-sounds player are still hardcoded, wired one piece at a time.
 //
 // Knowingly departs from two of docs/UI.md's existing rules for the
 // shipped Aujourd'hui screen, per the approved mockup — the user asked
@@ -57,51 +61,6 @@ const NAV_ITEMS: { label: string; icon: LucideIcon; active?: boolean }[] = [
   { label: "Tuteur", icon: MessageCircle },
 ];
 
-type MockCourseCard = {
-  id: string;
-  subject: string;
-  title: string;
-  icon: LucideIcon;
-  // A real hex from the app's own subject palette (packages/core/src/
-  // ingestion/domain/colour.ts), used at reduced opacity for the icon's
-  // tinted circle — not an invented colour, docs/UI.md's Colour note.
-  colour: string;
-  dueCount: number | null; // null: all caught up
-  examInDays: number;
-};
-
-const MOCK_COURSES: MockCourseCard[] = [
-  { id: "c1", subject: "Biologie", title: "Biologie cellulaire et génétique", icon: Leaf, colour: "#109da0", dueCount: 12, examInDays: 8 },
-  { id: "c2", subject: "Histoire", title: "La Révolution française", icon: Landmark, colour: "#f36016", dueCount: 7, examInDays: 4 },
-  { id: "c3", subject: "Mathématiques", title: "Fonctions quadratiques", icon: Sigma, colour: "#0897d6", dueCount: null, examInDays: 17 },
-  { id: "c4", subject: "Littérature française", title: "Le Père Goriot", icon: Feather, colour: "#ec4899", dueCount: 5, examInDays: 11 },
-];
-
-// "aujourd'hui"/"demain" at 0/1, matching the real countdown badge
-// already shipped on Aujourd'hui's course cards (docs/UI.md's Aujourd'hui
-// — deadline note) — reused here for consistency, not reinvented.
-function countdownLabel(daysAway: number): string {
-  if (daysAway === 0) return "Examen aujourd'hui";
-  if (daysAway === 1) return "Examen demain";
-  return `Examen dans ${daysAway} jours`;
-}
-
-type MockTodo = {
-  id: string;
-  label: string;
-  done: boolean;
-  dueDate: string | null;
-  dotColour: string;
-};
-
-const MOCK_TODOS: MockTodo[] = [
-  { id: "t1", label: "Réviser les 12 fiches de Biologie dues aujourd'hui", done: false, dueDate: null, dotColour: "#109da0" },
-  { id: "t2", label: "Lire la notion « La Terreur »", done: false, dueDate: "8 septembre 2026", dotColour: "#f36016" },
-  { id: "t3", label: "Demander au tuteur les carrés de Punnett", done: true, dueDate: null, dotColour: "#109da0" },
-  { id: "t4", label: "Terminer 3 exercices sur les fonctions quadratiques", done: false, dueDate: "10 septembre 2026", dotColour: "#0897d6" },
-  { id: "t5", label: "Parcourir le guide d'étude Balzac, pages 4-8", done: false, dueDate: "12 septembre 2026", dotColour: "#ec4899" },
-];
-
 function Sidebar({ onExit }: { onExit?: () => void }) {
   return (
     <div className="flex w-60 shrink-0 flex-col gap-[var(--space-section)] border-r border-border p-4">
@@ -118,9 +77,9 @@ function Sidebar({ onExit }: { onExit?: () => void }) {
       <nav aria-label="Navigation principale" className="flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          // The only piece actually wired so far (docs comment on Today()
-          // below): "Aujourd'hui" returns to the real app. Every other
-          // item stays a static row until its own screen exists here.
+          // The only piece of real navigation so far: "Aujourd'hui"
+          // returns to the real app. Every other item stays a static row
+          // until its own screen exists here.
           const onClick = item.label === "Aujourd'hui" ? onExit : undefined;
           return (
             <button
@@ -143,6 +102,7 @@ function Sidebar({ onExit }: { onExit?: () => void }) {
 
       <div className="flex-1" />
 
+      {/* Still mock: the streak isn't wired this pass. */}
       <Card className="flex items-center gap-2.5 p-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/10">
           <Flame aria-hidden="true" focusable="false" size={16} strokeWidth={ICON_STROKE_WIDTH} color="#f5b940" />
@@ -164,30 +124,29 @@ function Sidebar({ onExit }: { onExit?: () => void }) {
   );
 }
 
-function CourseCard({ course }: { course: MockCourseCard }) {
-  const Icon = course.icon;
+function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onReviewCourse?: (documentId: string) => void }) {
+  const colour = course.colour ?? "#667085";
   return (
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="course-today-card">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-[var(--space-related)]">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${course.colour}26` }}>
-            <Icon aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color={course.colour} />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${colour}26` }}>
+            <BookOpen aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color={colour} />
           </span>
-          <div className="flex min-w-0 flex-col">
-            <span className="text-[length:var(--text-label)] text-text-muted">{course.subject}</span>
-            <span className="truncate font-[family-name:var(--font-display)] text-sm font-bold">{course.title}</span>
-          </div>
+          <span className="truncate font-[family-name:var(--font-display)] text-sm font-bold">{course.documentTitle}</span>
         </div>
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-warning">
-          <Clock aria-hidden="true" focusable="false" size={12} strokeWidth={ICON_STROKE_WIDTH} />
-          {countdownLabel(course.examInDays)}
-        </span>
+        {course.deadline && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-warning">
+            <Clock aria-hidden="true" focusable="false" size={12} strokeWidth={ICON_STROKE_WIDTH} />
+            {countdownLabel(course.deadline.daysAway)}
+          </span>
+        )}
       </div>
 
-      {course.dueCount !== null ? (
+      {course.dueCount > 0 ? (
         <p>
           <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{course.dueCount}</span>{" "}
-          <span className="text-sm text-text-muted">fiches à revoir</span>
+          <span className="text-sm text-text-muted">fiche{course.dueCount > 1 ? "s" : ""} à revoir</span>
         </p>
       ) : (
         <p className="flex items-center gap-[var(--space-related)] text-sm font-semibold text-success">
@@ -196,8 +155,8 @@ function CourseCard({ course }: { course: MockCourseCard }) {
         </p>
       )}
 
-      {course.dueCount !== null ? (
-        <Button variant="accent" className="w-full justify-center">
+      {course.dueCount > 0 ? (
+        <Button variant="accent" className="w-full justify-center" onClick={() => onReviewCourse?.(course.documentId)}>
           Réviser
           <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
@@ -210,8 +169,88 @@ function CourseCard({ course }: { course: MockCourseCard }) {
   );
 }
 
-function TodosCard() {
-  const remaining = MOCK_TODOS.filter((t) => !t.done).length;
+function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColour: string | null; onToggle: (done: boolean) => void; onDelete: () => void }) {
+  return (
+    <li data-testid="today-todo-row" className="flex items-center gap-[var(--space-related)]">
+      <input
+        type="checkbox"
+        checked={todo.done}
+        onChange={(e) => onToggle(e.target.checked)}
+        aria-label={todo.label}
+        className="h-[18px] w-[18px] shrink-0 accent-success"
+      />
+      <span className={todo.done ? "flex-1 text-sm text-text-muted line-through" : "flex-1 text-sm"}>{todo.label}</span>
+      {todo.dueDate && <span className="whitespace-nowrap text-[length:var(--text-label)] text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
+      {dotColour && <span aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: dotColour }} />}
+      <button
+        type="button"
+        aria-label={`Supprimer « ${todo.label} »`}
+        onClick={onDelete}
+        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-text-muted hover:text-text"
+      >
+        <X aria-hidden="true" focusable="false" size={13} strokeWidth={ICON_STROKE_WIDTH} />
+      </button>
+    </li>
+  );
+}
+
+// Minimal by design: a label only, matching the API's own "label required,
+// everything else optional" contract — the mockup's own "+" affordance
+// never specified a fuller form (date, course), so this doesn't invent one.
+function AddTodoForm({ onSubmit, onClose }: { onSubmit: (label: string) => void; onClose: () => void }) {
+  const [label, setLabel] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <form
+      className="flex items-center gap-[var(--space-related)]"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = label.trim();
+        if (!trimmed) return;
+        onSubmit(trimmed);
+      }}
+    >
+      <label htmlFor={inputId} className="sr-only">
+        Nouveau todo
+      </label>
+      <input id={inputId} ref={inputRef} required value={label} onChange={(e) => setLabel(e.target.value)} className={`${FIELD_CLASS} flex-1 py-1.5 text-sm`} placeholder="Nouveau todo" />
+      <button type="submit" aria-label="Confirmer l'ajout" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+        <Check aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
+      </button>
+    </form>
+  );
+}
+
+function TodosCard({ todos, courseColourByDocumentId }: { todos: Todo[]; courseColourByDocumentId: Map<string, string> }) {
+  const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const remaining = todos.filter((t) => !t.done).length;
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) => toggleTodo(id, done),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTodo(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+  const createMutation = useMutation({
+    mutationFn: (label: string) => createTodo({ label, dueDate: null, documentId: null }),
+    onSuccess: () => {
+      setAddOpen(false);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+
   return (
     <Card className="flex flex-col gap-[var(--space-block)]">
       <div className="flex items-center justify-between">
@@ -219,31 +258,31 @@ function TodosCard() {
           <ListChecks aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Todos
         </div>
-        <div className="flex items-center gap-[var(--space-related)]">
-          <span className="text-[length:var(--text-label)] text-text-muted">{remaining} restants</span>
-          <button
-            type="button"
-            aria-label="Ajouter un todo"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary"
-          >
-            <Plus aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
-          </button>
-        </div>
+        {addOpen ? (
+          <AddTodoForm onSubmit={(label) => createMutation.mutate(label)} onClose={() => setAddOpen(false)} />
+        ) : (
+          <div className="flex items-center gap-[var(--space-related)]">
+            <span className="text-[length:var(--text-label)] text-text-muted">{remaining} restants</span>
+            <button type="button" aria-label="Ajouter un todo" onClick={() => setAddOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Plus aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
+            </button>
+          </div>
+        )}
       </div>
 
-      <ul className="flex flex-col gap-[var(--space-block)]">
-        {MOCK_TODOS.map((todo) => (
-          <li key={todo.id} data-testid="today-todo-row" className="flex items-center gap-[var(--space-related)]">
-            <input type="checkbox" checked={todo.done} readOnly aria-label={todo.label} className="h-[18px] w-[18px] shrink-0 accent-success" />
-            <span className={todo.done ? "flex-1 text-sm text-text-muted line-through" : "flex-1 text-sm"}>{todo.label}</span>
-            {todo.dueDate && <span className="whitespace-nowrap text-[length:var(--text-label)] text-text-muted">{todo.dueDate}</span>}
-            <span aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: todo.dotColour }} />
-            <button type="button" aria-label={`Supprimer « ${todo.label} »`} className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-text-muted hover:text-text">
-              <X aria-hidden="true" focusable="false" size={13} strokeWidth={ICON_STROKE_WIDTH} />
-            </button>
-          </li>
-        ))}
-      </ul>
+      {todos.length > 0 && (
+        <ul className="flex flex-col gap-[var(--space-block)]">
+          {todos.map((todo) => (
+            <TodoRow
+              key={todo.id}
+              todo={todo}
+              dotColour={todo.documentId ? (courseColourByDocumentId.get(todo.documentId) ?? null) : null}
+              onToggle={(done) => toggleMutation.mutate({ id: todo.id, done })}
+              onDelete={() => deleteMutation.mutate(todo.id)}
+            />
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
@@ -343,33 +382,55 @@ function StudySoundsCard() {
   );
 }
 
-export function Today({ onExit }: { onExit?: () => void } = {}) {
+export function Today({ onExit, onReviewCourse }: { onExit?: () => void; onReviewCourse?: (documentId: string) => void } = {}) {
+  const query = useQuery({ queryKey: QUERY_KEY, queryFn: getToday });
+
   return (
     <div className="flex min-h-screen bg-canvas">
       <Sidebar onExit={onExit} />
 
       <div className="flex flex-1 gap-[var(--space-section)] p-8">
         <main className="flex flex-1 flex-col gap-[var(--space-section)]">
-          <div className="flex flex-col gap-[var(--space-related)]">
-            <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, Léa</h1>
-            <p className="text-sm text-text-muted">
-              Tu as <strong className="font-semibold text-text">24 fiches</strong> à réviser dans 4 cours. 25 minutes de concentration suffisent pour garder de l'avance.
-            </p>
-          </div>
+          {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
+          {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
+          {query.status === "success" && (() => {
+            const view = query.data;
+            const courseCards = buildCourseCards(view);
+            const totalDue = view.dueCards.reduce((sum, c) => sum + c.count, 0);
+            const courseColourByDocumentId = new Map(courseCards.filter((c) => c.colour !== null).map((c) => [c.documentId, c.colour as string]));
 
-          <div className="flex flex-col gap-[var(--space-block)]">
-            <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
-              <Calendar aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-              À réviser aujourd'hui
-            </div>
-            <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2">
-              {MOCK_COURSES.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          </div>
+            return (
+              <>
+                <div className="flex flex-col gap-[var(--space-related)]">
+                  <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, Léa</h1>
+                  {totalDue > 0 ? (
+                    <p className="text-sm text-text-muted">
+                      Tu as <strong className="font-semibold text-text">{totalDue} fiche{totalDue > 1 ? "s" : ""}</strong> à réviser dans {view.dueCards.length} cours. 25
+                      minutes de concentration suffisent pour garder de l'avance.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-text-muted">Rien à réviser pour l'instant. Profites-en pour avancer sur autre chose.</p>
+                  )}
+                </div>
 
-          <TodosCard />
+                {courseCards.length > 0 && (
+                  <div className="flex flex-col gap-[var(--space-block)]">
+                    <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
+                      <Calendar aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                      À réviser aujourd'hui
+                    </div>
+                    <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2">
+                      {courseCards.map((course) => (
+                        <CourseCard key={course.documentId} course={course} onReviewCourse={onReviewCourse} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <TodosCard todos={view.todos} courseColourByDocumentId={courseColourByDocumentId} />
+              </>
+            );
+          })()}
         </main>
 
         <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">

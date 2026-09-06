@@ -91,10 +91,13 @@ function AppShell() {
   // Bypasses the real AppNav entirely, same idiom as LoginScreen above:
   // Today.tsx already renders its own full page, sidebar included (the
   // approved mockup's own shape) — nesting it inside the real sidebar
-  // would double it up. onExit is the first, smallest piece of real
-  // wiring: its own "Aujourd'hui" nav row returns here to the real app.
+  // would double it up. onExit returns to the real app; onReviewCourse
+  // reuses the real ReviewScreen as-is (courses are wired to real data
+  // now, so a real due count needs a real review, not a decorative
+  // button) — this drops out of the preview into the normal AppShell
+  // below, same as any other "review" transition already does.
   if (view.name === "today-preview") {
-    return <Today onExit={() => setView({ name: "today" })} />;
+    return <Today onExit={() => setView({ name: "today" })} onReviewCourse={(documentId) => setView({ name: "review", documentId })} />;
   }
 
   // docs/UI.md's Navigation note (M9): Notions and Lecteur are now their own
