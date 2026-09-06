@@ -69,6 +69,12 @@ describe("TodayScreen (Aujourd'hui)", () => {
     expect(await screen.findByRole("heading", { name: "Bonjour, Camille" })).toBeInTheDocument();
   });
 
+  it("shows the real date above the greeting, in French, capitalised", async () => {
+    stubFetch({ ...emptyView, date: "2026-09-06" });
+    renderScreen();
+    expect(await screen.findByText("Dimanche 6 septembre")).toBeInTheDocument();
+  });
+
   it("renders one card per course from the real due cards and upcoming deadlines", async () => {
     stubFetch({
       ...emptyView,

@@ -51,6 +51,21 @@ function formatTodoDueDate(dueDate: string): string {
   return TODO_DUE_DATE_FORMATTER.format(new Date(year, month - 1, day));
 }
 
+// Same parsing convention as formatTodoDueDate above (local-time components,
+// never `new Date(dateKey)` directly): view.date is workspace's own
+// "YYYY-MM-DD" date key. French capitalises only the first word of a date,
+// unlike the mockup's own English "Tuesday, May 18" — Intl gives
+// "mardi 18 mai" for fr-FR, capitalised here to read as a line's own start.
+const GREETING_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+function formatGreetingDate(dateKey: string): string {
+  const year = Number(dateKey.slice(0, 4));
+  const month = Number(dateKey.slice(5, 7));
+  const day = Number(dateKey.slice(8, 10));
+  const formatted = GREETING_DATE_FORMATTER.format(new Date(year, month - 1, day));
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
 // One card per course, never split by kind (docs/UI.md's Aujourd'hui note):
 // TodayView still carries dueCards/notionsBelowTarget/upcomingDeadlines as
 // three independent, documentId-keyed arrays (workspace's own shape,
@@ -306,13 +321,27 @@ function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onRevi
   const colour = course.colour ?? "#667085";
   return (
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="course-today-card">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-[var(--space-related)]">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${colour}26` }}>
-            <BookOpen aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color={colour} />
-          </span>
-          <span className="truncate font-[family-name:var(--font-display)] text-sm font-bold">{course.documentTitle}</span>
-        </div>
+      <div className="flex min-w-0 items-center gap-[var(--space-related)]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${colour}26` }}>
+          <BookOpen aria-hidden="true" focusable="false" size={24} strokeWidth={ICON_STROKE_WIDTH} color={colour} />
+        </span>
+        <span className="truncate font-[family-name:var(--font-display)] text-sm font-bold">{course.documentTitle}</span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        {course.dueCount > 0 ? (
+          <p>
+            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums" style={{ color: colour }}>
+              {course.dueCount}
+            </span>{" "}
+            <span className="text-sm text-text-muted">fiche{course.dueCount > 1 ? "s" : ""} à revoir</span>
+          </p>
+        ) : (
+          <p className="flex items-center gap-[var(--space-related)] text-sm font-semibold text-success">
+            <Check aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+            Tout est à jour
+          </p>
+        )}
         {course.deadline && (
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-warning">
             <Clock aria-hidden="true" focusable="false" size={12} strokeWidth={ICON_STROKE_WIDTH} />
@@ -320,18 +349,6 @@ function CourseCard({ course, onReviewCourse }: { course: CourseCardData; onRevi
           </span>
         )}
       </div>
-
-      {course.dueCount > 0 ? (
-        <p>
-          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{course.dueCount}</span>{" "}
-          <span className="text-sm text-text-muted">fiche{course.dueCount > 1 ? "s" : ""} à revoir</span>
-        </p>
-      ) : (
-        <p className="flex items-center gap-[var(--space-related)] text-sm font-semibold text-success">
-          <Check aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-          Tout est à jour
-        </p>
-      )}
 
       {course.dueCount > 0 ? (
         <Button variant="accent" className="w-full justify-center rounded-2xl" onClick={() => onReviewCourse?.(course.documentId)}>
@@ -422,7 +439,7 @@ function TodosCard({
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="todos-card">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
-          <ListChecks aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          <ListChecks aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="text-primary" />
           Todos
         </div>
         {!addOpen && !photoOpen && (
@@ -541,7 +558,7 @@ function PomodoroCard() {
   return (
     <Card className="flex flex-col items-center gap-[var(--space-block)]" data-testid="pomodoro-card">
       <div className="flex w-full items-center gap-[var(--space-related)] text-sm font-semibold">
-        <Timer aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        <Timer aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="text-primary" />
         Pomodoro
       </div>
 
@@ -684,6 +701,7 @@ export function TodayScreen({
           item), not with this greeting sitting above it. */}
       {view && (
         <div className="flex flex-col gap-[var(--space-related)]">
+          <p className="text-sm font-semibold text-primary">{formatGreetingDate(view.date)}</p>
           <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">Bonjour, {username}</h1>
           {totalDue > 0 ? (
             <p className="text-sm text-text-muted">
