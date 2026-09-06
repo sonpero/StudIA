@@ -155,29 +155,29 @@ describe("App", () => {
     await screen.findByText("Cours test");
     expect(screen.getByRole("button", { name: /discuter/i })).toBeInTheDocument();
 
-    // From within a course instead: the Notions picker's own entry — Mes
-    // cours' own cards dropped "Voir les notions" in its redesign (Notions
-    // is independently reachable from the nav now, M9).
+    // From within a course instead: Notions' own redesign (M9) shows the
+    // first (only) course's notions directly, no separate "Voir les
+    // notions" step.
     await user.click(screen.getByRole("button", { name: "Notions" }));
-    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
-    await screen.findByRole("heading", { name: "Notions du cours" });
+    await screen.findByRole("heading", { name: "Cours test" });
 
     await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
     await screen.findByRole("heading", { name: "Tuteur" });
     await screen.findByRole("textbox");
 
     await user.click(screen.getByRole("button", { name: "Retour" }));
-    await screen.findByRole("heading", { name: "Notions du cours" });
+    await screen.findByRole("heading", { name: "Cours test" });
   });
 
-  // docs/UI.md's Navigation note (M9): Notions and Lecteur gain the same
-  // dual-entry shape Tuteur already has — reachable directly from the nav
-  // with no course chosen, landing on the shared picker (CoursePickerScreen),
-  // and "Retour" from a course reached that way returns to the picker
-  // itself, never to Mes cours (fromPicker, distinct from the unchanged
-  // "opened from a course's own card" path already covered elsewhere).
-  it("Notions is reachable directly from the nav (a course picker); 'Retour' from there returns to the picker, not Mes cours", async () => {
-    const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+  // M9's own redesign of Notions: reachable directly from the nav with no
+  // course chosen, showing a pill selector plus the first course's own
+  // notions immediately — no separate picker page to land on first, unlike
+  // Lecteur/Tuteur below, which still use the shared CoursePickerScreen.
+  // No "Retour" at all in that state (matching Aujourd'hui/Mes cours'
+  // own top-level pages): there is no picker page left to have come from.
+  it("Notions is reachable directly from the nav, showing a course pill selector and the first course's own notions immediately, no back link", async () => {
+    const docOne = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+    const docTwo = { id: "doc-2", title: "Autre cours", sourceType: "photo", status: "done", pageCount: 1, colour: "#38BDF8", createdAt: "2026-01-01T00:00:00Z" };
     const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Notion 1", body: "Corps.", difficulty: "medium", position: 0, createdAt: "2026-01-01T00:00:00Z" };
     vi.stubGlobal(
       "fetch",
@@ -192,7 +192,7 @@ describe("App", () => {
         if (/\/api\/documents\/doc-1\/notions-progress/.test(url)) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/notions/.test(url)) return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
         if (/\/api\/documents\/doc-1\/progress/.test(url)) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([aDocument]), { status: 200 }));
+        if (/\/api\/documents$/.test(url)) return Promise.resolve(new Response(JSON.stringify([docOne, docTwo]), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
       }),
     );
@@ -201,19 +201,13 @@ describe("App", () => {
     render(<App />);
     await screen.findByText("Bonjour, alex.");
 
-    // Directly from the nav: a picker, not a specific course's notions yet.
     await user.click(screen.getByRole("button", { name: "Notions" }));
-    await screen.findByRole("heading", { name: "Notions" });
-    await screen.findByText("Cours test");
 
-    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
-    await screen.findByRole("heading", { name: "Notions du cours" });
-
-    // fromPicker: "Retour", not "Retour à mes cours", and it goes back to
-    // the picker (heading "Notions"), not to Mes cours.
-    await user.click(screen.getByRole("button", { name: "Retour" }));
-    await screen.findByRole("heading", { name: "Notions" });
-    expect(screen.queryByRole("heading", { name: "Mes cours" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Notions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cours test" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Autre cours" })).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Cours test" });
+    expect(screen.queryByRole("button", { name: /retour/i })).not.toBeInTheDocument();
   });
 
   it("Lecteur is reachable directly from the nav (a course picker); 'Retour' from there returns to the picker, not Mes cours", async () => {
@@ -322,20 +316,18 @@ describe("App", () => {
 
     render(<App />);
     await screen.findByRole("heading", { name: "Bonjour, alex" });
-    // Via the Notions picker, not Mes cours — Mes cours' own cards dropped
-    // "Voir les notions" in its redesign (Notions is independently
-    // reachable from the nav now, M9).
+    // Notions shows its own pill selector plus the first (only) course's
+    // notions directly now (M9's own redesign) — no separate "Voir les
+    // notions" step, unlike Mes cours' cards, which dropped that button
+    // entirely in its own redesign.
     await user.click(screen.getByRole("button", { name: "Notions" }));
-    await screen.findByText("Cours test");
-
-    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
-    await screen.findByRole("heading", { name: "Notions du cours" });
+    await screen.findByRole("heading", { name: "Cours test" });
 
     await user.click(screen.getByRole("button", { name: "Lire le cours" }));
     await screen.findByRole("heading", { name: "Lecture" });
 
     await user.click(screen.getByRole("button", { name: "Retour" }));
-    await screen.findByRole("heading", { name: "Notions du cours" });
+    await screen.findByRole("heading", { name: "Cours test" });
   });
 
   it("a 401 on any protected call bounces an authenticated session back to the login screen", async () => {

@@ -10,7 +10,7 @@ export { getDueCards, type GetDueCardsDeps } from "./application/get-due-cards.j
 export { startSession, type StartSessionDeps } from "./application/start-session.js";
 export { submitReview, type SubmitReviewDeps } from "./application/submit-review.js";
 export { getProgress, type GetProgressDeps } from "./application/get-progress.js";
-export { getNotionsProgress, type GetNotionsProgressDeps } from "./application/get-notions-progress.js";
+export { getNotionsProgress, type GetNotionsProgressDeps, type NotionProgressWithSchedule } from "./application/get-notions-progress.js";
 export { abandonSession, type AbandonSessionDeps } from "./application/abandon-session.js";
 export { gradeAnswer, type GradeAnswerDeps, type GradeResult } from "./application/grade-answer.js";
 

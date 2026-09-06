@@ -1,32 +1,103 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import type { DocumentSummary } from "@studia/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotionsScreen } from "./NotionsScreen.js";
 
+// Redesigned per a "Notions" mockup, ignoring docs/UI.md per the user: one
+// unified page — a pill selector of courses at the top, then that course's
+// own summary card and notion list — replacing the old two-step picker
+// page → course page flow (CoursePickerScreen is untouched; Lecteur and
+// Tuteur still use it, only Notions dropped it). Deep links from elsewhere
+// (documentId set) still pre-select that course and show "Retour à mes
+// cours"; the nav's own direct entry (documentId undefined) shows no back
+// link and defaults to the first course. Each notion's status badge
+// (Maîtrisée/À réviser/En apprentissage), review count and next-review
+// wording come from the enriched GET /api/documents/:id/notions-progress
+// (reps, nextDueDate, dueNow — packages/core/src/review's own
+// getNotionsProgress composition, no schema change). The old per-notion
+// "mastery gap" explanatory sentences are gone, folded into the new status
+// badge + review count instead.
 function renderScreen(
-  overrides: Partial<{ onOpenReader: () => void; onOpenTutor: () => void; documentId: string; fromPicker: boolean; onSelectDocument: (documentId: string) => void }> = {},
+  overrides: Partial<{
+    documentId: string;
+    onBack: () => void;
+    onReview: (documentId: string, notionId?: string) => void;
+    onOpenProgress: (documentId: string) => void;
+    onOpenReader: (documentId: string) => void;
+    onOpenTutor: (documentId: string) => void;
+  }> = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <NotionsScreen
-        documentId={overrides.documentId ?? "doc-1"}
-        fromPicker={overrides.fromPicker}
-        onBack={() => undefined}
-        onReview={() => undefined}
-        onOpenProgress={() => undefined}
+        documentId={overrides.documentId}
+        onBack={overrides.onBack ?? (() => undefined)}
+        onReview={overrides.onReview ?? (() => undefined)}
+        onOpenProgress={overrides.onOpenProgress ?? (() => undefined)}
         onOpenReader={overrides.onOpenReader ?? (() => undefined)}
         onOpenTutor={overrides.onOpenTutor ?? (() => undefined)}
-        onSelectDocument={overrides.onSelectDocument ?? (() => undefined)}
       />
     </QueryClientProvider>,
   );
 }
 
+const docA: DocumentSummary = { id: "doc-1", title: "Biologie", sourceType: "photo", status: "done", pageCount: 3, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
+const docB: DocumentSummary = { id: "doc-2", title: "Histoire", sourceType: "photo", status: "done", pageCount: 2, colour: "#38BDF8", createdAt: "2026-01-01T00:00:00Z" };
+
 const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Photosynthèse", body: "La plante capte la lumière.", difficulty: "medium" as const, position: 0, createdAt: "2026-01-01T00:00:00Z" };
+
+type NotionsProgressRow = { notionId: string; masteredCards: number; totalCards: number; cardsWithEnoughReps?: number; cardsWithEnoughStability?: number; reps?: number; nextDueDate?: string | null; dueNow?: boolean };
+
+function stubFetch(options: {
+  documents?: DocumentSummary[] | (() => Response);
+  notionsByDocument?: Record<string, (typeof aNotion)[]>;
+  progressByDocument?: Record<string, { mastered: number; total: number; nextDueDate: string | null }>;
+  notionsProgressByDocument?: Record<string, NotionsProgressRow[]>;
+  extra?: (url: string, init?: RequestInit) => Response | undefined;
+}) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const extra = options.extra?.(url, init);
+      if (extra) return Promise.resolve(extra);
+
+      if (url.startsWith("/api/today")) {
+        return Promise.resolve(new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }));
+      }
+      const notionsProgressMatch = /\/api\/documents\/([^/]+)\/notions-progress/.exec(url);
+      if (notionsProgressMatch) {
+        const rows = (options.notionsProgressByDocument?.[notionsProgressMatch[1]!] ?? []).map((row) => ({
+          cardsWithEnoughReps: 0,
+          cardsWithEnoughStability: 0,
+          reps: 0,
+          nextDueDate: null,
+          dueNow: false,
+          ...row,
+        }));
+        return Promise.resolve(new Response(JSON.stringify(rows), { status: 200 }));
+      }
+      const progressMatch = /\/api\/documents\/([^/]+)\/progress/.exec(url);
+      if (progressMatch) {
+        const progress = options.progressByDocument?.[progressMatch[1]!] ?? { mastered: 0, total: 0, nextDueDate: null };
+        return Promise.resolve(new Response(JSON.stringify(progress), { status: 200 }));
+      }
+      const notionsMatch = /\/api\/documents\/([^/]+)\/notions$/.exec(url);
+      if (notionsMatch) {
+        return Promise.resolve(new Response(JSON.stringify(options.notionsByDocument?.[notionsMatch[1]!] ?? []), { status: 200 }));
+      }
+      if (url.startsWith("/api/documents")) {
+        if (typeof options.documents === "function") return Promise.resolve(options.documents());
+        return Promise.resolve(new Response(JSON.stringify(options.documents ?? []), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    }),
+  );
+}
 
 describe("NotionsScreen", () => {
   afterEach(() => {
@@ -34,636 +105,228 @@ describe("NotionsScreen", () => {
     vi.unstubAllGlobals();
   });
 
-  it("loading state: shows skeleton placeholders while notions are being fetched", () => {
+  it("loading state: shows skeleton placeholders while the course list is being fetched", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
 
     renderScreen();
 
-    expect(screen.getByText("Notions du cours")).toBeInTheDocument();
-    expect(screen.queryByText(/pas encore été créées/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Notions")).toBeInTheDocument();
+    expect(screen.queryByText(/ajoute un cours/i)).not.toBeInTheDocument();
   });
 
   it("error state: shows the confused mascot and an explicit message, with a retry action", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    stubFetch({ documents: () => new Response(null, { status: 500 }) });
 
     renderScreen();
 
-    expect(await screen.findByText(/impossible de charger les notions/i)).toBeInTheDocument();
+    expect(await screen.findByText(/impossible de charger tes cours/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
-  it("empty state: invites the user back, never 'aucun résultat'", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
+  it("empty state: no courses at all — invites the user back to Mes cours, no pills", async () => {
+    stubFetch({ documents: [] });
 
     renderScreen();
 
-    expect(await screen.findByText(/pas encore été créées/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retour à mes cours/i })).toBeInTheDocument();
-    expect(screen.queryByText(/^aucun résultat$/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/ajoute un cours dans mes cours/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Biologie" })).not.toBeInTheDocument();
   });
 
-  it("the gap between the title (or the header row) and what follows it is the same --space-section token in every state (docs/UI.md's Grid and spacing note)", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
-    renderScreen();
-    expect(screen.getByText("Notions du cours").className).toMatch(/mb-\[var\(--space-section\)\]/);
-    cleanup();
-
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
-    renderScreen();
-    await screen.findByText(/impossible de charger les notions/i);
-    const errorMain = screen.getByRole("heading", { name: "Notions du cours" }).closest("main");
-    expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-    cleanup();
-
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
-    renderScreen();
-    await screen.findByText(/pas encore été créées/i);
-    const emptyMain = screen.getByRole("heading", { name: "Notions du cours" }).closest("main");
-    expect(emptyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
-    cleanup();
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-    // The title is now a direct child of the header row (no longer wrapped
-    // with "Retour à mes cours" in its own inner div, docs/UI.md's Notions
-    // du cours note), so the row is one closest("div") away, not two.
-    const headerRow = screen.getByRole("heading", { name: "Notions du cours" }).closest("div");
-    expect(headerRow?.className).toMatch(/mb-\[var\(--space-section\)\]/);
-  });
-
-  it("ready state: lists the document's notions with their difficulty, and shows progress", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("ready state: shows a pill per course, the first one selected by default when reached from the nav directly", async () => {
+    stubFetch({ documents: [docA, docB], notionsByDocument: { "doc-1": [aNotion] } });
 
     renderScreen();
 
+    const biologyPill = await screen.findByRole("button", { name: "Biologie" });
+    expect(biologyPill).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Histoire" })).not.toHaveAttribute("aria-current");
     expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
-    expect(screen.getByText("Moyen")).toBeInTheDocument();
-    // The mastered count and its qualifier are now separate elements
-    // (docs/UI.md's Type note: the number dominates), so each is asserted
-    // on its own rather than as one text run.
-    expect(await screen.findByText("2")).toBeInTheDocument();
-    expect(screen.getByText("/ 5 notions maîtrisées")).toBeInTheDocument();
   });
 
-  it("ready state: a notion's title and its difficulty label carry --space-related (8px) between them, not the 0px gap that used to leave them touching (docs/UI.md's Notions du cours note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const difficulty = screen.getByText("Moyen");
-    expect(difficulty.className).toContain("mt-[var(--space-related)]");
-  });
-
-  it("ready state: the toolbar's mastered-notions count renders at the same size as the labels beside it, text-sm, not --text-display — it's page chrome, not a card's own number (docs/UI.md's Type note); a notion's own title stays --text-title", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 2, total: 5 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const count = screen.getByText("2");
-    expect(count.className).toContain("text-sm");
-    expect(count.className).not.toMatch(/--text-display/);
-    expect(count.className).not.toMatch(/font-\[family-name:var\(--font-display\)\]/);
-    const qualifier = screen.getByText("/ 5 notions maîtrisées");
-    expect(qualifier.className).toContain("text-sm");
-    const title = screen.getByText("Photosynthèse");
-    expect(title.className).toContain("text-[length:var(--text-title)]");
-  });
-
-  it("ready state: 'Types de fiches à créer' is a section label, --text-label, not body text (docs/UI.md's Type note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    expect(screen.getByText("Types de fiches à créer").className).toContain("text-[length:var(--text-label)]");
-  });
-
-  it("ready state: the toolbar's 'Réviser' is --accent, the same colour as every notion card's own 'Réviser cette notion' — the same word names the same gesture on this screen (docs/UI.md's Colour note, reversed from an earlier version of this pass)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const reviewButton = screen.getByRole("button", { name: "Réviser" });
-    expect(reviewButton.className).toMatch(/bg-primary/);
-    expect(reviewButton.className).toMatch(/text-white/);
-  });
-
-  it("ready state: 'Lire le cours' and 'Voir la progression' are plain underlined links, not Buttons — they leave this screen for another one, so they demote the same way 'Retour à mes cours' already does (docs/UI.md's Shape and depth note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    for (const name of ["Lire le cours", "Voir la progression"]) {
-      const link = screen.getByRole("button", { name });
-      expect(link.className).toMatch(/underline/);
-      expect(link.className).not.toMatch(/border-border/);
-      expect(link.className).not.toMatch(/bg-primary/);
-    }
-  });
-
-  it("ready state: offers 'Lire le cours', opening the reader for this document", async () => {
-    const onOpenReader = vi.fn();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("clicking a different pill switches the shown course's own notions, no navigation involved", async () => {
+    const historyNotion = { ...aNotion, id: "n2", documentId: "doc-2", title: "La Révolution" };
+    stubFetch({ documents: [docA, docB], notionsByDocument: { "doc-1": [aNotion], "doc-2": [historyNotion] } });
     const user = userEvent.setup();
 
-    renderScreen({ onOpenReader });
-    await screen.findByText("Photosynthèse");
-
-    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
-
-    expect(onOpenReader).toHaveBeenCalled();
-  });
-
-  it("ready state: offers 'Discuter du cours', opening the tutor for this document", async () => {
-    const onOpenTutor = vi.fn();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-    const user = userEvent.setup();
-
-    renderScreen({ onOpenTutor });
-    await screen.findByText("Photosynthèse");
-
-    await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
-
-    expect(onOpenTutor).toHaveBeenCalled();
-  });
-
-  it("ready state: 'Créer les fiches' (or 'Régénérer les fiches' once cards exist) sits apart from the common toolbar actions — rare, and destructive once it reads 'Régénérer', so not the same visual level as Lire le cours / Voir la progression / Réviser", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
     renderScreen();
     await screen.findByText("Photosynthèse");
 
-    const toolbar = screen.getByTestId("notions-toolbar");
-    expect(within(toolbar).getByRole("button", { name: "Lire le cours" })).toBeInTheDocument();
-    expect(within(toolbar).getByRole("button", { name: "Voir la progression" })).toBeInTheDocument();
-    expect(within(toolbar).getByRole("button", { name: "Réviser" })).toBeInTheDocument();
-    expect(within(toolbar).queryByRole("button", { name: /créer les fiches|régénérer les fiches/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Créer les fiches" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Histoire" }));
+
+    expect(await screen.findByText("La Révolution")).toBeInTheDocument();
+    expect(screen.queryByText("Photosynthèse")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Histoire" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("ready state: the 'Créer les fiches' block sits --space-block (16px) above the notion list, tighter than the --space-section (24px) below the header — it acts on the list, not the header (docs/UI.md's Notions du cours note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const generateBlock = screen.getByRole("button", { name: "Créer les fiches" }).closest("div.mb-\\[var\\(--space-block\\)\\]");
-    expect(generateBlock).not.toBeNull();
-  });
-
-  it("ready state: 'Créer les fiches' sits before 'Types de fiches à créer', not after it", async () => {
-    // No accessible role distinguishes "before" from "after" in a
-    // flex-wrap row (docs/TESTING.md's exception for structure with no
-    // accessible trace): document position is the only way to assert this.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const button = screen.getByRole("button", { name: "Créer les fiches" });
-    const fieldset = screen.getByText("Types de fiches à créer").closest("fieldset");
-
-    expect(button.compareDocumentPosition(fieldset!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("ready state: offers a way back to the courses list (not just the empty/error states)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-    const user = userEvent.setup();
+  it("a deep-linked documentId pre-selects that course (even when it isn't first) and shows 'Retour à mes cours'", async () => {
+    const historyNotion = { ...aNotion, id: "n2", documentId: "doc-2", title: "La Révolution" };
+    stubFetch({ documents: [docA, docB], notionsByDocument: { "doc-1": [aNotion], "doc-2": [historyNotion] } });
     const onBack = vi.fn();
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={onBack} onReview={() => undefined} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} onSelectDocument={() => undefined} />
-      </QueryClientProvider>,
-    );
-    await screen.findByText("Photosynthèse");
+    const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: /retour à mes cours/i }));
+    renderScreen({ documentId: "doc-2", onBack });
 
+    expect(await screen.findByText("La Révolution")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Histoire" })).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("button", { name: "Retour à mes cours" }));
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("ready state: 'Retour à mes cours' sits above the title, before the toolbar's own actions (Lire le cours / Voir la progression / Réviser) (docs/UI.md's Notions du cours note)", async () => {
-    // Same exception as the 'Créer les fiches' position test above:
-    // document position is the only way to assert "before", nothing
-    // accessible distinguishes it.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("reached from the nav directly (no documentId), there is no back link at all", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
 
     renderScreen();
+
     await screen.findByText("Photosynthèse");
-
-    const back = screen.getByRole("button", { name: /retour à mes cours/i });
-    const title = screen.getByRole("heading", { name: "Notions du cours" });
-
-    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /retour/i })).not.toBeInTheDocument();
   });
 
-  it("ready state: tab order visits 'Retour à mes cours' first, then the toolbar's four actions", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("the course summary card shows real notions/mastered/due counts and a bigger, course-coloured icon", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      progressByDocument: { "doc-1": { mastered: 2, total: 5, nextDueDate: null } },
+    });
+
+    renderScreen();
+
+    const summary = await screen.findByTestId("notions-course-summary");
+    expect(await within(summary).findByText(/5 notions/)).toBeInTheDocument();
+    expect(within(summary).getByText(/2 maîtrisées/)).toBeInTheDocument();
+  });
+
+  it("'Réviser N fiches' is disabled as 'Rien à réviser' when nothing is due for the selected course", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen();
+
+    expect(await screen.findByRole("button", { name: "Rien à réviser" })).toBeDisabled();
+  });
+
+  it("the course summary's 'Réviser' calls onReview with the course id and no notionId", async () => {
+    const onReview = vi.fn();
     const user = userEvent.setup();
-    renderScreen();
-    await screen.findByText("Photosynthèse");
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => (url.startsWith("/api/today") ? new Response(JSON.stringify({ date: "2026-01-01", dueCards: [{ documentId: "doc-1", documentTitle: "Biologie", colour: "#F87171", count: 3 }], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }) : undefined),
+    });
 
-    const back = screen.getByRole("button", { name: /retour à mes cours/i });
-    back.focus();
-    expect(back).toHaveFocus();
+    renderScreen({ onReview });
+    await user.click(await screen.findByRole("button", { name: /réviser 3 fiches/i }));
 
-    const toolbar = screen.getByTestId("notions-toolbar");
-    await user.tab();
-    expect(within(toolbar).getByRole("button", { name: "Lire le cours" })).toHaveFocus();
-
-    await user.tab();
-    expect(within(toolbar).getByRole("button", { name: "Voir la progression" })).toHaveFocus();
-
-    await user.tab();
-    expect(within(toolbar).getByRole("button", { name: "Discuter du cours" })).toHaveFocus();
-
-    await user.tab();
-    expect(within(toolbar).getByRole("button", { name: "Réviser" })).toHaveFocus();
+    expect(onReview).toHaveBeenCalledWith("doc-1", undefined);
   });
 
-  it("ready state: shows each notion's own mastery progress, with a distinct label when it has no cards yet", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 4 }]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText("1 / 4 fiches maîtrisées")).toBeInTheDocument();
-  });
-
-  it("ready state: a notion with no cards yet shows an inviting label, not a 0/0 count", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 0 }]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText("Pas encore de fiches")).toBeInTheDocument();
-    expect(screen.queryByText(/^0 \/ 0/)).not.toBeInTheDocument();
-  });
-
-  it("ready state: a notion at 0 / 3 fiches maîtrisées still explains why — the most common case, not an edge case (docs/UI.md's Notions du cours note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 1, cardsWithEnoughStability: 2 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText("Il te manque encore des révisions sur cette notion.")).toBeInTheDocument();
-    expect(screen.getByText(/1\/3 fiches ont fait 3 révisions/)).toBeInTheDocument();
-    expect(screen.getByText(/2\/3 fiches ont dépassé 21 jours de stabilité/)).toBeInTheDocument();
-  });
-
-  it("ready state: once every card has enough reps, a notion still short of mastery explains the stability gap instead, stating the mechanism rather than inviting inaction", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 2, totalCards: 3, cardsWithEnoughReps: 3, cardsWithEnoughStability: 2 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText("Tu l'as révisée assez souvent, il faut maintenant l'espacer dans le temps.")).toBeInTheDocument();
-    expect(screen.queryByText(/il te manque encore des révisions/i)).not.toBeInTheDocument();
-  });
-
-  it("ready state: a fully mastered notion shows no mastery-gap explanation at all", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 3, totalCards: 3, cardsWithEnoughReps: 3, cardsWithEnoughStability: 3 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 1, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    await screen.findByText("3 / 3 fiches maîtrisées");
-    expect(screen.queryByText(/il te manque encore des révisions/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/espacer dans le temps/i)).not.toBeInTheDocument();
-  });
-
-  // "fiche(s)" and its verb agree with the denominator (docs/UI.md's Notions
-  // du cours note: "X/Y fiches ont …" reads as "X out of Y fiches"), not
-  // the numerator: 0/3 and 1/3 both name a population of 3, so both stay
-  // plural. An earlier version agreed with the numerator instead, so both
-  // of these cases read as a false singular.
-  it("ready state: 'fiche(s)' and its verb agree with the denominator, not the numerator — 0/3 and 1/3 both stay plural", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 0, cardsWithEnoughStability: 1 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText(/0\/3 fiches ont fait 3 révisions/)).toBeInTheDocument();
-    expect(screen.getByText(/1\/3 fiches ont dépassé 21 jours de stabilité/)).toBeInTheDocument();
-  });
-
-  it("ready state: singular is only ever correct when the notion itself has exactly one fiche — 0/1 and 1/1 both stay singular", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 1 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByText(/0\/1 fiche a fait 3 révisions/)).toBeInTheDocument();
-    expect(screen.getByText(/1\/1 fiche a dépassé 21 jours de stabilité/)).toBeInTheDocument();
-  });
-
-  it("ready state: the mastery-gap explanation is never coloured or larger than its own sentence — a fact, not a warning (docs/UI.md's Colour note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          return Promise.resolve(
-            new Response(JSON.stringify([{ notionId: "n1", masteredCards: 0, totalCards: 3, cardsWithEnoughReps: 1, cardsWithEnoughStability: 2 }]), { status: 200 }),
-          );
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    const sentence = await screen.findByText("Il te manque encore des révisions sur cette notion.");
-    expect(sentence.className).not.toMatch(/warning/);
-    expect(sentence.className).toContain("text-sm");
-
-    const detail = screen.getByText(/1\/3 fiches ont fait 3 révisions/);
-    expect(detail.className).not.toMatch(/warning/);
-    expect(detail.className).toContain("text-[length:var(--text-label)]");
-  });
-
-  it("ready state: the notion's body is hidden by default and revealed on demand", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("'Lire le cours', 'Voir la progression' and 'Discuter du cours' each call back with the selected course's id", async () => {
+    const onOpenReader = vi.fn();
+    const onOpenProgress = vi.fn();
+    const onOpenTutor = vi.fn();
     const user = userEvent.setup();
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
 
-    renderScreen();
+    renderScreen({ onOpenReader, onOpenProgress, onOpenTutor });
     await screen.findByText("Photosynthèse");
-    expect(screen.queryByText("La plante capte la lumière.")).not.toBeInTheDocument();
 
-    await user.click(screen.getByText("Voir le contenu"));
+    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
+    await user.click(screen.getByRole("button", { name: "Voir la progression" }));
+    await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
 
-    expect(screen.getByText("La plante capte la lumière.")).toBeInTheDocument();
+    expect(onOpenReader).toHaveBeenCalledWith("doc-1");
+    expect(onOpenProgress).toHaveBeenCalledWith("doc-1");
+    expect(onOpenTutor).toHaveBeenCalledWith("doc-1");
   });
 
-  it("ready state: the notion's body renders as formatted markdown, not raw text — bold and a numbered list included (notion.body is markdown, same as the reader's own content)", async () => {
+  it("a notion with every card mastered shows the 'Maîtrisée' badge, even when a card also happens to be due", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 1, totalCards: 1, reps: 8, nextDueDate: "2026-01-07T00:00:00.000Z", dueNow: false }] },
+    });
+
+    renderScreen();
+    const card = await screen.findByTestId("notion-card");
+
+    expect(within(card).getByText("Maîtrisée")).toBeInTheDocument();
+    expect(within(card).getByText(/8 révisions/)).toBeInTheDocument();
+  });
+
+  it("a not-yet-mastered notion with a card due right now shows the 'À réviser' badge and 'à réviser maintenant'", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 0, totalCards: 1, reps: 3, nextDueDate: null, dueNow: true }] },
+    });
+
+    renderScreen();
+    const card = await screen.findByTestId("notion-card");
+
+    expect(within(card).getByText("À réviser")).toBeInTheDocument();
+    expect(within(card).getByText(/à réviser maintenant/i)).toBeInTheDocument();
+  });
+
+  it("a not-yet-mastered, not-yet-due notion shows 'En apprentissage' with its real next-review wording", async () => {
+    // Computed relative to the real clock (todayDateKey() is never mocked
+    // here) rather than a fixed future date, so this test doesn't rot the
+    // day this file's own fixed dates finally arrive in the past.
+    const sixDaysFromNow = new Date(Date.now() + 6 * 86_400_000).toISOString();
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 0, totalCards: 1, reps: 2, nextDueDate: sixDaysFromNow, dueNow: false }] },
+    });
+
+    renderScreen();
+    const card = await screen.findByTestId("notion-card");
+
+    expect(within(card).getByText("En apprentissage")).toBeInTheDocument();
+    expect(within(card).getByText(/dans \d+ jours?/)).toBeInTheDocument();
+  });
+
+  it("a notion with no cards at all defaults to 'En apprentissage'", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen();
+    const card = await screen.findByTestId("notion-card");
+
+    expect(within(card).getByText("En apprentissage")).toBeInTheDocument();
+  });
+
+  it("the notion's body is hidden by default and revealed on demand, rendered as real markdown", async () => {
     const richNotion = { ...aNotion, body: "Il y a **deux** phases :\n\n1. Phase claire\n2. Cycle de Calvin" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([richNotion]), { status: 200 }));
-      }),
-    );
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [richNotion] } });
     const user = userEvent.setup();
 
     renderScreen();
     await screen.findByText("Photosynthèse");
+    expect(screen.queryByText("Cycle de Calvin")).not.toBeInTheDocument();
+
     await user.click(screen.getByText("Voir le contenu"));
 
     const strong = await screen.findByText("deux");
     expect(strong.tagName).toBe("STRONG");
     const items = screen.getAllByRole("listitem");
     expect(items.map((li) => li.textContent)).toEqual(["Phase claire", "Cycle de Calvin"]);
-    // Raw markdown syntax must not leak through as literal characters.
-    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^1\./)).not.toBeInTheDocument();
   });
 
-  it("a notion card's 'Réviser cette notion' and the toolbar's 'Réviser' are both --accent, the identical gesture at two scopes — this does not put two accents inside one card, since the toolbar's own button sits outside every card (docs/UI.md's Colour note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    const perNotion = screen.getByRole("button", { name: "Réviser cette notion" });
-    expect(perNotion.className).toMatch(/bg-primary/);
-    expect(perNotion.className).toMatch(/text-white/);
-
-    const toolbar = screen.getByRole("button", { name: "Réviser" });
-    expect(toolbar.className).toMatch(/bg-primary/);
-
-    // The invariant that actually matters — never more than one accent
-    // element inside a single card — still holds: the toolbar's own
-    // accent button is not a descendant of the notion card at all.
-    const notionCard = screen.getByTestId("notion-card");
-    expect(within(notionCard).getAllByRole("button").filter((b) => /bg-primary/.test(b.className))).toHaveLength(1);
-    expect(notionCard).not.toContainElement(toolbar);
-  });
-
-  it("clicking 'Réviser cette notion' starts a review scoped to that notion", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-    const user = userEvent.setup();
+  it("clicking 'Réviser' on a notion card starts a review scoped to that notion, with the selected course's id", async () => {
     const onReview = vi.fn();
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <NotionsScreen documentId="doc-1" onBack={() => undefined} onReview={onReview} onOpenProgress={() => undefined} onOpenReader={() => undefined} onOpenTutor={() => undefined} onSelectDocument={() => undefined} />
-      </QueryClientProvider>,
-    );
+    const user = userEvent.setup();
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen({ onReview });
     await screen.findByText("Photosynthèse");
+    await user.click(screen.getByRole("button", { name: "Réviser" }));
 
-    await user.click(screen.getByRole("button", { name: /réviser cette notion/i }));
-
-    expect(onReview).toHaveBeenCalledWith("n1");
+    expect(onReview).toHaveBeenCalledWith("doc-1", "n1");
   });
 
-  it("a notion card's 'Réviser cette notion' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+  it("every notion card's 'Réviser' pairs a decorative icon with its label — the accessible name stays exactly the label (docs/UI.md's Icons note)", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
     renderScreen();
     await screen.findByText("Photosynthèse");
 
-    const button = screen.getByRole("button", { name: "Réviser cette notion" });
+    const button = within(screen.getByTestId("notion-card")).getByRole("button", { name: "Réviser" });
     const icon = button.querySelector("svg");
     expect(icon).not.toBeNull();
     expect(icon).toHaveAttribute("aria-hidden", "true");
@@ -672,17 +335,15 @@ describe("NotionsScreen", () => {
 
   it("polls while there are no notions yet, and shows them once splitting finishes", async () => {
     let notionsCallCount = 0;
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-      if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 0 }), { status: 200 }));
-      notionsCallCount += 1;
-      // Empty at first (splitting still running), then populated — proves
-      // the screen keeps polling instead of getting stuck on "empty"
-      // forever (docs/UI.md: never block the UI on a job).
-      const body = notionsCallCount === 1 ? [] : [aNotion];
-      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    stubFetch({
+      documents: [docA],
+      extra: (url) => {
+        if (!/\/api\/documents\/doc-1\/notions$/.test(url)) return undefined;
+        notionsCallCount += 1;
+        const body = notionsCallCount === 1 ? [] : [aNotion];
+        return new Response(JSON.stringify(body), { status: 200 });
+      },
     });
-    vi.stubGlobal("fetch", fetchMock);
 
     renderScreen();
 
@@ -691,20 +352,18 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
   });
 
-  it("requesting generation calls the whole-document generate endpoint", async () => {
+  it("requesting generation calls the whole-document generate endpoint, defaulting to flashcards", async () => {
     const user = userEvent.setup();
     const calls: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url, init) => {
         calls.push(`${init?.method ?? "GET"} ${url}`);
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 1, failed: 0 }), { status: 200 }));
-        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+        if (url.includes("/generate")) return new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 });
+        return undefined;
+      },
+    });
 
     renderScreen();
     await screen.findByText("Photosynthèse");
@@ -713,125 +372,57 @@ describe("NotionsScreen", () => {
     expect(calls).toContainEqual("POST /api/documents/doc-1/generate");
   });
 
-  it("generation: defaults to flashcards only, and sends the user's chosen types (docs/modules/generation.md: 'user choice in M4')", async () => {
+  it("generation: unchecking every type disables the button, and renames to 'Régénérer' once every notion already has cards", async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        if (url.includes("/generate") && init?.method === "POST") bodies.push(init.body ? JSON.parse(init.body as string) : undefined);
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 1, failed: 0 }), { status: 200 }));
-        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 1, totalCards: 3 }] },
+    });
 
     renderScreen();
-    await screen.findByText("Photosynthèse");
-    expect(screen.getByRole("checkbox", { name: "Flashcards" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "QCM" })).not.toBeChecked();
-
-    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
-    expect(bodies).toEqual([{ types: ["flashcard"] }]);
-
-    await user.click(screen.getByRole("checkbox", { name: "QCM" }));
-    await user.click(screen.getByRole("checkbox", { name: "Questions ouvertes" }));
-    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
-
-    expect(bodies).toContainEqual({ types: ["flashcard", "mcq", "open"] });
-  });
-
-  it("generation: unchecking every type disables the button", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
+    expect(await screen.findByRole("button", { name: /régénérer les fiches/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Flashcards" }));
-
-    expect(screen.getByRole("button", { name: /créer les fiches/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /régénérer les fiches/i })).toBeDisabled();
   });
 
-  it("generation: disables the button and shows an in-progress state while cards are being created", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        // Never resolves "done": the status stays in progress for the
-        // whole test, so the loading state is observable, not a flash.
-        if (url.includes("/generation-status")) return Promise.resolve(new Response(JSON.stringify({ done: 1, total: 3, failed: 0 }), { status: 200 }));
-        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
-
-    expect(await screen.findByText(/création en cours/i)).toBeInTheDocument();
-    expect(await screen.findByText(/1 \/ 3/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /création en cours/i })).toBeDisabled();
-  });
-
-  it("generation: tracks progress via generation-status and invalidates notions/progress once done", async () => {
+  it("generation: tracks progress via generation-status and invalidates notions-progress once done", async () => {
     const user = userEvent.setup();
     let statusCalls = 0;
     let notionsProgressCalls = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) {
-          notionsProgressCalls += 1;
-          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        }
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => {
+        if (url.includes("/notions-progress")) notionsProgressCalls += 1;
         if (url.includes("/generation-status")) {
           statusCalls += 1;
           const body = statusCalls === 1 ? { done: 1, total: 3, failed: 0 } : { done: 3, total: 3, failed: 0 };
-          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+          return new Response(JSON.stringify(body), { status: 200 });
         }
-        if (url.includes("/generate")) return Promise.resolve(new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+        if (url.includes("/generate")) return new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 });
+        return undefined;
+      },
+    });
 
     renderScreen();
     await screen.findByText("Photosynthèse");
-    const notionsProgressCallsBefore = notionsProgressCalls;
+    const before = notionsProgressCalls;
     await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
 
     expect(await screen.findByText(/1 \/ 3/)).toBeInTheDocument();
-    // Once done/total match, the button returns to normal and the
-    // notions-progress query (consumed by every notion's mastery label)
-    // gets invalidated, proving the refresh actually happened.
     await waitFor(() => expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled(), { timeout: 4000 });
-    await waitFor(() => expect(notionsProgressCalls).toBeGreaterThan(notionsProgressCallsBefore), { timeout: 4000 });
+    await waitFor(() => expect(notionsProgressCalls).toBeGreaterThan(before), { timeout: 4000 });
   });
 
   it("generation: shows an error and re-enables the button if starting generation fails", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        if (url.includes("/generate")) return Promise.resolve(new Response(null, { status: 500 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => (url.includes("/generate") ? new Response(null, { status: 500 }) : undefined),
+    });
 
     renderScreen();
     await screen.findByText("Photosynthèse");
@@ -839,122 +430,5 @@ describe("NotionsScreen", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de créer les fiches/i);
     expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled();
-  });
-
-  it("generation: renames the button to 'Régénérer les fiches' once every notion already has cards", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([{ notionId: "n1", masteredCards: 1, totalCards: 3 }]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-
-    expect(await screen.findByRole("button", { name: /régénérer les fiches/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^créer les fiches$/i })).not.toBeInTheDocument();
-  });
-});
-
-// docs/UI.md's Navigation note (M9): Notions is now reachable directly from
-// the nav with no course chosen, landing on the same shared picker Tuteur's
-// own note describes (CoursePickerScreen). documentId absent is what
-// signals "no course chosen yet" — the same shape TutorScreen already used
-// before this pass.
-describe("NotionsScreen — picker (no course chosen, M9)", () => {
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
-
-  function renderPicker(onSelectDocument: (documentId: string) => void = () => undefined) {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <NotionsScreen
-          documentId={undefined}
-          onBack={() => undefined}
-          onReview={() => undefined}
-          onOpenProgress={() => undefined}
-          onOpenReader={() => undefined}
-          onOpenTutor={() => undefined}
-          onSelectDocument={onSelectDocument}
-        />
-      </QueryClientProvider>,
-    );
-  }
-
-  it("shows the picker (heading 'Notions'), not any of the course-specific states", () => {
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
-    renderPicker();
-    expect(screen.getByRole("heading", { name: "Notions" })).toBeInTheDocument();
-  });
-
-  it("picking a course calls onSelectDocument with its id", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: "doc-9", title: "Cours test", colour: "#F87171" }]), { status: 200 })));
-    const onSelectDocument = vi.fn();
-    const user = userEvent.setup();
-    renderPicker(onSelectDocument);
-
-    await screen.findByText("Cours test");
-    await user.click(screen.getByRole("button", { name: "Voir les notions" }));
-
-    expect(onSelectDocument).toHaveBeenCalledWith("doc-9");
-  });
-});
-
-// docs/UI.md's Notions du cours note (M9): "this link reads 'Retour'
-// instead of 'Retour à mes cours', when fromPicker is set" — a course
-// reached via the nav's own picker returns there, and "Retour à mes cours"
-// would name the wrong destination on that path.
-describe("NotionsScreen — fromPicker back label (M9)", () => {
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
-
-  it("empty state: reads 'Retour', not 'Retour à mes cours', when opened from the picker", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })));
-
-    renderScreen({ fromPicker: true });
-
-    await screen.findByText(/pas encore été créées/i);
-    expect(screen.getByRole("button", { name: "Retour" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /retour à mes cours/i })).not.toBeInTheDocument();
-  });
-
-  it("ready state: reads 'Retour', not 'Retour à mes cours', when opened from the picker", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen({ fromPicker: true });
-    await screen.findByText("Photosynthèse");
-
-    expect(screen.getByText("Retour")).toBeInTheDocument();
-    expect(screen.queryByText(/retour à mes cours/i)).not.toBeInTheDocument();
-  });
-
-  it("ready state: still reads 'Retour à mes cours' when fromPicker is unset (opened from a course's own card, unchanged)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/notions-progress")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
-        if (url.includes("/progress")) return Promise.resolve(new Response(JSON.stringify({ mastered: 0, total: 1 }), { status: 200 }));
-        return Promise.resolve(new Response(JSON.stringify([aNotion]), { status: 200 }));
-      }),
-    );
-
-    renderScreen();
-    await screen.findByText("Photosynthèse");
-
-    expect(screen.getByText("Retour à mes cours")).toBeInTheDocument();
   });
 });

@@ -263,9 +263,17 @@ describe("review routes", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("reports progress per notion for the document", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/documents/doc-1/notions-progress", headers: { cookie: aliceCookie } });
+  it("reports progress per notion for the document, including its own review count and next due date", async () => {
+    const res = await app.inject({ method: "GET", url: `/api/documents/doc-1/notions-progress?dayBoundary=${dayBoundary}`, headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual([{ notionId: "n1", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0 }]);
+    expect(res.json()).toEqual([{ notionId: "n1", masteredCards: 0, totalCards: 1, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0, reps: 0, nextDueDate: null, dueNow: true }]);
+  });
+
+  it("GET /api/documents/:id/notions-progress rejects a missing or invalid dayBoundary (400)", async () => {
+    const missing = await app.inject({ method: "GET", url: "/api/documents/doc-1/notions-progress", headers: { cookie: aliceCookie } });
+    expect(missing.statusCode).toBe(400);
+
+    const invalid = await app.inject({ method: "GET", url: "/api/documents/doc-1/notions-progress?dayBoundary=not-a-date", headers: { cookie: aliceCookie } });
+    expect(invalid.statusCode).toBe(400);
   });
 });

@@ -32,14 +32,14 @@ import { TutorScreen } from "./screens/TutorScreen.js";
 // persistent nav at all times.
 type View =
   | { name: "documents" }
-  // documentId absent: the picker (docs/UI.md's Navigation note, M9 —
-  // the same shape Tuteur already had). fromPicker mirrors tutor's own
-  // fromNotions in spirit: only meaningful once documentId is set, and
-  // decides whether "Retour"/"Retour à mes cours" leaves for Mes cours or
-  // for the picker (the same view with documentId cleared) — a third
-  // source needing its own flag, alongside "opened from a course's own
-  // card on Mes cours" (neither flag set, unchanged since before M9).
-  | { name: "notions"; documentId?: string; fromPicker?: boolean }
+  // documentId absent: the nav's own direct entry (M9's Navigation note) —
+  // NotionsScreen picks its own first course and shows a pill selector,
+  // no separate picker page to have come from any more (its own redesign,
+  // later). documentId set: a deep link from elsewhere (Progression's
+  // "Voir le cours", Calendrier's day panel, Lecteur/Tuteur's own "Retour"
+  // targets) — that course is pre-selected and "Retour à mes cours"
+  // reappears.
+  | { name: "notions"; documentId?: string }
   | { name: "review"; documentId: string; notionId?: string }
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
@@ -138,13 +138,11 @@ function AppShell() {
           {view.name === "notions" && (
             <NotionsScreen
               documentId={view.documentId}
-              fromPicker={view.fromPicker}
-              onBack={() => (view.fromPicker ? setView({ name: "notions" }) : setView({ name: "documents" }))}
-              onReview={(notionId) => view.documentId && setView({ name: "review", documentId: view.documentId, notionId })}
-              onOpenProgress={() => setView({ name: "progress", fromDocumentId: view.documentId })}
-              onOpenReader={() => setView({ name: "reader", documentId: view.documentId, fromNotions: true })}
-              onOpenTutor={() => setView({ name: "tutor", documentId: view.documentId, fromNotions: true })}
-              onSelectDocument={(documentId) => setView({ name: "notions", documentId, fromPicker: true })}
+              onBack={() => setView({ name: "documents" })}
+              onReview={(documentId, notionId) => setView({ name: "review", documentId, notionId })}
+              onOpenProgress={(documentId) => setView({ name: "progress", fromDocumentId: documentId })}
+              onOpenReader={(documentId) => setView({ name: "reader", documentId, fromNotions: true })}
+              onOpenTutor={(documentId) => setView({ name: "tutor", documentId, fromNotions: true })}
             />
           )}
           {view.name === "review" && (

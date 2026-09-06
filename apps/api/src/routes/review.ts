@@ -108,9 +108,11 @@ export const reviewRoutes: FastifyPluginCallback<ReviewRoutesOptions> = (app, op
     return getProgress({ repo: opts.repo }, request.user!.id, id, new Date(dayBoundary));
   });
 
-  app.get("/api/documents/:id/notions-progress", async (request) => {
+  app.get("/api/documents/:id/notions-progress", async (request, reply) => {
     const { id } = request.params as { id: string };
-    return getNotionsProgress({ repo: opts.repo }, request.user!.id, id);
+    const { dayBoundary } = request.query as { dayBoundary?: string };
+    if (!dayBoundary || Number.isNaN(new Date(dayBoundary).getTime())) return reply.code(400).send({ error: "day-boundary-required" });
+    return getNotionsProgress({ repo: opts.repo }, request.user!.id, id, new Date(dayBoundary));
   });
 
   done();

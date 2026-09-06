@@ -50,16 +50,23 @@ export async function getProgress(documentId: string): Promise<{ mastered: numbe
 // cardsWithEnoughReps/cardsWithEnoughStability each measure one of
 // isMastered's two conditions alone (docs/modules/review.md's "Which of the
 // two criteria is missing" note) — independent counts, not a partition.
+// reps/nextDueDate (M9's own Notions redesign) are composed server-side
+// from the notion's own cards (packages/core/src/review's
+// getNotionsProgress) — reps is a sum across every active card, nextDueDate
+// the earliest upcoming one, same "not yet due" rule as getProgress's own.
 export type NotionProgress = {
   notionId: string;
   masteredCards: number;
   totalCards: number;
   cardsWithEnoughReps: number;
   cardsWithEnoughStability: number;
+  reps: number;
+  nextDueDate: string | null;
+  dueNow: boolean;
 };
 
 export async function getNotionsProgress(documentId: string): Promise<NotionProgress[]> {
-  const res = await apiFetch(`/api/documents/${documentId}/notions-progress`);
+  const res = await apiFetch(`/api/documents/${documentId}/notions-progress?dayBoundary=${encodeURIComponent(startOfTomorrowISO())}`);
   if (!res.ok) throw new Error("Impossible de charger la progression par notion.");
   return res.json() as Promise<NotionProgress[]>;
 }

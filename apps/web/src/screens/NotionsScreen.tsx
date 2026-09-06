@@ -1,13 +1,16 @@
+import type { DocumentSummary } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Repeat } from "lucide-react";
+import { ArrowRight, BookOpen, Layers, Repeat } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
+import { listDocuments } from "../lib/documents-api.js";
+import { todayDateKey } from "../lib/day-boundary.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
-import { CoursePickerScreen } from "./CoursePickerScreen.js";
+import { getToday } from "../lib/today-api.js";
 import {
   generateCardsForDocument,
   getGenerationStatus,
@@ -15,7 +18,6 @@ import {
   getProgress,
   listNotions,
   type CardType,
-  type Difficulty,
   type NotionProgress,
 } from "../lib/notions-api.js";
 
@@ -24,61 +26,10 @@ import {
 // for DocumentsScreen/NotionsScreen's 30s backoff.
 const GENERATION_POLL_MS = 1500;
 
-const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Facile", medium: "Moyen", hard: "Difficile" };
 // User choice of activity type (docs/modules/generation.md's open question,
 // settled in M4): flashcard checked by default, matching M3's behaviour.
 const CARD_TYPE_LABEL: Record<CardType, string> = { flashcard: "Flashcards", mcq: "QCM", open: "Questions ouvertes" };
 const ALL_CARD_TYPES: CardType[] = ["flashcard", "mcq", "open"];
-
-function notionProgressLabel(progress: NotionProgress | undefined): string {
-  if (!progress || progress.totalCards === 0) return "Pas encore de fiches";
-  return `${progress.masteredCards} / ${progress.totalCards} fiches maîtrisées`;
-}
-
-// "fiche(s)" and "a"/"ont" agree with the denominator, not the numerator
-// (docs/UI.md's Notions du cours note): "X/Y fiches ont …" reads as "X out
-// of Y fiches", so it's the population (Y) the noun and verb answer to.
-// Plural whenever the notion has more than one fiche at all, singular only
-// when it has exactly one — never keyed off the numerator, which would
-// make 0/3 and 1/3 both read as a false singular.
-function fractionCountSentence(count: number, total: number, rest: string): string {
-  const plural = total > 1;
-  return `${count}/${total} fiche${plural ? "s" : ""} ${plural ? "ont" : "a"} ${rest}`;
-}
-
-type MasteryGap = { sentence: string; detail: string };
-
-// isMastered (docs/modules/review.md) is two independent conditions, so
-// "not yet mastered" can mean either is missing — this decides which single
-// sentence to show, and never re-derives the thresholds themselves (21
-// days, 3 reps): it only compares the two pre-computed counts to
-// totalCards, both already measured against mastery.ts's own constants on
-// the server (review's own NotionProgress).
-function notionMasteryGap(progress: NotionProgress | undefined): MasteryGap | null {
-  if (!progress) return null;
-  const { totalCards, masteredCards, cardsWithEnoughReps, cardsWithEnoughStability } = progress;
-  // Deliberately not masteredCards > 0 as well: 0 / N is the single most
-  // common case this exists to explain, not an edge case to exclude
-  // (docs/UI.md's Notions du cours note).
-  if (totalCards === 0 || masteredCards >= totalCards) return null;
-
-  const detail = `${fractionCountSentence(cardsWithEnoughReps, totalCards, "fait 3 révisions")} · ${fractionCountSentence(cardsWithEnoughStability, totalCards, "dépassé 21 jours de stabilité")}`;
-
-  // Reps first: immediately actionable (réviser), whereas a stability gap
-  // needs spacing, not a fresh review right now — the priority docs/UI.md's
-  // Notions du cours note settles.
-  if (cardsWithEnoughReps < totalCards) {
-    return { sentence: "Il te manque encore des révisions sur cette notion.", detail };
-  }
-  if (cardsWithEnoughStability < totalCards) {
-    return { sentence: "Tu l'as révisée assez souvent, il faut maintenant l'espacer dans le temps.", detail };
-  }
-  // Both counts already meet totalCards while masteredCards doesn't:
-  // contradicts isMastered's own definition (mastery.ts), so this should
-  // never actually happen. Say nothing rather than show a sentence that
-  // wouldn't match what was counted.
-  return null;
-}
 
 // Splitting into notions runs automatically after extraction
 // (docs/modules/content.md), asynchronously — never block the UI on a job
@@ -104,34 +55,204 @@ const NOTION_BODY_COMPONENTS: Components = {
   code: (props) => <code className="rounded bg-canvas px-1 text-sm" {...props} />,
 };
 
+// Redesigned per a "Notions" mockup, ignoring docs/UI.md per the user. A
+// one-line, non-markdown-aware preview: notion bodies are self-contained
+// prose (docs/modules/content.md), so a plain-text cut rarely lands mid
+// markup — "Voir le contenu" below still renders the real thing in full
+// for the rare case it does.
+function truncateBody(body: string, max = 140): string {
+  const trimmed = body.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max).trimEnd()}…`;
+}
+
+// Same calendar-day arithmetic as ProgressScreen.tsx's own daysUntil, kept
+// local rather than shared — small enough that importing it across screens
+// would cost more than it saves.
+function daysUntil(dateKey: string, todayKey: string): number {
+  const a = new Date(`${todayKey}T00:00:00.000Z`).getTime();
+  const b = new Date(`${dateKey}T00:00:00.000Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+// nextDueDate is always tomorrow or later by construction (review's own
+// getNotionsProgress, "at or after dayBoundary") — never "aujourd'hui" here,
+// that's what the dueNow badge already says instead.
+function formatNextReview(nextDueDateIso: string, todayKey: string): string {
+  const days = daysUntil(nextDueDateIso.slice(0, 10), todayKey);
+  return days <= 1 ? "demain" : `dans ${days} jours`;
+}
+
+type NotionStatus = "mastered" | "due" | "learning";
+
+// Mastery wins even over a technically-due card (docs/modules/review.md: a
+// notion already past both thresholds can still have a card whose own next
+// FSRS interval happens to fall soon) — matches the mockup's own example, a
+// mastered notion still showing a future review date, not "due now".
+function notionStatus(progress: NotionProgress | undefined): NotionStatus {
+  if (!progress || progress.totalCards === 0) return "learning";
+  if (progress.masteredCards === progress.totalCards) return "mastered";
+  if (progress.dueNow) return "due";
+  return "learning";
+}
+
+const STATUS_LABEL: Record<NotionStatus, string> = { mastered: "Maîtrisée", due: "À réviser", learning: "En apprentissage" };
+const STATUS_BADGE_CLASS: Record<NotionStatus, string> = {
+  mastered: "bg-success/10 text-success",
+  due: "bg-warning/10 text-warning",
+  learning: "bg-canvas text-text-muted",
+};
+
+// Five dots, filled up to the notion's own review count (capped) — a plain
+// visual echo of "how many times has this been practiced", not a precise
+// mastery gauge (ProgressScreen's own Gauge already covers that). Coloured
+// with the course's own colour, the same "same colour as its course"
+// treatment the due-count digit already gets on Aujourd'hui/Mes cours.
+function ReviewDots({ reps, colour }: { reps: number; colour: string }) {
+  const filled = Math.min(5, reps);
+  return (
+    <div className="flex items-center gap-1" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span key={i} className="h-2 w-2 rounded-full" style={{ backgroundColor: i < filled ? colour : "var(--color-border)" }} />
+      ))}
+    </div>
+  );
+}
+
+function CoursePill({ document, active, onSelect }: { document: DocumentSummary; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      onClick={onSelect}
+      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+        active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
+      }`}
+    >
+      <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={active ? "#fff" : document.colour} />
+      {document.title}
+    </button>
+  );
+}
+
+function CourseSummaryCard({ document, dueCount, onReview }: { document: DocumentSummary; dueCount: number; onReview: () => void }) {
+  const progressQuery = useQuery({ queryKey: ["progress", document.id], queryFn: () => getProgress(document.id) });
+  const progress = progressQuery.data;
+
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-4" data-testid="notions-course-summary">
+      <div className="flex items-center gap-[var(--space-related)]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${document.colour}26` }}>
+          <BookOpen aria-hidden="true" focusable="false" size={24} strokeWidth={ICON_STROKE_WIDTH} color={document.colour} />
+        </span>
+        <div>
+          <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h2>
+          {progress && (
+            <p className="flex items-center gap-1.5 text-sm text-text-muted">
+              <Layers aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+              {progress.total} notion{progress.total > 1 ? "s" : ""} · {progress.mastered} maîtrisée{progress.mastered > 1 ? "s" : ""} ·{" "}
+              <strong className="font-semibold text-text">{dueCount} à réviser</strong>
+            </p>
+          )}
+        </div>
+      </div>
+      {dueCount > 0 ? (
+        <Button variant="accent" className="rounded-2xl" onClick={onReview}>
+          Réviser {dueCount} fiche{dueCount > 1 ? "s" : ""}
+          <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        </Button>
+      ) : (
+        <Button variant="secondary" className="rounded-2xl" disabled>
+          Rien à réviser
+        </Button>
+      )}
+    </Card>
+  );
+}
+
+function NotionCard({
+  notion,
+  notionProgress,
+  colour,
+  todayKey,
+  expanded,
+  onToggleBody,
+  onReview,
+}: {
+  notion: { id: string; title: string; body: string };
+  notionProgress: NotionProgress | undefined;
+  colour: string;
+  todayKey: string;
+  expanded: boolean;
+  onToggleBody: () => void;
+  onReview: () => void;
+}) {
+  const status = notionStatus(notionProgress);
+  const reps = notionProgress?.reps ?? 0;
+
+  return (
+    <Card className="flex flex-col gap-[var(--space-related)]" data-testid="notion-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{notion.title}</h3>
+          <span className={`rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-semibold ${STATUS_BADGE_CLASS[status]}`}>{STATUS_LABEL[status]}</span>
+        </div>
+        <Button variant="accent" className="rounded-2xl" onClick={onReview}>
+          <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Réviser
+        </Button>
+      </div>
+
+      <p className="text-sm text-text-muted">{truncateBody(notion.body)}</p>
+
+      <div className="flex items-center gap-[var(--space-related)] text-[length:var(--text-label)] text-text-muted">
+        <ReviewDots reps={reps} colour={colour} />
+        <span>
+          {reps} révision{reps > 1 ? "s" : ""}
+          {status === "due" ? " · à réviser maintenant" : notionProgress?.nextDueDate ? ` · ${formatNextReview(notionProgress.nextDueDate, todayKey)}` : ""}
+        </span>
+      </div>
+
+      <button type="button" className="self-start text-sm text-primary underline" aria-expanded={expanded} onClick={onToggleBody}>
+        {expanded ? "Masquer le contenu" : "Voir le contenu"}
+      </button>
+      {expanded && <Markdown components={NOTION_BODY_COMPONENTS}>{notion.body}</Markdown>}
+    </Card>
+  );
+}
+
+// One course's own notions, progress and fiche-generation controls — kept
+// as its own component (not inlined into NotionsScreen below) so switching
+// the pill selection can key-remount it, resetting per-course UI state
+// (which notion is expanded, the generation form) instead of leaking it
+// from the previously-selected course.
 function NotionsCourseScreen({
-  documentId,
-  fromPicker,
+  document,
+  dueCount,
+  showBackLink,
   onBack,
   onReview,
   onOpenProgress,
   onOpenReader,
   onOpenTutor,
 }: {
-  documentId: string;
-  fromPicker?: boolean;
+  document: DocumentSummary;
+  dueCount: number;
+  showBackLink: boolean;
   onBack: () => void;
   onReview: (notionId?: string) => void;
   onOpenProgress: () => void;
   onOpenReader: () => void;
   onOpenTutor: () => void;
 }) {
-  // M9 (docs/UI.md's Notions du cours note): "Retour à mes cours" names a
-  // specific destination, which would lie once the third entry point (the
-  // nav's own picker) is where this course was actually reached from —
-  // "Retour" is what Lecteur's own note already calls the same distinction.
-  const backLabel = fromPicker ? "Retour" : "Retour à mes cours";
+  const documentId = document.id;
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
   const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<CardType>>(new Set<CardType>(["flashcard"]));
+  const todayKey = todayDateKey();
 
   function toggleType(type: CardType) {
     setSelectedTypes((current) => {
@@ -166,7 +287,6 @@ function NotionsCourseScreen({
       return elapsed > 30_000 ? 10_000 : 2_000;
     },
   });
-  const progressQuery = useQuery({ queryKey: ["progress", documentId], queryFn: () => getProgress(documentId) });
   const notionsProgressQuery = useQuery({ queryKey: ["notions-progress", documentId], queryFn: () => getNotionsProgress(documentId) });
 
   const generationStatusQuery = useQuery({
@@ -188,6 +308,13 @@ function NotionsCourseScreen({
     void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
+    // Freshly generated cards are due immediately (never reviewed), which
+    // moves this course's own due count — CourseSummaryCard's "Réviser N
+    // fiches" button reads that count from the outer NotionsScreen's own
+    // ["today"] query, so without this it can stay stuck on a pre-generation
+    // count (often "Rien à réviser") until something else happens to
+    // refetch it.
+    void queryClient.invalidateQueries({ queryKey: ["today"] });
   }, [generationComplete, documentId, queryClient]);
 
   useEffect(() => {
@@ -206,12 +333,155 @@ function NotionsCourseScreen({
     }
   }
 
-  if (notionsQuery.status === "pending") {
-    return (
-      <main className="p-8">
-        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
+  return (
+    <div className="flex flex-col gap-[var(--space-block)]">
+      {showBackLink && (
+        <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
+          Retour à mes cours
+        </button>
+      )}
+
+      <CourseSummaryCard document={document} dueCount={dueCount} onReview={() => onReview()} />
+
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <button type="button" className="text-text-muted underline" onClick={onOpenReader}>
+          Lire le cours
+        </button>
+        <button type="button" className="text-text-muted underline" onClick={onOpenProgress}>
+          Voir la progression
+        </button>
+        <button type="button" className="text-text-muted underline" onClick={onOpenTutor}>
+          Discuter du cours
+        </button>
+      </div>
+
+      {notionsQuery.status === "pending" && (
         <div className="flex flex-col gap-3">
           {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
+          ))}
+        </div>
+      )}
+
+      {notionsQuery.status === "error" && (
+        <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+          <Confused />
+          <p>Impossible de charger les notions de ce cours. Vérifie ta connexion et réessaie.</p>
+          <Button className="rounded-2xl" onClick={() => void notionsQuery.refetch()}>
+            Réessayer
+          </Button>
+        </div>
+      )}
+
+      {notionsQuery.status === "success" && notionsQuery.data.length === 0 && (
+        <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+          <Idle />
+          <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>
+        </div>
+      )}
+
+      {notionsQuery.status === "success" &&
+        notionsQuery.data.length > 0 &&
+        (() => {
+          const notions = notionsQuery.data;
+          const notionsProgress = notionsProgressQuery.data;
+          const allNotionsHaveCards =
+            notionsProgress !== undefined && notions.every((notion) => (notionsProgress.find((p) => p.notionId === notion.id)?.totalCards ?? 0) > 0);
+          const generateLabel = generating ? "Création en cours…" : allNotionsHaveCards ? "Régénérer les fiches" : "Créer les fiches";
+
+          return (
+            <>
+              <div className="flex flex-wrap items-center gap-4">
+                <Button variant="secondary" className="rounded-2xl" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
+                  {generateLabel}
+                </Button>
+                <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
+                  <legend className="mb-1 text-[length:var(--text-label)] text-text-muted">Types de fiches à créer</legend>
+                  {ALL_CARD_TYPES.map((type) => (
+                    <label key={type} className="flex items-center gap-2">
+                      <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
+                      {CARD_TYPE_LABEL[type]}
+                    </label>
+                  ))}
+                </fieldset>
+                {generating && (
+                  <p aria-live="polite" className="text-sm text-text-muted">
+                    {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
+                  </p>
+                )}
+                {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {notions.map((notion) => (
+                  <NotionCard
+                    key={notion.id}
+                    notion={notion}
+                    notionProgress={notionsProgress?.find((p) => p.notionId === notion.id)}
+                    colour={document.colour}
+                    todayKey={todayKey}
+                    expanded={expandedNotionIds.has(notion.id)}
+                    onToggleBody={() => toggleBody(notion.id)}
+                    onReview={() => onReview(notion.id)}
+                  />
+                ))}
+              </div>
+            </>
+          );
+        })()}
+    </div>
+  );
+}
+
+// Redesigned per a "Notions" mockup, ignoring docs/UI.md per the user: one
+// unified page (a course-picker row of pills, then that course's own
+// summary card and notion list), not a separate picker page you leave to
+// reach a course's notions. documentId (still optional, from App.tsx's own
+// View) keeps every existing deep link working exactly as before (Progression's
+// "Voir le cours", Calendrier's day panel, Lecteur/Tuteur's own "Retour"
+// targets) — when set, that course is pre-selected and "Retour à mes cours"
+// reappears; when absent (the nav's own direct entry, M9), no back link at
+// all, matching Aujourd'hui/Mes cours' own top-level pages, and the first
+// course is selected by default. Switching pills is a local selection, not
+// a view transition — onSelectDocument is gone, there is no separate picker
+// view left to transition into.
+//
+// Two unconditional queries live here now (listDocuments, getToday), unlike
+// the single-branch dispatcher this replaces: safe because both always run
+// on every render regardless of which course is selected — the rule this
+// used to guard against was conditional hooks changing count between
+// renders, not "no hooks at all" (TutorScreen's own picker/chat split, kept
+// as precedent for the pattern, not for a hook count of zero).
+export function NotionsScreen({
+  documentId,
+  onBack,
+  onReview,
+  onOpenProgress,
+  onOpenReader,
+  onOpenTutor,
+}: {
+  documentId?: string;
+  onBack: () => void;
+  // Each callback takes the resolved documentId explicitly, matching
+  // DocumentsScreen's own onReviewCourse/onOpenReader shape — this screen's
+  // own selected course lives in local state (the pill row below), not in
+  // App.tsx's own view.documentId, which stays undefined for the nav's
+  // direct entry even after picking a different course by hand.
+  onReview: (documentId: string, notionId?: string) => void;
+  onOpenProgress: (documentId: string) => void;
+  onOpenReader: (documentId: string) => void;
+  onOpenTutor: (documentId: string) => void;
+}) {
+  const documentsQuery = useQuery({ queryKey: ["documents"], queryFn: listDocuments });
+  const todayQuery = useQuery({ queryKey: ["today"], queryFn: getToday });
+  const [manualSelection, setManualSelection] = useState<string | undefined>(undefined);
+
+  if (documentsQuery.status === "pending") {
+    return (
+      <main className="p-8">
+        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions</h1>
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
           ))}
         </div>
@@ -219,229 +489,57 @@ function NotionsCourseScreen({
     );
   }
 
-  if (notionsQuery.status === "error") {
+  if (documentsQuery.status === "error") {
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
-        <p>Impossible de charger les notions de ce cours. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void notionsQuery.refetch()}>Réessayer</Button>
-      </main>
-    );
-  }
-
-  const notions = notionsQuery.data;
-
-  if (notions.length === 0) {
-    return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
-        <Idle />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
-        <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>
-        <Button variant="secondary" onClick={onBack}>
-          {backLabel}
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions</h1>
+        <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
+        <Button className="rounded-2xl" onClick={() => void documentsQuery.refetch()}>
+          Réessayer
         </Button>
       </main>
     );
   }
 
-  const progress = progressQuery.data;
-  const notionsProgress = notionsProgressQuery.data;
-  const allNotionsHaveCards =
-    notionsProgress !== undefined && notions.every((notion) => (notionsProgress.find((p) => p.notionId === notion.id)?.totalCards ?? 0) > 0);
-  const generateLabel = generating ? "Création en cours…" : allNotionsHaveCards ? "Régénérer les fiches" : "Créer les fiches";
+  const documents = documentsQuery.data;
+
+  if (documents.length === 0) {
+    return (
+      <main className="flex flex-col items-center gap-4 p-8 text-center">
+        <Idle />
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions</h1>
+        <p>Ajoute un cours dans Mes cours pour voir ses notions.</p>
+      </main>
+    );
+  }
+
+  const selectedId = documentId ?? manualSelection ?? documents[0]!.id;
+  const selectedDocument = documents.find((d) => d.id === selectedId) ?? documents[0]!;
+  const dueCount = todayQuery.data?.dueCards.find((c) => c.documentId === selectedDocument.id)?.count ?? 0;
 
   return (
     <main className="p-8">
-      <div>
-        {/* "Retour à mes cours" sits on its own line above the title, flush
-            left — not beside the title, not sharing its line at all
-            (docs/UI.md's Notions du cours note). Two corrections, not one:
-            the original bug paired it with the title on one line; the
-            first fix moved it under the toolbar, right-aligned, which
-            cleared that but put it in the wrong place entirely — a back
-            link reads top-left, before the title, by convention. Tab
-            order follows: this link first, then the toolbar's three
-            actions. */}
-        <button type="button" className="mb-[var(--space-block)] text-sm text-text-muted underline" onClick={onBack}>
-          {backLabel}
-        </button>
-        <div className="mb-[var(--space-section)] flex flex-wrap items-start justify-between gap-4">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions du cours</h1>
-          {/* "Créer les fiches" / "Régénérer les fiches" lives apart from
-              this toolbar, not in it (below, by its own type checkboxes):
-              rare, and destructive once it reads "Régénérer" (it destroys
-              the existing cards and starts over), so it does not belong at
-              the same visual level as this toolbar's own actions.
-              "Réviser" is this screen's own action and the only Button
-              left here — "Lire le cours" / "Voir la progression" leave for
-              another screen, so they demote to a plain link, the same
-              idiom "Retour à mes cours" already uses (docs/UI.md's Shape
-              and depth note): what actually closes the 375px gap this
-              toolbar used to overflow, not a wrap or a shorter label. */}
-          <div className="flex items-center gap-3" data-testid="notions-toolbar">
-            {/* --text-display is a card's own number, never page chrome
-                (docs/UI.md's Type note): this count sits in the toolbar
-                between the page title and the toolbar's own actions, so it
-                renders at the same size as the labels beside it, text-sm,
-                not the 32px display size that used to make it outweigh the
-                page's own <h1>. */}
-            {progress && (
-              <p className="text-sm text-text-muted">
-                <span className="text-sm tabular-nums">{progress.mastered}</span> / {progress.total} notions maîtrisées
-              </p>
-            )}
-            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenReader}>
-              Lire le cours
-            </button>
-            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenProgress}>
-              Voir la progression
-            </button>
-            <button type="button" className="text-sm text-text-muted underline" onClick={onOpenTutor}>
-              Discuter du cours
-            </button>
-            {/* Accent, matching every notion card's own "Réviser cette
-                notion" below (docs/UI.md's Colour note): the same word
-                names the same gesture on this screen, whole-document here
-                versus scoped to one notion there. This button sits
-                outside every card, so it never doubles the one-accent-
-                per-card invariant those cards each already satisfy on
-                their own. */}
-            <Button variant="accent" onClick={() => onReview()}>
-              Réviser
-            </Button>
-          </div>
-        </div>
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Notions</h1>
+      <p className="mb-[var(--space-section)] text-sm text-text-muted">Chaque notion est une idée tirée de ton cours. Révise-la pour renforcer sa maîtrise.</p>
+
+      <div className="mb-[var(--space-section)] flex flex-wrap gap-2">
+        {documents.map((document) => (
+          <CoursePill key={document.id} document={document} active={document.id === selectedDocument.id} onSelect={() => setManualSelection(document.id)} />
+        ))}
       </div>
 
-      {/* --space-block (16px) below, not the --space-section (24px) this
-          used to share with the header above (docs/UI.md's Notions du
-          cours note): identical distances on both sides read as belonging
-          to neither, and this block acts on the list below it, not the
-          header. The header side stays --space-section unchanged — that
-          boundary was already correct. */}
-      <div className="mb-[var(--space-block)] flex flex-wrap items-center gap-4">
-        <Button variant="secondary" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
-          {generateLabel}
-        </Button>
-        <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
-          <legend className="mb-1 text-[length:var(--text-label)] text-text-muted">Types de fiches à créer</legend>
-          {ALL_CARD_TYPES.map((type) => (
-            <label key={type} className="flex items-center gap-2">
-              <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
-              {CARD_TYPE_LABEL[type]}
-            </label>
-          ))}
-        </fieldset>
-        {generating && (
-          <p aria-live="polite" className="text-sm text-text-muted">
-            {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
-          </p>
-        )}
-        {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {notions.map((notion) => {
-          const notionProgress = notionsProgress?.find((p) => p.notionId === notion.id);
-          const expanded = expandedNotionIds.has(notion.id);
-          return (
-            <Card key={notion.id} className="flex flex-col gap-3" data-testid="notion-card">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{notion.title}</h3>
-                  {/* --space-related (8px): a title and its own descriptor
-                      read as one unit (docs/UI.md's Notions du cours note)
-                      — there was no gap class here at all before, invisible
-                      while the title rendered as plain text, a real defect
-                      once it renders as actual bold 20px display type. */}
-                  <p className="mt-[var(--space-related)] text-sm text-text-muted">{DIFFICULTY_LABEL[notion.difficulty]}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-text-muted">{notionProgressLabel(notionProgress)}</p>
-                  <Button variant="accent" onClick={() => onReview(notion.id)}>
-                    <Repeat aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-                    Réviser cette notion
-                  </Button>
-                </div>
-              </div>
-              {(() => {
-                const gap = notionMasteryGap(notionProgress);
-                if (!gap) return null;
-                // A fact, not a warning (docs/UI.md's Colour note): no
-                // --warning, no colour of any kind. The detail is one size
-                // down from the sentence (--text-label vs text-sm) — it
-                // accompanies, it never dominates.
-                return (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-text-muted">{gap.sentence}</p>
-                    <p className="text-[length:var(--text-label)] text-text-muted">{gap.detail}</p>
-                  </div>
-                );
-              })()}
-              <button
-                type="button"
-                className="self-start text-sm text-primary underline"
-                aria-expanded={expanded}
-                onClick={() => toggleBody(notion.id)}
-              >
-                {expanded ? "Masquer le contenu" : "Voir le contenu"}
-              </button>
-              {expanded && <Markdown components={NOTION_BODY_COMPONENTS}>{notion.body}</Markdown>}
-            </Card>
-          );
-        })}
-      </div>
-    </main>
-  );
-}
-
-// M9 (docs/UI.md's Navigation note): Notions is now reachable directly from
-// the nav with no course chosen, landing on the same shared picker Tuteur's
-// own note describes. This outer component carries no hooks of its own — it
-// only dispatches between the picker and NotionsCourseScreen's own hooks,
-// the same split TutorScreen already uses for its own picker/chat halves,
-// so switching between them never violates the rules of hooks.
-export function NotionsScreen({
-  documentId,
-  fromPicker,
-  onBack,
-  onReview,
-  onOpenProgress,
-  onOpenReader,
-  onOpenTutor,
-  onSelectDocument,
-}: {
-  documentId?: string;
-  fromPicker?: boolean;
-  onBack: () => void;
-  onReview: (notionId?: string) => void;
-  onOpenProgress: () => void;
-  onOpenReader: () => void;
-  onOpenTutor: () => void;
-  onSelectDocument: (documentId: string) => void;
-}) {
-  if (documentId === undefined) {
-    return (
-      <CoursePickerScreen
-        heading="Notions"
-        description="Choisis un cours pour voir ses notions."
-        emptyMessage="Ajoute un cours dans Mes cours pour voir ses notions."
-        ctaLabel="Voir les notions"
-        ctaIcon={BookOpen}
-        onSelectDocument={onSelectDocument}
+      <NotionsCourseScreen
+        key={selectedDocument.id}
+        document={selectedDocument}
+        dueCount={dueCount}
+        showBackLink={documentId !== undefined}
+        onBack={onBack}
+        onReview={(notionId) => onReview(selectedDocument.id, notionId)}
+        onOpenProgress={() => onOpenProgress(selectedDocument.id)}
+        onOpenReader={() => onOpenReader(selectedDocument.id)}
+        onOpenTutor={() => onOpenTutor(selectedDocument.id)}
       />
-    );
-  }
-  return (
-    <NotionsCourseScreen
-      documentId={documentId}
-      fromPicker={fromPicker}
-      onBack={onBack}
-      onReview={onReview}
-      onOpenProgress={onOpenProgress}
-      onOpenReader={onOpenReader}
-      onOpenTutor={onOpenTutor}
-    />
+    </main>
   );
 }
