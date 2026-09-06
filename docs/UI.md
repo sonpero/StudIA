@@ -18,11 +18,13 @@ constrains the progress and review screens directly: neither ever says
 
 **M9 narrows "never counts down", it does not drop it.** A blanket ban on any
 day count read as a habit-loop reflex worth avoiding by default, not as the
-one line separating this app from one. Aujourd'hui's own streak card and its
-course cards' relative countdown badge (`Colour` and `Screen notes`, below)
-are a deliberate, requested exception, scoped to that one screen: a day count
-stated once, as a fact, is not the same thing as a ticking timer or a
-red "3 jours restants" pressuring a specific action. Progress and review
+one line separating this app from one. The streak (visible from every
+screen, in the persistent nav sidebar — `Screen notes`' own Aujourd'hui
+note, below, explains why it moved there) and Aujourd'hui's own course
+cards' relative countdown badge (`Colour` and `Screen notes`, below) are a
+deliberate, requested exception: a day count stated once, as a fact, is
+not the same thing as a ticking timer or a red "3 jours restants"
+pressuring a specific action. Progress and review
 keep the stricter rule exactly as written above — no status word ever
 implies lateness, no colour turns urgent on a deadline's own day
 (`Progression`'s own note, below) — because unlike Aujourd'hui's badge, both
@@ -251,26 +253,14 @@ together instead of hidden behind sequential steps. The invariant that
 actually matters, and the one a screen must never violate, is scoped to the
 card: **never more than one accent element inside a single card.** Concretely:
 Aujourd'hui's own course card's "Réviser" (`Aujourd'hui`'s own note, below)
-and Notions du cours' per-notion card's own "Réviser cette notion" (`Icons`'
-own note) are both accent, one per card, for the same reason in both places.
-
-**Notions du cours' own *toolbar* "Réviser" is accent too, and this does
-not put two accents in one card.** An earlier version of this pass kept it
-`--secondary`, reasoning it was "a peer among several toolbar actions
-outside any card" — true as far as it went, but it missed that the same
-word names the same gesture twice on one screen: the toolbar's "Réviser"
-and every notion card's own "Réviser cette notion" are the identical
-action (review, whole-document or scoped to one notion), so leaving one of
-the two looking like a plain secondary button while the other reads as the
-screen's one call to action was inconsistent, not neutral. The invariant
-that actually matters is still exactly what it always was — **never more
-than one accent element inside a single card** — and it still holds:
-the toolbar's "Réviser" sits outside every card, so it never shares a
-card boundary with any notion's own "Réviser cette notion" to double up
-against. It coexists with the grid of per-notion accents the same way
-those already coexist with each other — each represents its own
-self-contained decision (this whole document, versus this one notion),
-not two elements competing for the same choice.
+and Notions' per-notion card's own "Réviser" (`Icons`' own note, and
+`Screen notes`' own Notions note, below) are both accent, one per card,
+for the same reason in both places. Notions' own course summary card
+(`Screen notes`, below) adds a third instance of the identical shape: its
+own "Réviser N fiches" is that card's one accent element, reviewing the
+whole course rather than one notion — a separate card making its own
+separate one-choice decision, the same as any two course cards on
+Aujourd'hui, not a second accent competing with any notion card's own.
 
 ### Subject colours
 
@@ -294,9 +284,13 @@ Two rules:
 - Subject colours are for identity only. They never indicate progress or state.
 
 **Card left border, not a tinted background.** Where a course gets its own
-card — Aujourd'hui's course cards and Progression's — the colour runs as a
-4px solid border down the card's left edge, `aria-hidden` like the dot it
-replaces, paired with the course title the same rule above already requires.
+card — Progression's, still — the colour runs as a 4px solid border down
+the card's left edge, `aria-hidden` like the dot it replaces, paired with
+the course title the same rule above already requires. **Aujourd'hui's
+and Mes cours' own course cards no longer follow this rule**, each
+redesigned from its own mockup to a colour-tinted icon circle instead
+(`Screen notes`' own notes for both, below, explain the departure) — this
+rule still holds everywhere it has not been named as an exception.
 The rest of the card stays `--surface` white with its ordinary `--border`
 edge on the other three sides; nothing about body text's background changes.
 A tinted fill was considered and set aside for exactly that reason: this
@@ -373,13 +367,14 @@ screen's own toolbar, between the page title and the toolbar's own
 actions: there the count is chrome, one fact among several on the same
 row, not a card's single dominant content, so display weight does not
 clarify the row, it competes with the `<h1>` beside it for attention.
-Found on Notions du cours' own toolbar count ("0 / 34 notions
-maîtrisées"): its "0" rendered at 32px next to a 24px page title, and
-read as the loudest thing in the row even though it answers a secondary
-question, not the screen's own name. A page-chrome count renders at the
-same size as the labels beside it — `text-sm` on Notions du cours,
-matching "Lire le cours" and "Voir la progression" — never
-`--text-display`, whatever it counts.
+Found on Notions' own toolbar count, before its later redesign ("0 / 34
+notions maîtrisées"): its "0" rendered at 32px next to a 24px page title,
+and read as the loudest thing in the row even though it answers a
+secondary question, not the screen's own name. A page-chrome count
+renders at the same size as the labels beside it, never `--text-display`,
+whatever it counts — the fix that redesign later made permanent by
+moving this count off the toolbar entirely, onto its own card
+(`Screen notes`' own Notions note, below).
 
 **A card carries at most one `--text-display` number, mirroring the
 one-accent-element invariant above (`Colour`'s own note).** Two
@@ -480,20 +475,21 @@ number's own line and card, not a competition with the screen chrome.
   ordinary internal rhythm, when two 32px numbers wanted more air between
   them than a title-to-label step does — now 16px (`--space-block`),
   title→gauge and gauge→status left at 12px, where a label already
-  buffers the jump. A notion card's own title and difficulty label
-  (`Notions du cours`'s own note, below) had no gap between them at all —
-  invisible when the title rendered as plain text, a visible defect at
-  real 20px bold — now `--space-related` (8px), the "reads as one unit"
-  tier, matching what they actually are: a title and its own descriptor.
-  Lecteur's own document title and the course content beneath it
-  (`Lecteur`'s own note, below) likewise had no gap at all — now
-  `--space-section` (24px), a page-title-to-content boundary, the same
+  buffers the jump. A notion card's own title and difficulty label had no
+  gap between them at all — invisible when the title rendered as plain
+  text, a visible defect at real 20px bold — fixed at the time to
+  `--space-related` (8px); moot since Notions' later redesign dropped the
+  difficulty label from this card entirely (`Screen notes`' own Notions
+  note, below). Lecteur's own document title and the course content
+  beneath it (`Lecteur`'s own note, below) likewise had no gap at all —
+  now `--space-section` (24px), a page-title-to-content boundary, the same
   relationship every other screen's own `<h1>` already has to what follows
-  it. Notions du cours' own "Régénérer les fiches" block (`Notions du
-  cours`'s own note, below) sat an identical 24px from both the header
-  above it and the notion list below it — two equal distances read as
-  belonging to neither, so the block→list side tightens to `--space-block`
-  (16px), leaving the header→block side at `--space-section` (24px).
+  it. Notions du cours' own "Régénérer les fiches" block sat an identical
+  24px from both the header above it and the notion list below it — two
+  equal distances read as belonging to neither, so the block→list side
+  tightened to `--space-block` (16px) at the time; superseded since by a
+  uniform `--space-block` throughout that column (`Screen notes`' own
+  Notions note, below).
   Checked against a static mockup built from these real token values
   before any of the four were decided, not assumed from the reasoning
   alone — the lesson of the four-commit type-hint bug (`Type`'s own note
@@ -609,25 +605,24 @@ number's own line and card, not a competition with the screen chrome.
   agents" below) this document does not currently ask for.
 - **A toolbar mixing one screen-level action with navigation to other
   screens demotes the navigation, it does not wrap or shrink the
-  action.** Found on Notions du cours' own toolbar: "Lire le cours" /
-  "Voir la progression" / "Réviser" sat as three `Button`s of identical
-  weight, and at 375px the row didn't fit — three bordered buttons plus a
-  count, unwrapped. Stacking the buttons or shortening their labels were
-  both rejected: the actual defect is that nothing on screen said which of
-  the three mattered most, the same "identical weight, one is supposed to
-  dominate" mistake `Aujourd'hui`'s own course-card buttons already had
-  and were fixed for. "Lire le cours" and "Voir la progression" leave this
-  screen for another one — reading the course, checking its progress —
-  while "Réviser" is this screen's own action, and now shares its accent
-  colour with the identical gesture on every notion card below it
-  (`Colour`'s own note above). The two navigation actions demote to a
-  plain underlined link, the same idiom `Forbidden` already uses for
-  every other secondary or destructive action in this document ("Retour à
-  mes cours," "Supprimer") — narrower than a bordered `Button` by
-  construction, which is what actually closes the 375px gap, not a media
-  query reshuffling the same three buttons. The only toolbar in the app
-  shaped like this today; written as a general rule for the next one, not
-  because there are two yet.
+  action.** Found on Notions' own toolbar, before its later redesign:
+  "Lire le cours" / "Voir la progression" / "Réviser" sat as three
+  `Button`s of identical weight, and at 375px the row didn't fit — three
+  bordered buttons plus a count, unwrapped. Stacking the buttons or
+  shortening their labels were both rejected: the actual defect is that
+  nothing on screen said which of the three mattered most, the same
+  "identical weight, one is supposed to dominate" mistake `Aujourd'hui`'s
+  own course-card buttons already had and were fixed for. The two
+  navigation actions demoted to a plain underlined link, the same idiom
+  `Forbidden` already uses for every other secondary or destructive action
+  in this document — narrower than a bordered `Button` by construction,
+  which is what actually closed the 375px gap, not a media query
+  reshuffling the same three buttons. **That redesign later took this one
+  step further: the toolbar's own "Réviser" moved off the toolbar
+  entirely**, onto its own accent button on the course summary card
+  (`Screen notes`' own Notions note, below) — today's toolbar
+  ("Lire le cours" / "Voir la progression" / "Discuter du cours") is three
+  plain links and nothing else, not one Button demoted down to two.
 
 ### Icons
 
@@ -685,12 +680,12 @@ persona" already argues against a nav icon that reads as an anthropomorphic
 AI), and
 on each card's own primary, forward-moving actions — the ones docs/UI.md
 already calls "a path to action" on Aujourd'hui's own course card:
-`BookOpen` for "Voir le cours"/"Voir les notions" (both land on the same
-course-detail screen), `BookOpenText` for "Lire le cours" (a distinct
-destination, the continuous-reading Lecteur), `Repeat` for "Réviser"/
-"Réviser cette notion", `CalendarClock` for setting or updating a deadline,
-`RotateCw` for a single failed document's own "Réessayer", `Upload` for
-UploadCard's "Confirmer". Never on a card's dismissive or destructive
+`BookOpen` for "Voir le cours" (Calendrier's own day panel, landing on
+that course's Notions), `BookOpenText` for "Lire le cours" (a distinct
+destination, the continuous-reading Lecteur), `Repeat` for "Réviser",
+`CalendarClock` for setting or updating a deadline, `RotateCw` for a
+single failed document's own "Réessayer", `Upload` for UploadCard's
+"Créer le cours". Never on a card's dismissive or destructive
 action — "Supprimer", "Supprimer l'échéance", "Annuler", "Régénérer les
 fiches", "Voir le contenu"'s expand toggle: these are already visually
 demoted (a plain underlined `<button>`, never the `Button` component) or
@@ -702,19 +697,19 @@ Not extended to `Calendrier` (a day cell, not a course card — the same
 reasoning `Subject colours` already gives for why that screen's colour
 treatment stops there too) or to `Lecteur`/`Révision` (a single "Retour", or
 grading controls — neither is a course-card grid). `NotionsScreen`'s own
-toolbar ("Lire le cours", "Voir la progression", "Réviser" above the notion
-list) is plain page chrome, not inside a `Card`, so it is out of scope by
-the same "actions of a card" rule that puts an icon on that screen's
-per-notion `Card`'s own "Réviser cette notion" instead — **reconsidered,
-not just carried over, once the toolbar's own "Réviser" became accent
-(`Colour`'s own note above): the icon rule's boundary was always
-structural (inside a `Card` or not), never about colour or weight, and
-that boundary hasn't moved just because the button's colour did. "Lire le
-cours" and "Voir la progression" are answered the same way `Forbidden`'s
-neighbouring list already does for every other demoted plain link in this
-document — a step down from the `Button` component entirely now (below),
-and an icon would raise their weight back up in exactly the direction
-that demotion exists to avoid.** `ProposalsScreen` (reviewing photo-derived
+toolbar ("Lire le cours" / "Voir la progression" / "Discuter du cours",
+`Screen notes`' own Notions note below) is plain page chrome, not inside a
+`Card`, so it is out of scope by the same "actions of a card" rule that
+puts an icon on that screen's per-notion `Card`'s own "Réviser" instead —
+the rule's boundary is structural (inside a `Card` or not), not about
+colour or weight, and holds more simply today than it once did: the
+toolbar carries no accent button of its own any more to reconsider
+against (that action moved onto the course summary card, its own `Card`,
+`Colour`'s own note above) — it is three demoted plain links and nothing
+else, answered the same way `Forbidden`'s neighbouring list already does
+for every other demoted plain link in this document, an icon on any of
+them raising their weight back up in exactly the direction that demotion
+exists to avoid. `ProposalsScreen` (reviewing photo-derived
 todo proposals) was not addressed — tangential to this four-commit visual
 pass, not one of the screens it has touched so far; flagged rather than
 silently included or excluded by assumption.
@@ -834,23 +829,33 @@ unaffected either way: it always shows every course (`docs/modules/progress.md`)
 **Notions and Lecteur (M9) are grouped beside Mes cours, in that order, not
 scattered to match some other logic** — the three together are "the course",
 read at increasing depth: the catalogue, then a course's own atomic units,
-then its full source text. Each gets the same dual-entry shape `Tuteur`
-already established: reachable directly from the nav with no course chosen,
-landing on a picker that reuses `Mes cours`' own list and its four states
-unmodified (`Screen notes`'s own Tuteur note, above, already describes this
-mechanism in full — Notions' and Lecteur's own pickers are the identical
-component, only the destination each row routes to differs), and reachable
-from within a course exactly as before M9 (a course's own card on `Mes
-cours`, `Notions du cours`' own toolbar for Lecteur) — neither existing
-entry point is removed. A third source needs a third piece of state beyond
-the `fromNotions` field `Lecteur`'s own note (below) already had: `Notions`
-and `Lecteur`'s view shapes both gain `fromPicker?: boolean`, true only when
-opened from this nav-level picker, so "Retour" can tell that case apart from
-"opened from a course's own card on Mes cours" (still "Retour" to `Mes
-cours`, unchanged) and return to the picker itself instead — the same
-"which of several sources" problem `fromDocumentId`/`fromNotions` already
-solve elsewhere in this app, extended by one more source rather than
-redesigned.
+then its full source text.
+
+**Lecteur** keeps the dual-entry shape `Tuteur` already established:
+reachable directly from the nav with no course chosen, landing on a picker
+that reuses `Mes cours`' own list and its four states unmodified (`Screen
+notes`'s own Tuteur note, above, already describes this mechanism in full),
+and reachable from within a course exactly as before M9 (a course's own
+card on `Mes cours`, `Notions du cours`' own toolbar). Its view shape
+carries `fromPicker?: boolean`, true only when opened from this nav-level
+picker, so "Retour" can tell that case apart from "opened from a course's
+own card on Mes cours" (still "Retour" to `Mes cours`, unchanged) and
+return to the picker itself instead — the same "which of several sources"
+problem `fromDocumentId`/`fromNotions` already solve elsewhere in this app.
+
+**Notions dropped the picker entirely in a later pass, ignoring
+`docs/UI.md` per the user (`Screen notes`'s own Notions note, below,
+describes the replacement in full).** Reachable directly from the nav
+with no course chosen: instead of landing on a `Mes cours`-shaped list,
+it lands straight on its own pill row of courses (the first one selected)
+plus that course's own summary and notion list — one page, not two. There
+is no `fromPicker` field on its view shape and no "which of several
+sources" problem to solve for it any more: a `documentId` still pre-selects
+a course from any existing deep link (Progression, Calendrier, Lecteur/
+Tuteur's own "Retour" targets) and shows "Retour à mes cours"; its absence
+(the nav's own direct entry) shows the first course with no back link at
+all, matching Aujourd'hui/Mes cours' own top-level pages — never a second
+screen to return to.
 
 Touch targets are 44px minimum everywhere.
 
@@ -914,7 +919,7 @@ this screen has nothing to register and never offers to.
 few places in the app where that is actually earned:** a single focused
 screen with exactly
 one action, the same shape as ReviewScreen's session-end/post-grade
-buttons and UploadCard's `Confirmer` — not one of several peer actions
+buttons and UploadCard's "Créer le cours" — not one of several peer actions
 competing for the same weight, the mistake corrected on NotionsScreen's
 own toolbar. `Colour`'s own accent note above still applies here at its
 strictest: a single-purpose screen, not a card grid, so its whole surface
@@ -933,513 +938,291 @@ distinct messages. The third was a real gap this note's own audit found,
 not a hypothetical: the previous version never caught a rejected login
 request at all and got stuck on "Connexion en cours…" forever, silently.
 
-**Aujourd'hui** — Large greeting title, then **one card per course** that has
-something to say today, never split into separate lists by kind. A course
-with nothing due, nothing below its exam target, and no deadline gets no card
-here at all: this screen answers "what do I do now", not "what are all my
-courses" — that catalogue is `Mes cours`. When every course is like that, or
-there are no courses yet, the screen falls to its empty state below.
+**Aujourd'hui was rebuilt from a user-supplied mockup (2026-09-06),
+replacing everything this section used to describe, ignoring several of
+this file's own rules below — each one named where it applies.**
+`TodayScreen.tsx` is the whole of it; the streak, previously this screen's
+own card, now lives in `AppNav`'s sidebar instead (`Navigation`'s own
+note, above) and is visible from every screen, not only this one
+(`Copy`'s own note, above). This note is the reconciliation this section
+owed `docs/UI.md` since that pass — nothing above the header note is
+stale any more.
 
-**One grid, not two.** Course cards and the todos card (below) are items in
-the *same* grid — one column below the tablet breakpoint, two on desktop —
-so their edges share the same gutters instead of the todos block landing in
-its own, differently-sized column underneath. **Grid items stretch to the
-row's own height** (`items-stretch`, the grid's own default — reversed
-from an earlier version of this pass, which used `items-start` specifically
-to stop a short card being stretched behind its buttons): every card in a
-row now shares one height, and each card is its own flex column with its
-action row pushed to the card's own bottom edge (`mt-auto` on that row,
-below) — so a shorter card's content stays anchored at the top, the extra
-height lands as breathing room *above* its buttons, and nothing ever floats
-over a gap beneath them the way a stretched, non-flex card would. Course
-cards fill the grid left to right, top to
-bottom, **sorted by urgency, nearest deadline first**: `deadline?.daysAway
-?? Infinity`, ascending — a course three days from its exam sorts ahead of
-one three weeks out, and a course with no deadline at all (`daysAway`
-missing, read as "never", not as "now") sorts after every course that has
-one. Ties — same `daysAway`, or several courses with none at all — keep
-whatever order `buildCourseCards` already produced for them:
-`Array.prototype.sort`'s own guaranteed stability does that, not a second
-explicit tie-break key. Display ordering only: `TodayView`'s three arrays
-(dueCards/notionsBelowTarget/upcomingDeadlines) are untouched, and nothing
-about which course actually has due cards or is below target changes, only
-where its card lands in the grid. The todos card is simply the next item
-after the last course card, wherever that now lands — not pinned to a
-fixed side.
+**Header.** A full-width block, its own top edge lining up with nothing
+beside it: the date ("Dimanche 6 septembre", capitalised, `fr-FR`
+long-weekday/day/month format) in `--primary`, then "Bonjour, {username}"
+at `--text-display`, then one sentence — "Tu as **N fiche(s)** à réviser
+dans M cours. 25 minutes de concentration suffisent pour garder de
+l'avance." when at least one card is due, or "Rien à réviser pour
+l'instant. Profites-en pour avancer sur autre chose." when none is.
+Nothing here renders before the first `GET /api/today` response lands —
+this block has no loading state of its own.
 
-**M9 pins the streak card (below) first, ahead of every course card,
-always** — the one exception to "sorted by urgency": it does not describe
-a course, so `daysAway` has nothing to sort it by, and a fact about the
-student rather than about any one course reads naturally as the grid's own
-opening item, the position a reference screenshot places it in too. It
-renders even when the grid would otherwise be empty (a course-free empty
-state still has a streak, possibly zero) — the one card on this screen
-that is never conditional on there being anything else to show.
+**Loading and error are a plain text line, not this file's own
+skeleton-and-mascot pattern, and the empty case shows nothing at all —
+three real gaps against `Required states` above, not considered
+exceptions.** While pending: `<p>Chargement…</p>`. On error:
+`<p role="alert">Impossible de charger ta journée. Vérifie ta connexion et
+réessaie.</p>` — no skeleton shape, no mascot, on either. When no course
+has anything due: the "À réviser aujourd'hui" section simply does not
+render — no mascot, no invitation, no fallback message of any kind,
+unlike the `sleeping`-mascot empty state this section used to describe.
+Flagged here rather than left to look intentional; closing this gap is a
+distinct, not-yet-scoped task.
 
-A course's card states, together, whichever of these apply to it — never
-across separate cards, so the same course never appears twice:
+**Two independent layouts side by side, not one shared grid.** A left
+column (`flex-1`) stacks the due-course grid and the todos card; a fixed
+300px right column stacks Pomodoro and the study-sounds card (below).
+Nothing from `items-stretch`, row-matched card heights, or a todos card
+"pinned" relative to course cards in one grid still applies — the two
+columns don't share rows at all.
 
-- **Due today** — "X fiche(s) à revoir aujourd'hui", the FSRS-due count.
-- **Below target** — "X notion(s) à consolider avant l'échéance", the exact
-  phrase `Progression` already uses for the same fact
-  (`docs/modules/progress.md`'s `notionsBelowTargetForDocument`), reused
-  verbatim so the same number reads the same way on both screens.
-- **Deadline** — M9 replaces the previous plain-fact sentence ("Contrôle le
-  12 juin, dans 9 jours") with a small badge carrying only the relative form,
-  "Examen dans 9 jours" (`daysAway` from the same `deadline` object the sort
-  above already reads, worded "aujourd'hui"/"demain" at 0/1 rather than
-  "dans 0 jour"/"dans 1 jour"). A deliberate, narrow reversal of this
-  section's own former "never a countdown" line (`Who this is for`'s own
-  M9 note, above, draws where the line still holds): the absolute date is
-  dropped, not kept alongside the badge — this is the one piece of this
-  screen a reference screenshot asked for directly, not a rediscovered
-  need, and keeping both would read as hedging on a choice actually made.
-  Styled `bg-warning/10 text-warning` in a small rounded pill, the same
-  idiom `ReviewScreen`'s own "Maîtrisée" badge already uses for a fact
-  worth a light visual lift without the weight of a full `--warning`
-  button or banner — a day count is exactly that, not an alert.
+**One heading, "À réviser aujourd'hui" (a `Calendar` icon plus the label),
+over a grid of course cards, two columns from 640px up — only when at
+least one course has a due count.** Unlike the design this replaces, a
+course below its exam target with nothing actually due does **not** get a
+card here any more: `TodayView.notionsBelowTarget` still flows into
+`buildCourseCards`' own `belowTargetCount` field, but nothing in the
+current `CourseCard` reads it — the "X notion(s) à consolider avant
+l'échéance" sentence this file used to describe is gone from the screen
+entirely, not merely restyled or moved. Cards are still ordered by
+`deadline?.daysAway ?? Infinity`, ascending, unchanged.
 
-A due count and a below-target count for the same course can both be
-non-zero at once. That is not a contradiction — they measure different
-things — and the wording carries that distinction on its own, without naming
-FSRS or the scheduling model to the student.
+**A course card's own icon sits in a colour-tinted circle, not the
+left-border treatment `Subject colours` describes — a knowing departure,
+per the user's own mockup, shared with `Mes cours`' own card (below,
+which explains the same choice once, not repeated here).** Always
+`BookOpen`, tinted by `document.colour`; a course with no colour (reached
+only through a deadline, same as before) tints nothing.
 
-**When both are non-zero, only the due count keeps `--text-display`**
-(`Type`'s own "at most one `--text-display` number per card" note,
-above): it is the one "Réviser" — this card's own accent action — acts
-on directly, so it stays the card's one headline digit. The below-target
-count then renders as a plain `text-sm` sentence, the same register as
-the deadline line beneath it, still always shown, never dropped, just no
-longer sized to compete with the due count for the same read. Found on
-this exact card: with the Type pass' sizes finally rendering for real
-(`Type`'s own note on the Tailwind bug, above), a course due today and
-also behind its target showed two 32px numbers stacked over its own
-20px title — the card's name stopped being the most prominent thing on
-it.
+Each card, top to bottom: the icon circle and title on one row; then, on
+one row together, either the due count at `--text-display` — coloured by
+the course's own colour, not plain text — with "fiche(s) à revoir" beside
+it, **or**, once nothing is due, a `--success` check icon and "Tout est à
+jour" (never both, never a due branch left showing "0"), plus a deadline
+badge when the course has one (`countdownLabel`'s relative wording,
+`bg-warning/10 text-warning`, unchanged); then one full-width action at
+the card's own bottom — "Réviser" (accent) above zero due, a disabled
+"Rien à réviser" at zero. `Colour`'s own "one accent element per card"
+invariant still holds; there is only ever the one button to police now.
 
-A lone below-target count, with no due count on the same card at all,
-keeps `--text-display` unchanged. Checked, not assumed: against a static
-mockup built from this file's own real token values, demoting it read as
-burying the one fact on the card — exactly backwards for a screen whose
-job is surfacing what needs attention, since "behind target with nothing
-due today" is often the more important signal to notice, not the
-quieter one. The invariant above only forces a choice when two counts
-would otherwise both claim `--text-display` at once; a lone count has no
-conflict to resolve against.
+**The card's second action — "Voir le cours", opening a course without
+reviewing it — no longer exists, on this screen alone.** Confirmed with
+the user (2026-09-06) as an intentional cut, not a bug or an oversight.
+Once every due card for a course has been reviewed, nothing on its card
+reaches that course's own
+Notions, Lecteur or Progression any more — only the nav's own
+destinations do. `Mes cours`' own card (below) kept its equivalent, "Lire
+le cours": the two cards are no longer symmetric on this one point.
 
-Each course card carries its subject colour as the left-border treatment
-`Subject colours` describes, replacing the small dot this card used next to
-its title before. A course reached only through `upcomingDeadlines` (no due
-count, no below-target count — `workspace.md`) carries no colour at all, the
-same as it carried no dot before: its card's border stays plain `--border`
-on all four sides.
+**One todos card**, close to its previous shape: a header row ("Todos", a
+`ListChecks` icon) carrying a live "N restants" count and two triggers,
+the checklist below, then at most one revealed form (add / photo),
+collapsed by default.
 
-Every card is a path to action, not just a number, through two explicit
-buttons — same idiom as the per-item actions on `Mes cours`' own course
-page, never a click hidden on the title: "Voir le cours" always opens that
-course's page, and, only when the due count is above zero, "Réviser" starts
-a review session for that course directly. **Now with a real hierarchy
-between them, not the identical weight both used to carry:** "Réviser",
-when it is there, is the card's one accent button (`variant="accent"`,
-`--primary` since M9's merge — `Colour`'s own note above) — it is the action
-that actually moves the student forward, spaced repetition's whole point,
-so it is the one that looks like the obvious next click. "Voir le cours"
-stays `--secondary` on every card, always, whether or not its sibling
-"Réviser" is present that day — a stable rule (the same button always
-looks the same way) beats a rule that would repaint "Voir le cours" as
-accent on the days it happens to be the only button on the card. A card
-with no due count shows only "Voir le cours", and shows it exactly as
-secondary as it is everywhere else: absence of the accent action is not an
-invitation to promote the remaining one. `Colour`'s own note above is what
-allows several cards to each show their own accent "Réviser" on this one
-screen at once — the invariant is one accent element per card, not one
-per screen. This is the row of buttons `One grid, not two` (above) means by
-"action row": `mt-auto` on it is what pushes it to the card's own bottom
-edge once the grid's `items-stretch` has made the card taller than its own
-content needs.
+**The two triggers are icon-only — a second knowing departure, against
+`Icons`' own "an icon accompanies its label, never replaces it" rule
+above.** "Ajouter depuis une photo" (`Camera`) and "Ajouter un todo"
+(`Plus`) are each a plain filled circle (`bg-primary-soft`/`text-primary`)
+carrying no visible text at all, only an `aria-label` — `Forbidden`'s own
+"icon-only buttons without an accessible label" line still holds (there
+is one), only `Icons`' stricter rule does not. Both hide once either form
+is open.
 
-If nothing needs attention anywhere: the `sleeping` mascot, a plain
-statement, and one useful suggestion. Never a guilt message, never "tu n'as
-rien fait aujourd'hui".
+**A todo row's own bullet is a custom round checkbox, not the browser's
+native square one** — still a real, keyboard- and screen-reader-operable
+`<input type="checkbox">` under the paint (`appearance-none` strips only
+the default rendering), a white ring unchecked, a filled `--success`
+circle with an inline SVG checkmark once checked. A small course-coloured
+dot beside a linked todo's own row stands in for naming the course in
+text. The add form (label required; date and course, both optional —
+nothing else) and the photo picker (one file input, "Photo de l'agenda")
+are otherwise unchanged from before: both close on Escape or their own
+"Fermer", the add form's draft survives a close/reopen, the photo picker
+has nothing to preserve.
 
-**One todos card**, not three loose pieces: the checklist, the minimal add
-form (label, required; date and course, both optional — nothing else, no
-priority, no tags, no recurrence), and the planner-photo upload all live
-inside one `Card`, stacked. That single card is what sits in the shared grid
-above — a card is the unit the grid lays out, not each piece of it
-separately, which is what made the add form read as misaligned with the
-list above it before this card existed. Each todo gets a small delete
-action ("✕", with an accessible label naming the todo — same idiom as the
-staged-file removal on `Mes cours`' own upload card, not a bare icon
-without one) alongside its checkbox. No confirmation modal: a todo is low
-stakes and trivially re-added. The gap between one todo row and the next is
-`--space-block` — `Shape and depth`'s own table already names this exact
-relationship ("rows in a list"), and the list had been using the tighter
-`--space-related` instead, the same gap as a checkbox and its own label
-*inside* one row: two different relationships reading as one distance is
-what made the list look like a single undifferentiated block rather than
-a set of rows, exactly the "nothing groups visually" defect this pass was
-asked to close.
+This screen still has no "Retour" — the nav's own "Aujourd'hui" leads
+here from anywhere, and "Mes cours" is the app's other home.
 
-**The checklist is a bounded, scrollable panel** (`Shape and depth`'s own
-general rule, above), capped at roughly five rows before it scrolls
-internally — `13rem`, tuned against the real rendered row height rather
-than a round Tailwind step: `max-h-60` (15rem) was tried first and, checked
-live, landed exactly on a row boundary, six full rows and no visible cut
-at all, silently failing condition (2) of the general rule above. Everything
-else in the card — the "Todos" label, both collapsed triggers, either
-opened form — stays outside the scrollable region and always visible; only
-the `<ul>` itself scrolls.
+**Aujourd'hui — pomodoro (M7).** Still its own block, now living in the
+fixed-width right column above the study-sounds card rather than spanning
+full width below a shared grid — the surrounding layout changed, its own
+three states did not: **Repos** (an optional todo `<select>`, "Démarrer"),
+**En cours** (a countdown, "sur « {todo} »" when a todo is linked,
+"Terminer"), and ending a session now returns straight to **Repos**
+instead of a separate **Juste terminée** confirmation line.
 
-**A todo's due date, when it has one, is shown on its row** — discreet,
-right-aligned, before the delete action. No date set means nothing shown
-there: never a dash, never "sans date". The same rule as everywhere else
-in this document applies to how it reads: a plain dated fact, never a
-countdown, and a date already past renders exactly like one still to
-come — no `--warning`, no colour of any kind marking it overdue.
+**"Recorded" (`docs/MILESTONES.md`'s M7 acceptance) is now a session
+counter, not a confirmation sentence.** "N séance(s) de concentration" sits
+inside the countdown ring at every phase and increments each time a
+session ends; "Réinitialiser" clears it back to zero (disabled while a
+session runs, or already at zero). Client-only, resets on reload — the
+same "nothing to remember this milestone" reasoning the old confirmation
+line carried, just moved to a running count instead of a one-off
+sentence. "Pause courte"/"Pause longue" are two more purely decorative
+tabs beside "Concentration", new since this file was last accurate: the
+backend still has exactly one fixed duration, nothing lives behind
+either one.
 
-**The add form and the photo picker are both collapsed by default**,
-behind their own discreet `--secondary` action ("Ajouter un todo" /
-"Ajouter depuis une photo"), the same width as each other
-(`Shape and depth`'s own general rule, above) — a permanently open input
-for either was, by itself, wider and taller than the list it sat below.
-The photo trigger's label was shortened from "Ajouter des todos depuis une
-photo de l'agenda" during this pass: "des todos" is redundant with the
-card it already sits in, "de l'agenda" survives once the form opens
-(`PhotoUploadInput`'s own field label, "Photo de l'agenda", unchanged),
-and the shorter form keeps the same verb as its sibling trigger — a
-deliberate choice over a still more literal cut, since the two triggers
-reading as a matched pair is worth more here than either one being
-maximally short on its own.
+**A pomodoro session is no longer linked to a specific todo.** The "Todo
+(facultatif)" select this file used to describe is gone; `startPomodoro`
+is now called with no todo, unconditionally. Confirmed with the user
+(2026-09-06) as an intentional cut, not a bug. Everything this file said
+about a linked todo's own label appearing
+mid-session, or falling back cleanly once deleted, no longer applies —
+there is no linked todo to show or fall back from. The zero-colour,
+no-escalation countdown itself, and `POST /api/pomodoro`'s 409-as-resync
+handling ("Une séance est déjà en cours.", no `--warning`, no retry
+button), are both unchanged.
 
-Opening the add form puts focus on the label field, and opening the photo
-picker puts focus on its file input, the same convention for the same
-reason on both — it is also what lets Escape reach either one at all: the
-trigger button that opened it is gone the instant it does, so without this
-the browser would fall focus back to the page body, outside the revealed
-area entirely, and a keydown there would never bubble through it. Both the
-add form and
-the photo picker can be closed without submitting, by Escape or by their
-own visible **"Fermer"** button (`Shape and depth`'s own general rule,
-above) — a defect this pass found and fixed, not a pre-existing choice:
-the add form's Escape handler existed with no visible equivalent beside
-it, and the photo picker had no closing mechanism at all. Closing the add
-form never discards what was already typed — reopening shows the same
-draft, not a blank form — except when there was nothing to lose, in which
-case closing is simply closing; closing the photo picker is disabled while
-a photo is already uploading, the same guard `UploadCard`'s own "Annuler"
-already applies to its own confirm step. A successful submission collapses
-the form on its own and the new todo appears in the list below; nothing
-else about the checklist or the photo path changes.
+**Aujourd'hui — Spotify (M7) has been removed entirely, not merely
+restyled.** Confirmed with the user (2026-09-06) as an intentional cut,
+not a bug: no card, no "Écouter" trigger,
+no iframe, anywhere in the current build, and no `frame-src` CSP entry
+either — everything this file used to say about the embed (the hardcoded
+playlist URL, the no-iframe-before-click guarantee, the CSP grant)
+described a real, shipped feature that no longer exists. Building it
+again starts from zero, CSP included, not from restoring a hidden block.
 
-Native form controls still get the design-system border, radius and colour
-tokens (`<select>`'s own arrow replaced with a token-coloured chevron,
-`appearance-none` on both); what a browser's own chrome renders and CSS
-alone cannot reach — the calendar icon's shape inside `<input type="date">`,
-its locale placeholder — stays native. Replacing those needs a custom
-date-picker component, a new interaction pattern this pass does not
-introduce (`docs/UI.md`'s own "stop and ask" rule for agents).
+**Aujourd'hui — study sounds, new, mock only.** A card beside Pomodoro in
+the right column (`data-testid="study-sounds-card"`): a track/playlist
+line, a fixed-position progress bar, transport controls and a volume bar,
+a two-row "up next" list. None of it is wired to real audio — the
+controls carry accessible labels but no handlers, the progress fill and
+times are hardcoded. Disclosed the same way this file discloses other
+not-yet-built pieces elsewhere (`Layout and responsiveness`'s own list,
+above): a placeholder for a feature that does not exist yet, not a
+finished one.
 
-This screen has no "Retour": it is the destination the sidebar/header's
-"Aujourd'hui" link leads to from anywhere, not a place one arrives at from
-elsewhere and backs out of. The same header carries a symmetric "Mes cours"
-link, so both homes stay reachable from any screen.
+**Mes cours was redesigned from a user-supplied mockup (2026-09-06),
+ignoring this file's own former "card grid, cover or subject-coloured
+header, progress ring" description below in full — nothing from it still
+applies.** The mockup also showed several distinct "materials" (separate
+uploads — a PDF, a second PDF, a photo) grouped under one course card,
+with its own panel to add more material to an existing course later —
+that grouping does not exist in this app: a course is still exactly one
+upload (one title, one page set, one `documents` row), a scoping decision
+made with the user rather than building a new grouping entity, a new
+route, and a schema change into what was meant to be a front-end pass.
 
-**Aujourd'hui — streak (M9).** A card in the shared grid, pinned first
-(`One grid, not two`'s own M9 note, above). One `--text-display` number
-(the streak length) and one line beneath it: "Continue comme ça !" while
-the streak is at least 1, or a plain "Révise aujourd'hui pour commencer une
-série." when it is 0 — an invitation, not a guilt line, the same register
-`Who this is for`'s own rule already requires everywhere else. No flame
-icon, no fire emoji: `Icons`' own set is plain and literal by rule (above),
-and a flame reads as exactly the habit-loop urgency device this whole
-section otherwise argues against having imported wholesale.
+**A persistent two-column layout, not a grid**, in every state alike
+(loading/error/empty/ready) — a `flex-1` column of course cards, stacked
+vertically one per row, beside a fixed 320px `UploadCard`, always open,
+never a floating button or a toggle to reveal it. No cover image, no
+progress ring: each course's own numbers render as a plain stats line
+instead (below).
 
-**The number is `computeStreak`'s own output, read fresh on every load,
-never stored.** `GET /api/today` gains one field, sourced the same way
-every other `TodayView` field already is — a pure function
-(`workspace/domain`) over data `get-today.ts` already has one more read
-away: the set of calendar days, in the viewer's own local timezone, on
-which at least one `reviews` row exists for that user (`docs/MILESTONES.md`'s
-M9 acceptance). Consecutive days ending today or yesterday count; a full
-calendar day with zero reviews, anywhere further back, ends the run there.
-Reviewing later today after opening this screen does not retroactively
-bump the number without a reload — the same "no optimistic UI on generated
-content" caution `Asynchronous work` (above) already applies to a fetched
-number that a later action can change; a plain re-fetch on the next visit
-is enough, this is not read-heavy enough to warrant a live update.
+**A course card's own icon sits in a colour-tinted circle, not the
+left-border treatment `Subject colours` describes — a knowing departure,
+per the mockup, shared with Aujourd'hui's own course card (above, which
+explains the choice once).** Top row: the icon circle, the title, a
+deadline badge when the course has one (`countdownLabel`'s own relative
+wording, unchanged from Aujourd'hui's), and a delete action (a plain
+`Trash2` icon, accessible label naming the course, no confirmation
+modal). Below: page count; while extraction is running, only its status
+label (`en attente`/`en cours`/`échec`, `Réessayer` on failure); once
+`done`, real per-course numbers instead — "N notion(s) · M maîtrisée(s) ·
+**K à réviser**" (`GET /api/documents/:id/progress`, the same
+`["today"]`-sourced due count Aujourd'hui's own card reads) — and one
+material chip naming that same document's own title and page count, kept
+for the multi-material mockup shape described above even though today it
+is always redundant with the card's own title, since one course is still
+exactly one upload. **Unlike
+Aujourd'hui's own card, this one keeps two actions once done, not one**:
+"Réviser" (accent, above zero due) or a disabled "Rien à réviser", *and*,
+always, a tinted "Lire le cours" beside it — the one place the two
+screens' otherwise-matching cards still diverge (Aujourd'hui's own note,
+above, names this explicitly). "Voir les notions" no longer exists on
+this card at all: Notions is reached through the nav instead (below).
 
-**No per-course streak, no configurable goal, no protection/freeze
-mechanic** — `docs/MILESTONES.md`'s M9 "Out of scope" already names these;
-repeated here because a reference screenshot's own genre (habit-tracking
-dashboards) tends to carry all three by convention, and this app adopts the
-one widget, not the surrounding feature family it usually ships inside.
+**A course's own "Terminé" status label is written but never actually
+reachable — dead text, not a display bug worth chasing without being
+asked.** `STATUS_LABEL.done` exists in code but the branch that would
+render it only fires while `status !== "done"`; once a document is
+actually done, the stats-line branch above renders instead and no
+"Terminé" text appears anywhere on the card. `pnpm test:e2e`'s own specs
+now wait on the "Lire le cours" button appearing as their real done-signal,
+not on this text.
 
-**Aujourd'hui — pomodoro (M7).** One more block, full width, below the grid
-above (course cards and the todos card) — not one more item inside it:
-`items-stretch`'s row-matching is for cards competing for the same row, and
-a pomodoro has nothing to align its height against. It comes after
-everything else for the same reason it exists at all: it accompanies work
-already chosen above, it is not what a student comes to this screen looking
-for first. No mascot on this block, on any of its three states — this
-screen already spends its one mascot (`The mascot`'s own "one per screen"
-rule) on its own empty state, `sleeping`.
+**Mes cours has its own real four states** (`Required states`, above,
+followed in full here, unlike Aujourd'hui's own gaps, above): a skeleton
+of three pulsing card-shaped blocks while loading; `Confused` plus a
+retry button on error; `Reading` plus "Aucun cours pour l'instant. Prends
+ton cours en photo pour commencer." when the list is empty — `UploadCard`
+itself stays visible beside all four, since it is not part of what is
+loading.
 
-Three states, one `GET /api/pomodoro/active` call on mount to decide which
-one to render — this is also what makes "timer state survives a page
-reload" (`docs/MILESTONES.md`'s M7 acceptance criterion) a fact about this
-block's own mount effect, not a separate mechanism:
+**`UploadCard` is always open, ignoring this file's own former
+click-to-reveal toggle.** A real HTML5 drop zone ("Dépose un fichier ou
+clique pour parcourir", accepting PDF/Word/PowerPoint/JPG/PNG/WEBP up to
+20MB) doubles as the file input; staged files list below it, reorderable
+and removable before submitting, each with an accessible label naming it
+(the same idiom Aujourd'hui's own todo-delete action already uses); a
+"Titre du cours" field; then "Créer le cours" (accent, disabled until at
+least one file is staged) — renamed from "Confirmer", the same word
+through the whole flow `Copy`'s own rule above asks for.
 
-- **Repos** — an optional `<select>` of today's todos, the same
-  chevron-and-`FIELD_CLASS` treatment as the add-todo form's own course
-  picker, filtered to `done: false` (a checked-off todo needs no focus
-  session), then "Démarrer" (accent, `--primary` — this state's only button, the
-  same single-action-screen exception `Colour`'s own note above already
-  grants Connexion's "Se connecter" and UploadCard's "Confirmer").
-- **En cours** — a countdown (`--text-display`, the one number this block
-  is about), derived fresh from `startedAt` on every one-second tick, never
-  accumulated client-side; "sur « {todo} »" underneath, only when the
-  session's `todoId` still resolves inside the same todos list the select
-  above reads from — see "A todo deleted mid-session" below. One button,
-  "Terminer" (accent, `--primary`, same exception as "Démarrer" above — this state
-  shows exactly one action too).
-- **Juste terminée** — a confirmation line built from the session object
-  already in hand (whichever call returned it: the start response, the
-  reload-resume read, or the 409 body below), never a client guess shown
-  before the end call actually succeeds. Reload returns to **repos**:
-  `GET /api/pomodoro/active` reports nothing once a session's own duration
-  has passed or it has been explicitly ended (`isPomodoroActive`,
-  `docs/modules/workspace.md`), and this milestone keeps no history to show
-  instead.
+**Notions was unified into one page from a second mockup, later still,
+ignoring this file's own former picker-plus-course-view description below
+in full.** `Navigation`'s own note (above) already describes what changed
+at the nav-entry level;
+this note describes the page itself.
 
-**Not the countdown `Forbidden` (below) bans.** That entry targets
-urgency-through-time-pressure copy elsewhere in this app — "plus que 2
-jours", a colour that shifts as a deadline nears. A pomodoro's countdown is
-the feature itself, the one place in this app where counting down is the
-actual tool, not a persuasion device layered onto one. It keeps the same
-neutrality every other time-based fact here already has: no colour
-escalation, no sound, nothing that accelerates as it nears zero — reaching
-zero is styled exactly like 24:59 was.
+**One page: a pill row of every course, then that course's own summary
+and notion list — no separate picker to leave, unlike Lecteur (above),
+which still has one.** Each pill: `BookOpen` plus the course's own title,
+filled `--primary`/white when active, plain otherwise — no left-border or
+tinted-circle treatment here, a plain filled/outline toggle instead.
+Switching pills is a local selection, not a navigation; the selected
+course's own local UI state (an expanded notion body, the generation
+form) resets on switch (a `key`-based remount), never leaks from the
+course shown before.
 
-**Reaching zero freezes the display at 00:00; ending stays an explicit
-click, never the block's own initiative.** `isPomodoroActive` already makes
-closing the tab at this point harmless (`docs/modules/workspace.md`), so
-nothing here should end the session on its own either — the same
-"the app proposes, the person decides" rule this document opens with.
-Checked live against the real running block, not assumed: a frozen 00:00
-next to a still-live "Terminer" button reads as a stopwatch waiting to be
-stopped, not as a hang, because the button itself stays obviously
-clickable throughout — no separate "temps écoulé" line was needed once
-that was actually on screen.
+**The selected course's own summary card**: icon circle (Aujourd'hui/Mes
+cours' own tinted-circle treatment again), title as an `<h2>` (this
+page's own `<h1>` stays "Notions", never duplicated), "N notion(s) · M
+maîtrisée(s) · **K à réviser**", and the page's one accent button —
+"Réviser K fiche(s)" above zero due, a disabled "Rien à réviser" at zero.
+This is now the *only* accent action on the page: the toolbar below it
+("Lire le cours" / "Voir la progression" / "Discuter du cours") is three
+plain underlined links, none of them a `Button` any more — the
+"which of four is still accent" question this file used to answer at
+length no longer has more than one candidate to weigh.
 
-**A todo deleted mid-session shows exactly as if none had ever been
-linked.** `pomodoro_sessions.todo_id` is `ON DELETE SET NULL`
-(`docs/modules/workspace.md`'s Persistence section) — the database itself
-stops distinguishing "never selected" from "selected, then deleted" the
-moment that happens. This block's own lookup does the same thing for the
-same reason: the todo's label comes from the same todos list the
-repos-state select already reads (the current `today` query, invalidated
-the moment a todo is deleted anywhere on this screen), matched by id; a
-deleted todo simply isn't in that list any more, so "sur « ... »" doesn't
-render, with nothing special-cased and nothing that can throw on a missing
-lookup.
+**"Retour à mes cours" sits above the summary card, its own line, flush
+left, a plain underlined link — shown only when a `documentId` arrived
+from an existing deep link (Progression, Calendrier, Lecteur/Tuteur's own
+"Retour" targets); absent entirely on the nav's own direct entry**, which
+shows the first course with nothing to go back to, the same as
+Aujourd'hui/Mes cours' own top-level pages. There is no "Retour"-only
+variant any more (the old `fromPicker` case) — the picker it once
+distinguished from doesn't exist.
 
-**`POST /api/pomodoro`'s 409 is a resync, not an error — but not a silent
-one either.** The route only refuses because a session is genuinely
-already running (`docs/modules/workspace.md`); the person did nothing
-wrong, so this never takes the `Required states`' error treatment: no
-`--warning`, no `role="alert"`, no retry button. But landing straight on a
-countdown already short of 25:00, with no visible reason, would read as
-broken. A discreet fact line — "Une séance est déjà en cours." — same
-plain register as a deadline's day-count, printed once, only when **en
-cours** is entered from a 409 body specifically, never on the ordinary
-reload-resume path above (a reload is expected to show whatever is already
-running; a fresh "Démarrer" click landing on someone else's countdown is
-the surprising case this line exists to explain).
+**A notion card**: title plus a status badge ("Maîtrisée"/"À réviser"/"En
+apprentissage" — mastery wins even over a technically-due card, matching
+`docs/modules/review.md`'s own example of a mastered notion still showing
+a future review date) on one row with its own "Réviser" button (plain
+`Button`, not the toolbar's demoted links); a one-line, plain-text body
+preview (140 characters, truncated on word count only — markdown-aware
+truncation was not worth it for a preview this short); five review dots,
+filled up to the notion's own review count and coloured by the course's
+own colour, plus "N révision(s)" and, only when relevant, "à réviser
+maintenant" or "dans N jours"; a "Voir le contenu" toggle revealing the
+full body as real rendered markdown. No difficulty label anywhere on this
+card any more, and no "why isn't this mastered yet" sentence
+(`cardsWithEnoughReps`/`cardsWithEnoughStability`, the whole "fiche(s)
+agrees with the denominator" rule this file used to spell out at length)
+— **this one is a real gap found while reconciling this file, not yet
+confirmed with the user as an intentional cut, unlike Spotify, pomodoro's
+todo-linking, and Aujourd'hui's own "Voir le cours" action above, all
+three of which were.** Worth asking about before assuming it should stay
+dropped.
 
-**Aujourd'hui — Spotify (M7).** A second full-width block, below the
-Pomodoro block above — same reasoning, same place in the page: it
-accompanies work already chosen, it is not what a student comes to this
-screen looking for first. No mascot here either, for the same "one per
-screen" reason the Pomodoro note already gives.
-
-**One fixed playlist, no per-user preference, no persistence.** The
-embed URL is a hardcoded constant
-(`https://open.spotify.com/embed/playlist/37i9dQZF1DX3PFzdbtx1Us`) —
-nothing in this block is stored, so a reload always shows the collapsed
-state again, the same "nothing to remember this milestone" choice
-Pomodoro's own "juste terminée" already makes for the same reason.
-
-**No `<iframe>` element exists in the DOM at all until the person
-clicks "Écouter" — not an `<iframe>` with an empty or placeholder `src`
-swapped out later.** An iframe with no `src` can still cause a browser
-to navigate it to `about:blank`; never mounting the element at all is
-what actually guarantees zero request and zero third-party cookie
-before that click, not merely an unset attribute that happens to look
-empty. Collapsed state: a short line ("Écoute de la musique pendant que
-tu travailles.") and "Écouter" (`--secondary` — this is a revealed-content
-trigger, the same idiom as "Ajouter un todo"/"Ajouter depuis une photo"
-above, not the single-action accent exception Pomodoro's own
-"Démarrer" earns, since listening is optional accompaniment, never the
-thing this app is steering the student toward). Clicking it mounts the
-real `<iframe>`, pointed at the fixed embed URL above, with a visible
-"Fermer" button beside it — same closable-without-consequence idiom as
-every other revealed section on this screen, even though there is no
-draft to lose here: closing it unmounts the iframe, which is also how
-this stops any audio still playing.
-
-**No OAuth, no Spotify Premium requirement, by construction, not by
-policy statement.** The embed URL above is Spotify's own public,
-unauthenticated iframe embed format — no token, no login flow, nothing
-this app could gate content behind even if it wanted to. Listening past
-the first ~30 seconds of *playback* does need the *visitor's own*
-Spotify account/Premium on Spotify's side, same as any other Spotify
-embed anywhere on the web — outside this app's control and outside
-`docs/MILESTONES.md`'s own acceptance line, which is about what this app
-requires, not what Spotify's playback still requires of the listener.
-
-**The embed URL is hardcoded, not discovered via a live call to
-Spotify's oEmbed endpoint at click time.** oEmbed exists to resolve an
-arbitrary, caller-supplied URL into embeddable markup — valuable when
-the source URL varies per request. Here it never does: one fixed
-playlist, chosen once, so the embed URL it resolves to is exactly as
-fixed. Calling oEmbed on every click would add a network round-trip, a
-second failure mode distinct from the iframe's own (opaque, cross-origin)
-load, and a dependency on Spotify's oEmbed endpoint staying reachable —
-for a value that cannot change without a code change either way. This
-also keeps the CSP change below to exactly `frame-src`: no `connect-src`
-grant is needed for a request this block never makes.
-
-**CSP.** `apps/web/index.html` gets its first
-`Content-Security-Policy` meta tag, scoped to exactly one directive:
-`frame-src https://open.spotify.com;` — no `'self'`, since nothing else
-in this app embeds a same-origin iframe today. A meta tag, not a
-response header from `apps/api`: this app has no header-setting plugin
-at all yet (`apps/api/src/plugins/`), and a meta tag is enforced
-identically in `pnpm dev` (Vite serves `index.html` directly) and in
-production (the same file, built), where a header set only by `apps/api`
-would not reach the page at all in dev — Vite's own dev server, not
-Fastify, serves the HTML there. Scoped to `frame-src` only, exactly what
-was asked: every other resource type (`script-src`, `connect-src`,
-`style-src`, ...) stays unrestricted, since a CSP with no `default-src`
-restricts only the directives it actually names.
-
-**Mes cours** — Card grid, cover or subject-coloured header, title, notion count,
-progress ring with its number. Upload is a card in the grid, not a floating button.
-
-**Notions du cours (M9) gains the nav's own picker as a second way in,
-alongside the existing Mes cours card click.** Same mechanism `Tuteur`'s
-own note and `Lecteur`'s own note (above) both describe: reachable directly
-from the nav with no course chosen, landing on a picker that reuses Mes
-cours' own list and its four states, each row routing here instead. The
-new `fromPicker?: boolean` field (`Navigation`'s own note, above) this
-adds decides what its own header's back link (below) reads and where it
-goes: unset, exactly as before M9, opened from a course's own card on Mes
-cours; `true`, opened from this new picker instead.
-
-**Notions du cours (`NotionsScreen`)'s own header: "Retour à mes cours"
-sits on its own line above the title, flush left — not beside the title,
-and not sharing the title's own line at all.** Two corrections happened
-here, not one. The original defect was placing the link directly in
-front of the title, reading as though the two were paired — a navigation
-back to the parent list is not the same kind of thing as a screen's own
-name. The first fix addressed that by moving the link under the toolbar,
-right-aligned with it, which did clear the "beside the title" problem but
-traded it for a worse one: a back link reads top-left, before the title,
-by a convention this app shares with the rest of the web, and burying it
-bottom-right after three other actions was never what needed fixing —
-only its collocation on the title's own line was. It now sits above the
-title, its own line, flush left: the position a back link should have
-had from the very first fix, distinct from the title because it is on a
-separate line, not because it moved to a side. It stays a plain
-underlined link, never a `Button` — the same treatment "Lire le cours"
-and "Voir la progression" share (`Shape and depth`'s own
-toolbar-hierarchy note, above), though for a different reason: those two
-are demoted because they leave the screen for somewhere else, this one
-because it is the one navigation action that was never a peer of the
-toolbar's own actions to begin with. Considered and rejected: an added
-chevron or other shape distinction from those two links — this app's own
-Icons section already demotes this exact link family (plain page chrome,
-outside any card) specifically so an icon never raises their weight back
-up, and a chevron here would be the same mistake in reverse. Position
-alone — its own line, above the title — already carries the distinction.
-"Réviser" is the only one of the four still a `Button`, and the only one
-in accent. Tab order follows the layout: "Retour à mes cours" first,
-then the toolbar's own three actions — the natural consequence of where
-it now sits, not a separate decision.
-
-**M9: this link reads "Retour" instead, exactly `Lecteur`'s own plain
-label, when `fromPicker` is set.** "Retour à mes cours" names a specific
-destination; returning to the nav's own picker instead — a different
-screen from the Mes cours catalogue this label names — would make the
-same label lie on this path the way `Lecteur`'s own note (above) already
-explains for its own back action. Position, tab order and every other
-part of this note are unchanged either way, only the word.
-
-**A notion card's own title and its difficulty label carry `--space-related`
-(8px) between them, not the plain block flow that used to leave them with
-no gap at all.** No gap class was ever applied to this pairing — invisible
-while the title rendered as unstyled plain text (the Tailwind arbitrary-
-value bug, `Type`'s own note above), a real defect once it renders as
-actual bold 20px display type: the difficulty label sat flush against the
-title's own descenders, reading as broken rather than as a title next to
-its own qualifier. `--space-related` is the right tier for what these two
-actually are — a title and its own descriptor, the same relationship the
-token's own definition names.
-
-**"Créer les fiches" / "Régénérer les fiches" and its type checkboxes sit
-`--space-section` (24px) below the header, `--space-block` (16px) above
-the notion list.** Both sides used to be `--space-section`, an identical
-24px on both neighbours — two equal distances read as belonging to
-neither (`Shape and depth`'s own recalibration note, above), and this
-block is the one that acts on the list below it, not on the header above.
-Tightening only the list-facing side is what makes that ownership legible
-without touching the header/chrome boundary, which stays exactly what it
-already was.
-
-**Notions du cours (`NotionsScreen`) — why a notion isn't mastered yet, not
-just its two raw numbers.** Each notion's own card already shows
-`masteredCards / totalCards fiches maîtrisées`; on its own that number tells
-a student nothing about what to actually do next, and `isMastered`
-(`docs/modules/review.md`) is two independent conditions — `stability >= 21
-days` and `reps >= 3` — so "you need more reviews" and "this just needs time
-to settle" are two different facts, not one. Shown whenever
-`masteredCards < totalCards` **and** `totalCards > 0` — deliberately not
-`masteredCards > 0` as well: `0 / 3` is the single most common case this
-exists for, the one where the question "why" is loudest, and an earlier
-draft of this condition excluded it by mistake.
-
-One sentence, reps first:
-- `cardsWithEnoughReps < totalCards` → *"Il te manque encore des révisions
-  sur cette notion."* — immediately actionable, so it wins even when some
-  cards are also short on stability.
-- otherwise, `cardsWithEnoughStability < totalCards` → *"Tu l'as révisée
-  assez souvent, il faut maintenant l'espacer dans le temps."* — states the
-  actual mechanism (stability only grows through reviews already spaced
-  further apart) rather than reading as an invitation to do nothing, which
-  an earlier draft of this sentence ("laisse-lui un peu de temps") did.
-
-Both raw counts (`review.NotionProgress`'s `cardsWithEnoughReps` and
-`cardsWithEnoughStability`, `docs/modules/review.md`) are shown together
-regardless of which one picked the sentence above, in `--text-label`, one
-size down from the sentence's own `text-sm` — smaller, never larger, per
-`Colour`'s own rule that this kind of state is a fact, not an alert: no
-`--warning`, no colour of any kind, a notion short of mastery is not a
-failure. Never `stability`'s own numeric value (an FSRS internal, not
-something a student needs to read as a number) — only whether it crossed
-the same day threshold already named in the sentence, expressed as a count
-of fiches over that threshold, the same idiom `masteredCards`/`totalCards`
-already uses.
-
-**"fiche(s)" and its verb agree with the denominator, not the numerator.**
-`X/Y fiches ont …` reads as "X out of Y fiches", so it's `Y` — the
-population the fraction is drawn from — that the noun and verb answer to,
-not `X`. An earlier version agreed with `X` instead, so `0/3 fiche a fait`
-and `1/3 fiche a fait` both read as correct-looking singular when the
-notion actually has three fiches; every one of these lines is wrong except
-when `X` happens to be 1. Plural exactly when `totalCards > 1`, singular
-only when it is exactly 1 (`0/1 fiche a …`, the one case where singular is
-genuinely correct) — one rule, no separate case for `X = 0` or `X = 1`.
+Spacing throughout the selected course's own column is uniform
+`--space-block` (16px) between every sibling — the back link, the summary
+card, the toolbar links, the generation toolbar, the notion list — a
+simplification from this file's former differentiated 24px/16px scheme,
+which described a layout this redesign replaced.
 
 **Upload** — Camera first on mobile, file picker first on desktop. Multi-page
 capture is one document: several photos of the same lesson produce one course.
@@ -1452,9 +1235,11 @@ mid-session saves progress. No timer, no countdown, no "hurry".
 
 **Progression** (M5: `progress` module — see `docs/modules/progress.md`) —
 One card per course, no day list, no calendar. Each card carries two gauges
-and one status line, and, like Aujourd'hui's own course cards, its course's
-subject colour as a left border (`Subject colours` above) — this screen
-carried no colour marker of any kind before.
+and one status line, and its course's subject colour as a left border
+(`Subject colours` above, which now names this screen rather than
+Aujourd'hui's own cards as the current example — `Screen notes`' own
+Aujourd'hui note, above, explains why) — this screen carried no colour
+marker of any kind before.
 
 **The two gauges stack vertically, one above the other — the card carries
 no row wrapper to sit them side by side.** Worth stating plainly since
@@ -1521,8 +1306,9 @@ A course behind its target is stated as a fact, never scolded: the status
 word plus the notion count (never a percentage-point deficit, never a time
 estimate), in `--warning`, never `--primary`'s own accent role, and never a
 comment on why or since when. No streak, no "tu n'as pas ouvert ce cours
-depuis 5 jours", no red — Aujourd'hui's own streak card and countdown badge
-(`Screen notes`, below) are scoped to that one screen, not to this one.
+depuis 5 jours", no red — the streak (global now, `Screen notes`' own
+Aujourd'hui note, below) and Aujourd'hui's own countdown badge (scoped to
+its own course cards) are both exceptions elsewhere, not here.
 
 **A course whose deadline has already passed keeps showing coverage and
 readiness like every other card — the lapsed date is one more fact about
@@ -1930,8 +1716,10 @@ French, tutoiement, sentence case, no emoji.
   commencer."
 - Never comment on pace or effort, and never imply lateness: no "tu es en
   retard", no "plus que 2 jours" as a pressuring frame. State facts:
-  "Contrôle le 12 juin", "14 fiches à revoir", and, on Aujourd'hui only
-  (M9, `Screen notes` below), "Examen dans 9 jours" and a streak length —
+  "Contrôle le 12 juin", "14 fiches à revoir", and "Examen dans 9 jours"
+  and a streak length (M9, `Screen notes` below — the streak now lives in
+  the persistent nav sidebar, visible from any screen, not Aujourd'hui
+  only) —
   a day count and a fact about past activity, stated once, not turned into
   a pace judgement the way "tu es en retard" or "3 jours d'affilée !" (an
   exclamation performing enthusiasm about the count itself) would be. The
@@ -1982,9 +1770,10 @@ Checked in the Playwright suite:
   of a plain stated fact (`Who this is for`'s own note above draws the
   line: a day count stated once, as a fact, is not this; a red "en retard"
   or a ticking clock is) — narrowed by M9 from a blanket ban on any
-  countdown or streak, which Aujourd'hui's own streak card and countdown
-  badge are now a deliberate, scoped exception to (`Screen notes`, below);
-  Progression and Révision keep the original, stricter reading
+  countdown or streak, which the streak (global, in the nav sidebar) and
+  Aujourd'hui's own countdown badge (scoped to its course cards) are now a
+  deliberate exception to (`Screen notes`, below); Progression and
+  Révision keep the original, stricter reading
 
 ---
 
