@@ -6,6 +6,7 @@ import { FIELD_CLASS } from "./ui/field-styles.js";
 import { createDocument, deleteDocument, startExtraction, uploadPage } from "../lib/documents-api.js";
 import { guessSourceType } from "../lib/detect-source-type.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { cn } from "../lib/utils.js";
 
 interface StagedFile {
   id: string;
@@ -107,7 +108,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
           setDragOver(false);
           addFiles(e.dataTransfer.files);
         }}
-        className={`flex cursor-pointer flex-col items-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed p-6 text-center ${
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed bg-canvas p-6 text-center ${
           dragOver ? "border-primary bg-primary-soft" : "border-border"
         }`}
       >
@@ -168,7 +169,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
           id={titleId}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={FIELD_CLASS}
+          className={cn(FIELD_CLASS, "rounded-2xl")}
           placeholder="Chapitre 3 — La photosynthèse"
         />
       </label>
@@ -181,7 +182,7 @@ export function UploadCard({ onCreated }: { onCreated: () => void }) {
 
       <p className="text-[length:var(--text-label)] text-text-muted">On extrait le texte et on le découpe en notions automatiquement.</p>
 
-      <Button variant="accent" onClick={() => void confirm()} disabled={submitting || files.length === 0} className="justify-center">
+      <Button variant="accent" onClick={() => void confirm()} disabled={submitting || files.length === 0} className="justify-center rounded-2xl">
         <Upload aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         {submitting ? "Envoi en cours…" : "Créer le cours"}
       </Button>

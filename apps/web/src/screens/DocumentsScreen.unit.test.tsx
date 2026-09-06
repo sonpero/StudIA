@@ -199,7 +199,7 @@ describe("DocumentsScreen", () => {
     }
   });
 
-  it("offers a discreet way to delete a course, refreshing the list", async () => {
+  it("offers a way to delete a course via a trash icon, its accessible name still naming the course, refreshing the list", async () => {
     const user = userEvent.setup();
     const calls: { url: string; method: string | undefined }[] = [];
     vi.stubGlobal(
@@ -218,9 +218,21 @@ describe("DocumentsScreen", () => {
     renderScreen();
     await screen.findByText("Chapitre 3");
 
-    await user.click(screen.getByRole("button", { name: /supprimer/i }));
+    const deleteButton = screen.getByRole("button", { name: /supprimer.*chapitre 3/i });
+    expect(deleteButton.querySelector("svg")).not.toBeNull();
+    await user.click(deleteButton);
 
     expect(calls).toContainEqual({ url: "/api/documents/d1", method: "DELETE" });
+  });
+
+  it("the notions/mastered/due line has a leading icon", async () => {
+    stubFetch({ documents: [aDocument], progress: { d1: { mastered: 15, total: 24, nextDueDate: null } } });
+
+    renderScreen();
+    const card = await screen.findByTestId("document-card");
+    await within(card).findByText(/24 notions/);
+
+    expect(within(card).getByTestId("course-stats").querySelector("svg")).not.toBeNull();
   });
 
   it("polls while a document is still pending or running", async () => {

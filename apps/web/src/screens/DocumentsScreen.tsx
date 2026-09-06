@@ -1,6 +1,6 @@
 import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, BookOpen, BookOpenText, FileText, Image as ImageIcon, RotateCw } from "lucide-react";
+import { ArrowRight, BookOpen, BookOpenText, FileText, Image as ImageIcon, Layers, RotateCw, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Reading } from "../components/mascot/Reading.js";
@@ -63,15 +63,26 @@ function DocumentCard({
   return (
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="document-card">
       <div className="flex items-center justify-between gap-2">
-        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${document.colour}26` }}>
-          <BookOpen size={18} strokeWidth={ICON_STROKE_WIDTH} color={document.colour} />
-        </span>
-        {deadlineDaysAway !== null && (
-          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold text-warning">{countdownLabel(deadlineDaysAway)}</span>
-        )}
+        <div className="flex min-w-0 items-center gap-[var(--space-related)]">
+          <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${document.colour}26` }}>
+            <BookOpen size={24} strokeWidth={ICON_STROKE_WIDTH} color={document.colour} />
+          </span>
+          <h3 className="truncate font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h3>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {deadlineDaysAway !== null && (
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[length:var(--text-label)] font-semibold text-warning">{countdownLabel(deadlineDaysAway)}</span>
+          )}
+          <button
+            type="button"
+            aria-label={`Supprimer « ${document.title} »`}
+            onClick={() => void deleteDocument(document.id).then(onChanged)}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-canvas hover:text-text"
+          >
+            <Trash2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          </button>
+        </div>
       </div>
-
-      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h3>
 
       <p className="text-sm">
         {document.pageCount} page{document.pageCount > 1 ? "s" : ""}
@@ -84,10 +95,13 @@ function DocumentCard({
       ) : (
         <>
           {progressQuery.data && (
-            <p className="text-sm text-text-muted">
-              {progressQuery.data.total} notion{progressQuery.data.total > 1 ? "s" : ""} · {progressQuery.data.mastered} maîtrisée
-              {progressQuery.data.mastered > 1 ? "s" : ""} · <strong className="font-semibold text-text">{dueCount} à réviser</strong>
-            </p>
+            <div data-testid="course-stats" className="flex items-center gap-1.5 text-sm text-text-muted">
+              <Layers aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+              <p>
+                {progressQuery.data.total} notion{progressQuery.data.total > 1 ? "s" : ""} · {progressQuery.data.mastered} maîtrisée
+                {progressQuery.data.mastered > 1 ? "s" : ""} · <strong className="font-semibold text-text">{dueCount} à réviser</strong>
+              </p>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -100,7 +114,7 @@ function DocumentCard({
       )}
 
       {document.status === "failed" && (
-        <Button variant="secondary" onClick={() => void retryExtraction(document.id).then(onChanged)}>
+        <Button variant="secondary" className="rounded-2xl" onClick={() => void retryExtraction(document.id).then(onChanged)}>
           <RotateCw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Réessayer
         </Button>
@@ -109,29 +123,21 @@ function DocumentCard({
       {document.status === "done" && (
         <div className="flex gap-2">
           {dueCount > 0 ? (
-            <Button variant="accent" onClick={() => onReviewCourse(document.id)}>
+            <Button variant="accent" className="rounded-2xl" onClick={() => onReviewCourse(document.id)}>
               Réviser
               <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             </Button>
           ) : (
-            <Button variant="secondary" disabled>
+            <Button variant="secondary" className="rounded-2xl" disabled>
               Rien à réviser
             </Button>
           )}
-          <Button variant="secondary" onClick={() => onOpenReader(document.id)}>
+          <Button variant="secondary" className="rounded-2xl border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={() => onOpenReader(document.id)}>
             <BookOpenText aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             Lire le cours
           </Button>
         </div>
       )}
-
-      <button
-        type="button"
-        className="self-start text-sm text-text-muted underline"
-        onClick={() => void deleteDocument(document.id).then(onChanged)}
-      >
-        Supprimer
-      </button>
     </Card>
   );
 }
