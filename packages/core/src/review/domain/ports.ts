@@ -81,4 +81,11 @@ export interface ReviewRepository {
   // null-sentinel and 'active' filter; documentId lets the caller group
   // without a second read per document.
   getCardSchedulesForUser(userId: string): Promise<{ documentId: string; notionId: string; cardId: string; schedule: CardSchedule | null }[]>;
+  // Added for the M9 streak (docs/MILESTONES.md, workspace.computeStreak):
+  // every distinct UTC calendar day (YYYY-MM-DD) on which this user has at
+  // least one review, in no particular order — computeStreak only ever
+  // tests membership, so ordering and duplicates are the caller's problem
+  // to not have, not this method's to solve. No new table: reviews.reviewed_at
+  // already exists.
+  getReviewDayKeysForUser(userId: string): Promise<string[]>;
 }

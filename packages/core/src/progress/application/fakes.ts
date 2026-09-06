@@ -65,5 +65,6 @@ export function fakeReviewRepositoryForProgress(cardRows: FakeCardRow[]): Review
       Promise.resolve(cardRows.filter((r) => r.userId === userId).map(({ documentId, notionId, cardId, schedule }) => ({ documentId, notionId, cardId, schedule }))),
     createSession: notImplemented("createSession"),
     endSession: notImplemented("endSession"),
+    getReviewDayKeysForUser: notImplemented("getReviewDayKeysForUser"),
   };
 }

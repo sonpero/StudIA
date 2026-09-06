@@ -4,6 +4,7 @@ import { notionsBelowTargetForDocument, type NotionCardRow, type ProgressReposit
 import type { ReviewRepository } from "../../review/index.js";
 import { daysAway } from "../domain/days-away.js";
 import type { TodoRepository } from "../domain/ports.js";
+import { computeStreak } from "../domain/streak.js";
 import type { TodayView } from "../domain/types.js";
 
 export interface GetTodayDeps {
@@ -28,21 +29,25 @@ function toDateKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
-// Composes docs/modules/workspace.md's TodayView from six raw reads, each
+// Composes docs/modules/workspace.md's TodayView from seven raw reads, each
 // made exactly once — never through progress.listProgress, which would
 // redo three of them (docs/modules/progress.md's "Revised after review"
 // note). dayBoundary is review's own client-computed "start of tomorrow"
 // (apps/web/src/lib/day-boundary.ts's startOfTomorrowISO); now is the
 // client-computed "today" progress's own routes already use — two
-// different clocks for two different reasons, never conflated.
+// different clocks for two different reasons, never conflated. The
+// seventh read, getReviewDayKeysForUser, feeds computeStreak (M9,
+// docs/MILESTONES.md) — workspace composes review's own data, the same
+// rule this function already follows for dueCards and notionsBelowTarget.
 export async function getToday(deps: GetTodayDeps, userId: string, now: Date, dayBoundary: Date): Promise<TodayView> {
-  const [documents, notions, dueCards, cardRows, deadlines, todos] = await Promise.all([
+  const [documents, notions, dueCards, cardRows, deadlines, todos, reviewDayKeys] = await Promise.all([
     deps.documentRepo.listDocuments(userId),
     deps.notionRepo.listNotionsForUser(userId),
     deps.reviewRepo.getDueCards(userId, dayBoundary, {}),
     deps.reviewRepo.getCardSchedulesForUser(userId),
     deps.progressRepo.getDeadlinesForUser(userId),
     deps.todoRepo.listTodos(userId),
+    deps.reviewRepo.getReviewDayKeysForUser(userId),
   ]);
 
   const notionToDocument = new Map(notions.map((n) => [n.id, n.documentId]));
@@ -88,5 +93,6 @@ export async function getToday(deps: GetTodayDeps, userId: string, now: Date, da
     notionsBelowTarget: notionsBelowTargetView,
     todos,
     upcomingDeadlines,
+    streak: computeStreak(reviewDayKeys, now),
   };
 }

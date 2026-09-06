@@ -323,4 +323,21 @@ export class SqliteReviewRepository implements ReviewRepository {
       })),
     );
   }
+
+  // reviewed_at is stored ISO 8601 UTC (CLAUDE.md's Dates convention), so
+  // its first 10 characters are already the UTC calendar-day key — the same
+  // truncation days-away.ts and get-today.ts already do in TypeScript, done
+  // here in SQL instead since DISTINCT needs it before the rows leave the
+  // database. No index on reviews.user_id: this app's own scale (CLAUDE.md's
+  // "handful of users") makes a full scan of one user's reviews trivial, and
+  // reviews has no other query shaped like this one to justify adding one
+  // speculatively.
+  getReviewDayKeysForUser(userId: string): Promise<string[]> {
+    const rows = this.db.all<{ dayKey: string }>(sql`
+      SELECT DISTINCT substr(reviewed_at, 1, 10) AS dayKey
+      FROM ${reviewsTable}
+      WHERE user_id = ${userId}
+    `);
+    return Promise.resolve(rows.map((row) => row.dayKey));
+  }
 }

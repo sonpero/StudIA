@@ -2,6 +2,7 @@ export type { Todo, TodayView, TodoProposal, CalendarEntry, CalendarDay, Calenda
 export { POMODORO_DURATION_SECONDS } from "./domain/types.js";
 export type { TodoRepository, TodoExtractor, ExtractedTodo, TodoExtractionOutput, TodoExtractionError } from "./domain/ports.js";
 export { daysAway } from "./domain/days-away.js";
+export { computeStreak } from "./domain/streak.js";
 export { isPomodoroActive } from "./domain/pomodoro.js";
 
 export { createTodo, type CreateTodoDeps, type CreateTodoInput } from "./application/create-todo.js";

@@ -278,6 +278,45 @@ ordinary composition. `getCalendar` itself, the route, and the screen
 stay normal regime — same reasoning `getToday` was never mutation-tested
 itself even though pieces it calls are.
 
+### Streak (M9)
+
+`TodayView` gains one field: `streak: number`, the count of consecutive
+calendar days, ending today or yesterday, with at least one FSRS review.
+Full reasoning for the definition itself (why today isn't required, why a
+gap further back doesn't matter) and for the deliberate reversal of this
+document's own former no-streak rule live in `docs/UI.md` and
+`docs/MILESTONES.md`'s M9 section — not repeated here.
+
+**Same shape as `notionsBelowTarget`'s own decision, above: `workspace`
+composes, `review` never imports `workspace`.** A new `ReviewRepository`
+method, `getReviewDayKeysForUser(userId): Promise<string[]>`, returns
+every distinct UTC calendar day (`reviews.reviewed_at`, truncated) on
+which the user has at least one review — no new table, this data already
+exists. The pure part, `computeStreak(activeDayKeys, now): number`
+(`workspace/domain/streak.ts`), walks backward from today or yesterday
+and stops at the first missing day; `getToday` is its only caller, via a
+seventh raw read alongside the existing six.
+
+**Not derived from `dueCards` or any of `getToday`'s other reads.**
+Those describe what's scheduled to happen; a streak describes what
+already did, on a day that may have had nothing due at all (reviewing a
+notion ahead of its schedule still counts). Reusing `getCardSchedulesForUser`
+to infer activity from `card_schedules.last_reviewed_at` was considered
+and rejected: that column is overwritten on every review of the same
+card, so it can only ever answer "was this card's most recent review on
+day X", not "was there any review on day X" — exactly the wrong question
+once a card is reviewed more than once. `reviews.reviewed_at` is an
+append-only log of every review ever made; `getReviewDayKeysForUser`
+reads that instead.
+
+**Regime.** `computeStreak` is a pure domain function with a real
+property (the backward-walk-with-a-cap behaviour) — reinforced mutation
+testing, same bucket as `notionsBelowTargetForDocument` and
+`buildCalendarView`'s own invariants above. `getReviewDayKeysForUser`
+carries no logic of its own (a `DISTINCT` read, scoped by user, no
+computation) — normal regime, same as every other plain repository read
+this module already composes.
+
 ### Pomodoro (M7)
 
 ```ts
@@ -409,7 +448,7 @@ resolving weekday names in post-processing cannot recover.
 ## Use cases
 
 - `getToday(userId, now)` — composes, in one application function, from
-  **six raw reads, each made exactly once**, never through `progress.listProgress`
+  **seven raw reads, each made exactly once**, never through `progress.listProgress`
   (which would silently redo three of them — see `docs/modules/progress.md`):
   - `ingestion.DocumentRepository.listDocuments(userId)` — title and colour
     for every course; `dueCards`, `notionsBelowTarget` and
@@ -432,12 +471,15 @@ resolving weekday names in post-processing cannot recover.
     against `now`, computed here — no `progress` call needed for that part
     at all).
   - this module's own `TodoRepository.listTodos(userId)`, for `todos`.
+  - `review.ReviewRepository.getReviewDayKeysForUser(userId)` (M9) — every
+    distinct calendar day with a review, fed to `computeStreak(dayKeys, now)`
+    (pure, no I/O — see "Streak (M9)" above) for `streak`.
 
   Then, purely in memory, per document: group the second and fourth reads
   above by `documentId`, call `progress.notionsBelowTargetForDocument(notions,
   cardRows, deadline, now)` once per document (pure, no I/O — see
   `docs/modules/progress.md`) to get that document's notion ids, and fold
-  everything into `TodayView`. Six reads in total, none of them repeated,
+  everything into `TodayView`. Seven reads in total, none of them repeated,
   none of them a loop over `documentRepo.listDocuments` the way
   `progress.listProgress` explicitly avoids, and no direct SQL against
   another module's tables (asserted by `dependency-cruiser`, same as the
@@ -891,6 +933,24 @@ works," each proven by a targeted mutation run and reverted
   has nothing to click and a done one renders struck through
 - No `role="dialog"` at any point in this flow (`docs/UI.md`'s Forbidden
   list: no modals here)
+
+**Streak (M9).** `computeStreak`'s own property, proven by a targeted
+mutation run and reverted (`workspace/domain/streak.unit.test.ts`):
+- activity only today (no yesterday) is a streak of 1
+- activity today and every day before it, unbroken, counts them all
+- activity yesterday but not yet today still counts yesterday's run — the
+  "activity today is not required" half of the rule
+- no activity today or yesterday is a streak of 0, even with older
+  activity further back
+- a gap anywhere before yesterday caps the count at the run ending
+  closest to `now`; an older, separate run in the same input is never
+  added to it
+- deterministic, and independent of input order or duplicate day keys
+- Integration: `getReviewDayKeysForUser` returns each distinct calendar
+  day once (two reviews the same day do not produce two days), scoped by
+  user (`sqlite-review-repository.int.test.ts`)
+- Unit: `getToday`'s `streak` is scoped to the caller (`get-today.unit.test.ts`,
+  same fake-repository shape as every other field's own scoping test)
 
 ## Open questions
 

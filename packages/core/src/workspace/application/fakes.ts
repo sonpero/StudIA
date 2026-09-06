@@ -129,9 +129,12 @@ export function fakeNotionRepositoryForWorkspace(notions: Notion[]): NotionRepos
 }
 
 export type FakeCardRow = { userId: string; documentId: string; notionId: string; cardId: string; schedule: CardSchedule | null };
+export type FakeReviewDay = { userId: string; dayKey: string };
 
-// Only getDueCards and getCardSchedulesForUser are exercised by getToday.
-export function fakeReviewRepositoryForWorkspace(dueCards: (DueCard & { userId: string })[], cardRows: FakeCardRow[]): ReviewRepository {
+// Only getDueCards, getCardSchedulesForUser and getReviewDayKeysForUser
+// (M9's streak) are exercised by getToday. reviewDays defaults to empty: most
+// existing call sites predate the streak and have nothing to say about it.
+export function fakeReviewRepositoryForWorkspace(dueCards: (DueCard & { userId: string })[], cardRows: FakeCardRow[], reviewDays: FakeReviewDay[] = []): ReviewRepository {
   const n = (method: string) => notImplemented("fakeReviewRepositoryForWorkspace", method);
   return {
     findSchedule: n("findSchedule"),
@@ -144,6 +147,7 @@ export function fakeReviewRepositoryForWorkspace(dueCards: (DueCard & { userId: 
       Promise.resolve(cardRows.filter((r) => r.userId === userId).map(({ documentId, notionId, cardId, schedule }) => ({ documentId, notionId, cardId, schedule }))),
     createSession: n("createSession"),
     endSession: n("endSession"),
+    getReviewDayKeysForUser: (userId) => Promise.resolve(reviewDays.filter((r) => r.userId === userId).map((r) => r.dayKey)),
   };
 }
 

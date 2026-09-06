@@ -41,6 +41,10 @@ export function fakeReviewRepository(
       session.endedAt = endedAt;
       return Promise.resolve(true);
     },
+    getReviewDayKeysForUser: (userId) => {
+      const dayKeys = new Set(reviews.filter((r) => r.userId === userId).map((r) => r.reviewedAt.slice(0, 10)));
+      return Promise.resolve([...dayKeys]);
+    },
   };
 }
 

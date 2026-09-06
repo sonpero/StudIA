@@ -44,7 +44,7 @@ describe("getToday", () => {
 
     const view = await getToday(deps, "u1", NOW, DAY_BOUNDARY);
 
-    expect(view).toEqual({ date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [] });
+    expect(view).toEqual({ date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 });
   });
 
   it("groups due cards by document, via the notion each card belongs to, and omits a document with none due", async () => {
@@ -118,12 +118,39 @@ describe("getToday", () => {
     expect(view.todos).toEqual([todo]);
   });
 
-  // docs/modules/workspace.md's Use cases section claims six reads, each
-  // made exactly once, and specifically that progress.listProgress is
-  // never called (it would redo three of them). A prose claim isn't
-  // proof: this counts every call each dependency actually receives.
-  it("calls each of its six reads exactly once, never through progress.listProgress", async () => {
-    const calls = { listDocuments: 0, listNotionsForUser: 0, getDueCards: 0, getCardSchedulesForUser: 0, getDeadlinesForUser: 0, listTodos: 0 };
+  // M9 (docs/MILESTONES.md): workspace composes review's own data for the
+  // streak the same way it already does for dueCards and
+  // notionsBelowTarget — computeStreak itself is unit-tested on its own
+  // (workspace/domain/streak.unit.test.ts); this only checks the wiring.
+  it("streak comes from computeStreak over the user's own review days, scoped by user", async () => {
+    const deps = {
+      todoRepo: fakeTodoRepository(),
+      documentRepo: fakeDocumentRepositoryForWorkspace([]),
+      notionRepo: fakeNotionRepositoryForWorkspace([]),
+      reviewRepo: fakeReviewRepositoryForWorkspace(
+        [],
+        [],
+        [
+          { userId: "u1", dayKey: "2026-03-02" },
+          { userId: "u1", dayKey: "2026-03-01" },
+          { userId: "u2", dayKey: "2026-03-02" }, // another user's activity must never count here
+        ],
+      ),
+      progressRepo: fakeProgressRepositoryForWorkspace([]),
+    };
+
+    const view = await getToday(deps, "u1", NOW, DAY_BOUNDARY);
+
+    expect(view.streak).toBe(2);
+  });
+
+  // docs/modules/workspace.md's Use cases section claims seven reads (six
+  // plus the M9 streak's own), each made exactly once, and specifically
+  // that progress.listProgress is never called (it would redo three of
+  // them). A prose claim isn't proof: this counts every call each
+  // dependency actually receives.
+  it("calls each of its seven reads exactly once, never through progress.listProgress", async () => {
+    const calls = { listDocuments: 0, listNotionsForUser: 0, getDueCards: 0, getCardSchedulesForUser: 0, getDeadlinesForUser: 0, listTodos: 0, getReviewDayKeysForUser: 0 };
 
     const documentRepo = fakeDocumentRepositoryForWorkspace([aDocument()]);
     const notionRepo = fakeNotionRepositoryForWorkspace([aNotion()]);
@@ -141,12 +168,13 @@ describe("getToday", () => {
           calls.getDueCards++, reviewRepo.getDueCards(userId, dayBoundary, filter)
         ),
         getCardSchedulesForUser: (userId: string) => (calls.getCardSchedulesForUser++, reviewRepo.getCardSchedulesForUser(userId)),
+        getReviewDayKeysForUser: (userId: string) => (calls.getReviewDayKeysForUser++, reviewRepo.getReviewDayKeysForUser(userId)),
       },
       progressRepo: { ...progressRepo, getDeadlinesForUser: (userId: string) => (calls.getDeadlinesForUser++, progressRepo.getDeadlinesForUser(userId)) },
     };
 
     await getToday(deps, "u1", NOW, DAY_BOUNDARY);
 
-    expect(calls).toEqual({ listDocuments: 1, listNotionsForUser: 1, getDueCards: 1, getCardSchedulesForUser: 1, getDeadlinesForUser: 1, listTodos: 1 });
+    expect(calls).toEqual({ listDocuments: 1, listNotionsForUser: 1, getDueCards: 1, getCardSchedulesForUser: 1, getDeadlinesForUser: 1, listTodos: 1, getReviewDayKeysForUser: 1 });
   });
 });

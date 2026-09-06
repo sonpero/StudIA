@@ -382,4 +382,30 @@ describe("SqliteReviewRepository", () => {
     const { repo } = setup();
     expect(await repo.getCardSchedulesForUser("u2")).toEqual([]);
   });
+
+  // Added for the M9 streak (docs/MILESTONES.md): the day list computeStreak
+  // walks. Distinct calendar days, not a row count — two reviews on the same
+  // day must not read as two days of activity.
+  describe("getReviewDayKeysForUser", () => {
+    it("returns each distinct calendar day with a review, deduplicating same-day reviews, scoped by user", async () => {
+      const { db, repo } = setup();
+      seedCard(db, "c1", "n1", "u1");
+      await repo.submitReview("u1", aReview({ id: "r1", reviewedAt: "2026-01-05T09:00:00.000Z" }), aSchedule());
+      await repo.submitReview("u1", aReview({ id: "r2", reviewedAt: "2026-01-05T21:00:00.000Z" }), aSchedule());
+      await repo.submitReview("u1", aReview({ id: "r3", reviewedAt: "2026-01-06T09:00:00.000Z" }), aSchedule());
+
+      seedDocument(db, "doc-2", "u2");
+      seedNotion(db, "n-u2", "doc-2", "u2", 0);
+      seedCard(db, "c-u2", "n-u2", "u2");
+      await repo.submitReview("u2", aReview({ id: "r4", cardId: "c-u2", userId: "u2", reviewedAt: "2026-01-07T09:00:00.000Z" }), aSchedule({ cardId: "c-u2", userId: "u2" }));
+
+      expect((await repo.getReviewDayKeysForUser("u1")).sort()).toEqual(["2026-01-05", "2026-01-06"]);
+      expect(await repo.getReviewDayKeysForUser("u2")).toEqual(["2026-01-07"]);
+    });
+
+    it("is empty for a user with no reviews at all", async () => {
+      const { repo } = setup();
+      expect(await repo.getReviewDayKeysForUser("u1")).toEqual([]);
+    });
+  });
 });

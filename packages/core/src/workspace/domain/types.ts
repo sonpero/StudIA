@@ -23,6 +23,11 @@ export type TodayView = {
   notionsBelowTarget: { documentId: string; documentTitle: string; colour: string; count: number }[];
   todos: Todo[];
   upcomingDeadlines: { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; daysAway: number }[];
+  // M9 (docs/MILESTONES.md): consecutive calendar days, ending today or
+  // yesterday, with at least one FSRS review — see workspace/domain/streak.ts's
+  // computeStreak, the pure function that derives this from ReviewRepository.
+  // getReviewDayKeysForUser. 0 is a legitimate value, not an error state.
+  streak: number;
 };
 
 // Calendar (docs/modules/workspace.md's Calendar section). One

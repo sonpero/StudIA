@@ -216,7 +216,29 @@ describe("workspace routes", () => {
       const res = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: bobCookie } });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [] });
+      expect(res.json()).toEqual({ date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 });
+    });
+
+    // M9 (docs/MILESTONES.md): the streak field, end to end through the
+    // real route and a real SQLite reviews table — computeStreak's own
+    // properties are unit-tested (workspace/domain/streak.unit.test.ts),
+    // this only proves the wiring reads the right user's own reviews.
+    it("streak counts alice's own consecutive review days (today and yesterday), never bob's", async () => {
+      const db = openDatabase(dbPath);
+      db.run(sql`INSERT INTO notions (id, document_id, user_id, title, body, difficulty, position, created_at)
+          VALUES ('n1', 'doc-1', (SELECT id FROM users WHERE username='alice'), 'Notion', 'Corps.', 'medium', 0, ${now.toISOString()})`);
+      db.run(sql`INSERT INTO cards (id, notion_id, user_id, type, state, question, answer, options_json, created_at)
+          VALUES ('c1', 'n1', (SELECT id FROM users WHERE username='alice'), 'flashcard', 'active', 'Q ?', 'R', NULL, ${now.toISOString()})`);
+      db.run(sql`INSERT INTO reviews (id, card_id, user_id, rating, reviewed_at, elapsed_ms)
+          VALUES ('r1', 'c1', (SELECT id FROM users WHERE username='alice'), 3, '2026-03-01T09:00:00.000Z', 5000)`);
+      db.run(sql`INSERT INTO reviews (id, card_id, user_id, rating, reviewed_at, elapsed_ms)
+          VALUES ('r2', 'c1', (SELECT id FROM users WHERE username='alice'), 3, '2026-03-02T09:00:00.000Z', 5000)`);
+
+      const aliceRes = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: aliceCookie } });
+      const bobRes = await app.inject({ method: "GET", url: `/api/today?${query}`, headers: { cookie: bobCookie } });
+
+      expect(aliceRes.json<{ streak: number }>().streak).toBe(2);
+      expect(bobRes.json<{ streak: number }>().streak).toBe(0);
     });
 
     it("scopes todos to the caller: bob's todo never appears in alice's view", async () => {
