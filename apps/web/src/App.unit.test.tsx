@@ -62,19 +62,35 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9)", async () => {
+  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9) — plus the in-progress 'Today' preview, last", async () => {
     stubAuthenticatedFetch();
 
     render(<App />);
 
     await screen.findByText(/alex/i);
-    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur"];
+    // "Today" is a temporary staging entry for the in-progress redesign
+    // prototype (apps/web/src/screens/Today.tsx) — not part of M9's own
+    // seven, kept last and named distinctly from "Aujourd'hui" so it's
+    // never mistaken for the shipped screen.
+    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur", "Today"];
     for (const name of names) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     const buttons = within(nav).getAllByRole("button");
     expect(buttons.map((b) => b.textContent)).toEqual(names);
+  });
+
+  it("Today (the in-progress redesign prototype) is reachable from the nav", async () => {
+    stubAuthenticatedFetch();
+    const user = userEvent.setup();
+
+    render(<App />);
+    await screen.findByText(/alex/i);
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(screen.getByRole("heading", { name: "Bonjour, Léa" })).toBeInTheDocument();
   });
 
   it("Notions and Lecteur each mark their own nav item active, never 'Mes cours' — each is its own destination now (M9), not a Mes cours sub-state", async () => {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BookOpen, BookOpenText, Calendar, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
+import { BookOpen, BookOpenText, Calendar, FlaskConical, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
@@ -11,6 +11,7 @@ import { ProgressScreen } from "./screens/ProgressScreen.js";
 import { ProposalsScreen } from "./screens/ProposalsScreen.js";
 import { ReaderScreen } from "./screens/ReaderScreen.js";
 import { ReviewScreen } from "./screens/ReviewScreen.js";
+import { Today } from "./screens/Today.js";
 import { TodayScreen } from "./screens/TodayScreen.js";
 import { TutorScreen } from "./screens/TutorScreen.js";
 
@@ -55,7 +56,13 @@ type View =
   // decides whether "Retour" leaves for that course's NotionsScreen or for
   // the picker (the same view with documentId cleared) — the picker itself
   // has no course to return to, the same shape DocumentsScreen has none.
-  | { name: "tutor"; documentId?: string; fromNotions?: boolean };
+  | { name: "tutor"; documentId?: string; fromNotions?: boolean }
+  // Temporary: the in-progress redesign prototype (apps/web/src/screens/
+  // Today.tsx), staged in the nav so it can be followed as it gets wired
+  // to real data, one section at a time — not part of any milestone's own
+  // scope. Static for now (no props at all): remove this view and its nav
+  // entry once it either replaces "today" above or is dropped.
+  | { name: "today-preview" };
 
 function AppShell() {
   const auth = useAuth();
@@ -81,6 +88,15 @@ function AppShell() {
     return <LoginScreen />;
   }
 
+  // Bypasses the real AppNav entirely, same idiom as LoginScreen above:
+  // Today.tsx already renders its own full page, sidebar included (the
+  // approved mockup's own shape) — nesting it inside the real sidebar
+  // would double it up. onExit is the first, smallest piece of real
+  // wiring: its own "Aujourd'hui" nav row returns here to the real app.
+  if (view.name === "today-preview") {
+    return <Today onExit={() => setView({ name: "today" })} />;
+  }
+
   // docs/UI.md's Navigation note (M9): Notions and Lecteur are now their own
   // top-level destinations, grouped beside Mes cours in that order — the
   // catalogue, then a course's own atomic units, then its full source text.
@@ -95,6 +111,13 @@ function AppShell() {
     { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
     { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
     { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
+    // Temporary staging entry, kept last and visually distinct (FlaskConical,
+    // not part of the M9 icon set) so it never reads as a real destination —
+    // see the "today-preview" View variant above.
+    // active: always false, not view.name === "today-preview" — the early
+    // bypass above already returns before this array is ever built for
+    // that view, so TypeScript correctly flags the comparison as unreachable.
+    { key: "today-preview", label: "Today", icon: FlaskConical, active: false, onClick: () => setView({ name: "today-preview" }) },
   ];
 
   return (
