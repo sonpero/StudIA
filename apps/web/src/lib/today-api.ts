@@ -17,6 +17,10 @@ export type TodayView = {
   notionsBelowTarget: { documentId: string; documentTitle: string; colour: string; count: number }[];
   todos: Todo[];
   upcomingDeadlines: { documentId: string; title: string; deadlineDate: string; deadlineLabel: string | null; daysAway: number }[];
+  // M9 (docs/UI.md's Aujourd'hui — streak note): consecutive calendar days,
+  // ending today or yesterday, with at least one FSRS review. 0 is a
+  // legitimate value, read fresh on every load, never stored client-side.
+  streak: number;
 };
 
 export async function getToday(): Promise<TodayView> {

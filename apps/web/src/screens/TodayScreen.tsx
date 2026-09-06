@@ -44,8 +44,21 @@ type CourseCard = {
   colour: string | null;
   dueCount: number;
   belowTargetCount: number;
-  deadline: { label: string | null; daysAway: number } | null;
+  // M9: only daysAway renders now, as the countdown badge below — the
+  // absolute date and any custom label are dropped, not kept alongside it
+  // (docs/UI.md's Aujourd'hui — deadline note), so there is nothing else
+  // here to carry.
+  deadline: { daysAway: number } | null;
 };
+
+// "Examen aujourd'hui"/"Examen demain" at 0/1, never "dans 0 jour"/"dans 1
+// jour" (docs/UI.md's Aujourd'hui — deadline note). daysAway is always >= 0
+// here: upcomingDeadlines already excludes a lapsed deadline.
+function countdownLabel(daysAway: number): string {
+  if (daysAway === 0) return "Examen aujourd'hui";
+  if (daysAway === 1) return "Examen demain";
+  return `Examen dans ${daysAway} jours`;
+}
 
 function buildCourseCards(view: TodayView): CourseCard[] {
   const byId = new Map<string, CourseCard>();
@@ -68,7 +81,7 @@ function buildCourseCards(view: TodayView): CourseCard[] {
     // upcomingDeadlines carries no colour (workspace.md): a course reaching
     // this screen only through its deadline renders without a colour dot
     // rather than guessing one.
-    ensure(entry.documentId, entry.title, null).deadline = { label: entry.deadlineLabel, daysAway: entry.daysAway };
+    ensure(entry.documentId, entry.title, null).deadline = { daysAway: entry.daysAway };
   }
 
   // Sorted by urgency, nearest deadline first (docs/UI.md's Aujourd'hui
@@ -267,6 +280,24 @@ function AddTodoForm({
   );
 }
 
+// Pinned first in the grid, always rendered — even a course-free empty
+// state still has a streak, possibly zero (docs/UI.md's Aujourd'hui —
+// streak note). One --text-display number and one line beneath it, no
+// heading, no flame or fire icon: Icons' own "plain and literal" rule
+// already rules out the habit-loop urgency device a streak widget usually
+// imports wholesale. The number is computeStreak's own output, read fresh
+// on every load (GET /api/today), never stored client-side.
+function StreakCard({ streak }: { streak: number }) {
+  return (
+    <Card className="flex flex-col gap-1" data-testid="streak-card">
+      <span data-testid="streak-count" className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">
+        {streak}
+      </span>
+      <p className="text-sm text-text-muted">{streak > 0 ? "Continue comme ça !" : "Révise aujourd'hui pour commencer une série."}</p>
+    </Card>
+  );
+}
+
 function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseCard; onOpenCourse: (documentId: string) => void; onReviewCourse: (documentId: string) => void }) {
   return (
     <Card
@@ -306,11 +337,15 @@ function CourseTodayCard({ card, onOpenCourse, onReviewCourse }: { card: CourseC
             {card.belowTargetCount} notion{card.belowTargetCount > 1 ? "s" : ""} à consolider avant l'échéance
           </p>
         )}
+        {/* M9's own reversal of this section's former "never a countdown"
+            line (docs/UI.md's Aujourd'hui — deadline note): a small pill,
+            the same idiom ReviewScreen's own "Maîtrisée" badge already
+            uses for a fact worth a light lift without a full --warning
+            button or banner — a day count is exactly that, not an alert.
+            self-start: this stack is flex-col, whose default cross-axis
+            stretch would otherwise widen the pill to the card's own width. */}
         {card.deadline && (
-          <p className="text-sm text-text-muted">
-            {card.deadline.label ? `${card.deadline.label}, ` : ""}
-            dans {card.deadline.daysAway} jour{card.deadline.daysAway > 1 ? "s" : ""}
-          </p>
+          <span className="self-start rounded-full bg-warning/10 px-2 py-0.5 text-sm font-medium text-warning">{countdownLabel(card.deadline.daysAway)}</span>
         )}
       </div>
 
@@ -501,6 +536,10 @@ export function TodayScreen({
           still how the empty state's "one useful suggestion" is actually
           acted on, not just illustrated. */}
       <div className="grid grid-cols-1 items-stretch gap-[var(--space-block)] lg:grid-cols-2" data-testid="content-grid">
+        {/* M9's own exception to "sorted by urgency" (docs/UI.md's Aujourd'hui
+            — streak note): a fact about the student, not about any one
+            course, so daysAway has nothing to sort it by — it always leads. */}
+        <StreakCard streak={view.streak} />
         {courseCards.map((card) => (
           <CourseTodayCard key={card.documentId} card={card} onOpenCourse={onOpenCourse} onReviewCourse={onReviewCourse} />
         ))}

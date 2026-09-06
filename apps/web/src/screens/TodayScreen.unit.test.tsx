@@ -43,7 +43,7 @@ function stubFetch(view: TodayView | (() => Response)) {
   );
 }
 
-const emptyView: TodayView = { date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [] };
+const emptyView: TodayView = { date: "2026-03-02", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 };
 
 // Both the add-todo form and the photo picker are collapsed by default,
 // behind their own discreet trigger (docs/UI.md's Aujourd'hui note) — every
@@ -77,11 +77,57 @@ describe("TodayScreen", () => {
     expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 
-  it("empty state: nothing due, nothing behind, no todos, no deadlines — an invitation, never a bare '0'", async () => {
+  it("empty state: nothing due, nothing behind, no todos, no deadlines — an invitation, never a bare '0' outside the streak card", async () => {
     stubFetch(emptyView);
     renderScreen();
     await screen.findByText(/rien de prévu/i);
-    expect(screen.queryByText(/^0$/)).not.toBeInTheDocument();
+    const streakCard = screen.getByTestId("streak-card");
+    const bareZeros = screen.queryAllByText(/^0$/).filter((el) => !streakCard.contains(el));
+    expect(bareZeros).toHaveLength(0);
+  });
+
+  // docs/UI.md's Aujourd'hui — streak (M9) note: "the one card on this
+  // screen that is never conditional on there being anything else to
+  // show" — a course-free empty state still has a streak, possibly zero.
+  it("empty state: still shows the streak card, even with nothing else to show", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const streakCard = screen.getByTestId("streak-card");
+    expect(within(streakCard).getByText("0")).toBeInTheDocument();
+    expect(within(streakCard).getByText(/commencer une série/i)).toBeInTheDocument();
+  });
+
+  it("ready: the streak card is pinned first in the grid, ahead of every course card (docs/UI.md's Aujourd'hui — streak note)", async () => {
+    stubFetch({ ...emptyView, streak: 3, dueCards: [{ documentId: "doc-1", documentTitle: "Maths", colour: "#F87171", count: 3 }] });
+    renderScreen();
+    await screen.findByText("Maths");
+
+    const grid = screen.getByTestId("content-grid");
+    const firstChild = grid.firstElementChild;
+    expect(firstChild).toHaveAttribute("data-testid", "streak-card");
+  });
+
+  it("ready: the streak card shows the streak length and an encouragement once it is at least 1", async () => {
+    stubFetch({ ...emptyView, streak: 5 });
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const streakCard = screen.getByTestId("streak-card");
+    expect(within(streakCard).getByText("5")).toBeInTheDocument();
+    expect(within(streakCard).getByText("Continue comme ça !")).toBeInTheDocument();
+    expect(within(streakCard).queryByText(/commencer une série/i)).not.toBeInTheDocument();
+  });
+
+  it("ready: the streak number is --text-display, no flame or fire icon anywhere on the card (docs/UI.md's Icons note: plain and literal)", async () => {
+    stubFetch({ ...emptyView, streak: 5 });
+    renderScreen();
+    await screen.findByText(/rien de prévu/i);
+
+    const streakCard = screen.getByTestId("streak-card");
+    expect(within(streakCard).getByText("5").className).toContain("text-[length:var(--text-display)]");
+    expect(streakCard.querySelector("svg")).not.toBeInTheDocument();
   });
 
   it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike, not three different ad hoc values (docs/UI.md's Grid and spacing note)", async () => {
@@ -202,11 +248,44 @@ describe("TodayScreen", () => {
     expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
-  it("ready: shows upcoming deadlines as a plain fact, never a countdown widget", async () => {
+  // M9 reverses this screen's own former "never a countdown" line
+  // (docs/UI.md's Aujourd'hui — deadline note): the absolute date is
+  // dropped in favour of a small badge with only the relative form. Still
+  // not a live `role="timer"` widget — a static fact re-read on each load,
+  // not a ticking countdown.
+  it("ready: shows a course's deadline as a relative countdown badge, 'Examen dans N jours', never the absolute date or a live timer", async () => {
     stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: "Contrôle", daysAway: 10 }] });
     renderScreen();
-    await screen.findByText(/10 jours/i);
+    await screen.findByText("Examen dans 10 jours");
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+    expect(screen.queryByText("2026-03-12")).not.toBeInTheDocument();
+    expect(screen.queryByText(/12 mars/i)).not.toBeInTheDocument();
+    // The custom label (deadlineLabel) is not shown here — the badge is a
+    // fixed, generic word ("Examen"), the reference screenshot's own copy,
+    // not a repaint of Progression's own custom-labelled sentence.
+    expect(screen.queryByText(/contrôle/i)).not.toBeInTheDocument();
+  });
+
+  it("ready: the countdown badge reads 'aujourd'hui'/'demain' at daysAway 0/1, not 'dans 0 jour'/'dans 1 jour'", async () => {
+    stubFetch({
+      ...emptyView,
+      upcomingDeadlines: [
+        { documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-02", deadlineLabel: null, daysAway: 0 },
+        { documentId: "doc-2", title: "Histoire", deadlineDate: "2026-03-03", deadlineLabel: null, daysAway: 1 },
+      ],
+    });
+    renderScreen();
+    await screen.findByText("Examen aujourd'hui");
+    expect(screen.getByText("Examen demain")).toBeInTheDocument();
+  });
+
+  it("ready: the countdown badge is styled bg-warning/10 text-warning in a small rounded pill — the same idiom as ReviewScreen's own 'Maîtrisée' badge (docs/UI.md's Aujourd'hui — deadline note)", async () => {
+    stubFetch({ ...emptyView, upcomingDeadlines: [{ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-12", deadlineLabel: null, daysAway: 10 }] });
+    renderScreen();
+    const badge = await screen.findByText("Examen dans 10 jours");
+    expect(badge.className).toMatch(/bg-warning\/10/);
+    expect(badge.className).toMatch(/text-warning/);
+    expect(badge.className).toMatch(/rounded-full/);
   });
 
   it("ready: a course due today and a course below target before its deadline render as one card each, not one per signal, and the two counts are worded differently", async () => {
