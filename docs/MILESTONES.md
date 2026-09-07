@@ -386,11 +386,11 @@ screen behind either).
 Also not a new capability: each screen rebuilt from a user-supplied mockup
 screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
 it — a deliberate departure each time, not a silent drift, and reconciled
-back into `docs/UI.md`'s own Screen notes as each pass lands (all four
-below are reconciled as of commit `17bc9b0`; that file is the authoritative
+back into `docs/UI.md`'s own Screen notes as each pass lands (all five
+below are reconciled as of commit `03fdfda`; that file is the authoritative
 detail source, this entry only tracks status). No acceptance criteria are
 written ahead of a mockup existing — each screen's own scope is only known
-once its mockup is in hand, the same way every one of the four done so far
+once its mockup is in hand, the same way every one of the five done so far
 was scoped.
 
 **Done:**
@@ -407,8 +407,19 @@ was scoped.
   redesigns had left unnoticed (`d8f1853`).
 - **Lecteur** — unified its old picker-plus-course-view into one
   pill-selector page, the same pattern Notions used, plus a new "Étudier
-  cette page" panel linking to Notions/Tuteur. Commit `17bc9b0`; full
-  `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip).
+  ce cours" panel linking to Notions/Tuteur. Commits `17bc9b0`, `899659d`
+  (a follow-up copy/style polish pass); full `pnpm test:e2e` green (16
+  passed, 1 pre-existing unrelated skip).
+- **Progression** — replaced the uniform grid of one card per course with
+  a pill selector, a single selected course's own detail card (a
+  readiness ring, coloured coverage/readiness gauges, a
+  mastered/learning/due/not-started stat row, "Combler l'écart"/"Voir le
+  cours"), and a compact "Tous les cours" list — two deliberate reversals
+  of `docs/UI.md`'s own rules along the way (subject colours now fill the
+  gauges; the per-card left border is gone in favour of a tinted icon
+  circle). Commit `03fdfda`; full `pnpm test:e2e` green (16 passed, 1
+  pre-existing unrelated skip); visually checked live via a throwaway
+  Playwright screenshot, not just by test assertions.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
@@ -425,11 +436,21 @@ with the user:** Notions' own per-notion "why isn't this mastered yet"
 sentence is gone from the redesigned card. Needs a decision before it is
 either restored or written off as a fourth intentional cut.
 
-**Remaining — next step:** **Progression, Calendrier, Tuteur**, same
-pattern, one at a time. Each needs its own mockup from the user before
-scoping starts — do not invent a redesign for any of these without one.
-`docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen notes
-both need updating as each lands, the same way all four done screens were.
+**Judgement calls made on Progression, not shown in its own mockup crop,
+flagged rather than silently decided:** "Voir le cours" (opening that
+course's own Notions du cours) was kept on the detail card — the previous
+screen had it on every card, the mockup's own crop doesn't show it either
+way, and dropping a real navigation capability silently seemed like the
+wrong default. Clicking a row in "Tous les cours" selects that course
+(switches the detail card above) rather than navigating away to its own
+Notions du cours. Both worth confirming; neither blocks the redesign from
+counting as done.
+
+**Remaining — next step:** **Calendrier, Tuteur**, same pattern, one at a
+time. Each needs its own mockup from the user before scoping starts — do
+not invent a redesign for either without one. `docs/MILESTONES.md` (this
+file) and `docs/UI.md`'s own per-screen notes both need updating as each
+lands, the same way all five done screens were.
 
 **Acceptance**
 - [x] Aujourd'hui redesigned from mockup, `docs/UI.md` reconciled
@@ -438,7 +459,8 @@ both need updating as each lands, the same way all four done screens were.
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated `fixme`)
 - [x] Lecteur redesigned from mockup, `docs/UI.md` reconciled, full
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
-- [ ] Progression redesigned from mockup, `docs/UI.md` reconciled
+- [x] Progression redesigned from mockup, `docs/UI.md` reconciled, full
+      `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
 - [ ] Calendrier redesigned from mockup, `docs/UI.md` reconciled
 - [ ] Tuteur redesigned from mockup, `docs/UI.md` reconciled
 - [ ] This file's own M9 section fully reconciled once all seven screens

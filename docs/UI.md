@@ -281,16 +281,25 @@ and enforced there, is what changed to hold this).
 Two rules:
 - A subject colour is always paired with the course name or an icon. Colour alone
   never carries meaning.
-- Subject colours are for identity only. They never indicate progress or state.
+- Subject colours are for identity only. They never indicate progress or
+  state — **except Progression's own detail card and its gauges**
+  (`Screen notes`' own Progression note, below), a deliberate reversal per
+  the user's explicit instruction for that screen only: coverage and
+  readiness are filled with the selected course's own colour there, not
+  `--primary`. Every other screen keeps this rule exactly as written.
 
 **Card left border, not a tinted background.** Where a course gets its own
-card — Progression's, still — the colour runs as a 4px solid border down
-the card's left edge, `aria-hidden` like the dot it replaces, paired with
-the course title the same rule above already requires. **Aujourd'hui's
-and Mes cours' own course cards no longer follow this rule**, each
+card, the colour runs as a 4px solid border down the card's left edge,
+`aria-hidden` like the dot it replaces, paired with the course title the
+same rule above already requires. **Aujourd'hui's, Mes cours' and
+Progression's own course cards no longer follow this rule**, each
 redesigned from its own mockup to a colour-tinted icon circle instead
-(`Screen notes`' own notes for both, below, explain the departure) — this
-rule still holds everywhere it has not been named as an exception.
+(`Screen notes`' own notes for all three, below, explain each departure) —
+this rule still holds everywhere it has not been named as an exception.
+Progression's own "Tous les cours" list (below) is the one partial
+exception to the exception: its rows keep a left border, but only on
+whichever row is currently selected, a selection cue rather than a
+permanent identity marker.
 The rest of the card stays `--surface` white with its ordinary `--border`
 edge on the other three sides; nothing about body text's background changes.
 A tinted fill was considered and set aside for exactly that reason: this
@@ -396,7 +405,11 @@ deliberately paired for side-by-side comparison, never meant to be read
 as competing facts about different questions — Progression's own
 Coverage/Readiness gauges (`Progression`'s own note, below) are exactly
 this: both stay `--text-display`, and any imbalance there is a spacing
-question, not a hierarchy one.
+question, not a hierarchy one. That screen's later redesign adds a third:
+its own readiness ring duplicates the linear Readiness gauge's own number
+rather than pairing with it — a deliberate restatement of one fact, not a
+second fact to weigh against the first, so it stays outside this rule for
+the same reason the paired gauges already do.
 
 **Neither the display face nor any of these four sizes ever actually
 rendered, from the very first commit of this pass until it was found and
@@ -1249,38 +1262,85 @@ time, generous whitespace. Space to reveal, 1 to 4 to rate on desktop. Leaving
 mid-session saves progress. No timer, no countdown, no "hurry".
 
 **Progression** (M5: `progress` module — see `docs/modules/progress.md`) —
-One card per course, no day list, no calendar. Each card carries two gauges
-and one status line, and its course's subject colour as a left border
-(`Subject colours` above, which now names this screen rather than
-Aujourd'hui's own cards as the current example — `Screen notes`' own
-Aujourd'hui note, above, explains why) — this screen carried no colour
-marker of any kind before.
+Redesigned from a user-supplied mockup in a later M9 pass, ignoring this
+file's own former uniform-grid-of-cards description below in full, the
+same unification Notions/Lecteur already went through for their own
+screens. `Navigation`'s and `Subject colours`' own notes (above) already
+describe what changed at the nav-entry and colour-rule level; this note
+describes the page itself.
 
-**The two gauges stack vertically, one above the other — the card carries
-no row wrapper to sit them side by side.** Worth stating plainly since
-nothing else on the page suggests it either way. The gap between them is
-`--space-block` (16px), not the card's own 12px internal rhythm every
-other gap on this card still uses (title→first gauge, second gauge→status
-line): title→gauge stays at 12px because the gauge's own label (12px)
-already buffers the jump to its 32px number, but gauge→gauge puts a bar
-directly followed by a bare label with no such buffer in between, and two
-32px numbers wanted more air than that — checked on a real-token mockup
-before the value was picked (`Shape and depth`'s own recalibration note,
-above), not assumed from the general rule alone.
+**One page: a pill row of every course (`NotionsScreen`'s own `CoursePill`
+idiom, reused), then the selected course's own detail card, then a
+compact "Tous les cours" list — no uniform grid of one full card per
+course any more.** A `documentId` prop pre-selects a course from an
+existing deep link (Notions du cours' own "Voir la progression"); its
+absence (the nav's own direct entry) selects the first course, the same
+`documentId ?? manualSelection ?? items[0]` idiom Notions/Lecteur already
+use. Switching pills, or clicking a row in "Tous les cours" (below), is a
+local selection, not a navigation — both change which course the one
+detail card shows.
 
-- **Coverage** — the neutral progress device (`--primary` over `--border`,
-  real percentage always shown), answering "how much of this course have I
-  opened at all": the share of notions with at least one review done,
-  regardless of how well it went.
-- **Readiness** — same neutral device, a second gauge, answering a
-  different question: "if I do nothing else between now and the exam, how
-  will this hold up that day." It is a projection forward to the deadline,
-  not a reading of today.
-- **Status line** — one sentence per course stating the deadline, both
-  percentages, and, only when behind, how many notions: *"Maths, contrôle
-  dans 9 jours, 54 % de préparation, 7 notions à consolider avant
-  l'échéance."* No countdown widget: the day count is a fact restated on
-  load, never a ticking or colour-shifting clock.
+**The detail card**: a colour-tinted icon circle and the course's own
+title (`--text-title`); then, only when relevant, "Cette échéance est
+passée." or the recently-added-notions sentence (below); then a readiness
+ring beside the two linear gauges (Coverage, Readiness); then a
+mastered/learning/due/not-started stat row, four notions-level counts that
+partition the course's own notions (composed client-side from `GET
+/api/documents/:id/notions` + `.../notions-progress`, the same two reads
+NotionsScreen's own pill-selector redesign already composes for its own
+per-notion status badge — `notionBucket`, kept local to this screen,
+differs from that screen's own `notionStatus` in one way: a notion with
+zero cards gets its own "not-started" bucket here rather than being folded
+into "learning", since this row has room to distinguish it and that
+screen's badge does not); then "Combler l'écart" (`ArrowRight`, `accent`,
+enabled whenever the due bucket is non-zero — the same
+enabled/`disabled` "Rien à réviser" idiom NotionsScreen's own course
+summary card already uses for its "Réviser N fiches") and "Voir le cours"
+(`BookOpen`, `secondary`, opens that course's own Notions du cours — kept
+from the pre-redesign screen; not shown in the mockup's own crop, an
+addition rather than a literal copy, so this is flagged here as a
+judgement call, not a silent one); then the deadline management row
+(`CalendarClock` "Définir une échéance"/"Modifier l'échéance", plus
+"Supprimer l'échéance" once a deadline exists), unchanged in mechanics
+from before this pass, simply relocated onto the one selected course's own
+card instead of every card in the old grid.
+
+**The readiness ring is decorative, `aria-hidden`, not a second
+accessible meter.** It duplicates the same readiness value the linear
+"Préparation" gauge right beside it already exposes with `role="meter"` —
+giving the ring its own meter with the same accessible name would create
+an ambiguous duplicate for both assistive tech and any test querying by
+role and name; the number is still there as plain, readable text either
+way. Its own caption reads "Préparation à l'examen", visually distinct
+from the linear gauge's plain "Préparation" label a few pixels below it,
+matching the mockup's own deliberate repetition of "Exam readiness" — a
+hero number, then the same fact again as supporting detail.
+
+- **Coverage** — real percentage always shown, answering "how much of this
+  course have I opened at all": the share of notions with at least one
+  review done, regardless of how well it went.
+- **Readiness** — a second gauge, answering a different question: "if I do
+  nothing else between now and the exam, how will this hold up that day."
+  It is a projection forward to the deadline, not a reading of today.
+
+**Both gauges, and the ring, are filled with the selected course's own
+colour, not `--primary` — a deliberate reversal of `Subject colours`' own
+"never indicate progress or state" rule, scoped to this screen alone, per
+the user's explicit instruction.** The "Tous les cours" list (below) does
+the same, each row in its own course's colour. Previously this screen used
+the app's one neutral progress device (`--primary` over `--border`,
+`Colour`'s own token-table row for `--primary` already lists "progress" as
+one of its roles) — the same device Révision and every other gauge in
+this app still uses; this screen is now the one named exception, not a
+change to that device itself.
+
+**The old "one sentence per course" status line is gone, split across the
+card instead**: the deadline countdown ("Contrôle dans N jours"), the
+behind-notion clause appended to it inline (only when relevant, below),
+and the recently-added-notions sentence each get their own line near the
+top of the card rather than being concatenated into one long sentence — a
+consequence of the card now showing one course at a time instead of a
+dense grid where compactness mattered more.
 
 Two things this screen must explain, or the numbers read as broken:
 
@@ -1317,29 +1377,34 @@ the least actionable moment, the direct opposite of "no urgency." Show the
 two percentages plainly, with a neutral "c'est aujourd'hui" framing and no
 status word at all that day.
 
-A course behind its target is stated as a fact, never scolded: the status
-word plus the notion count (never a percentage-point deficit, never a time
-estimate), in `--warning`, never `--primary`'s own accent role, and never a
-comment on why or since when. No streak, no "tu n'as pas ouvert ce cours
-depuis 5 jours", no red — the streak (global now, `Screen notes`' own
-Aujourd'hui note, below) and Aujourd'hui's own countdown badge (scoped to
-its own course cards) are both exceptions elsewhere, not here.
+A course behind its target is stated as a fact, never scolded: the notion
+count (never a percentage-point deficit, never a time estimate) appended
+inline to the deadline countdown, in the card's own default `--text`
+colour — not `--warning`, despite an earlier version of this note once
+saying otherwise. That was never actually shipped: `--warning` text at
+this body size measures roughly 1.8:1 against the card's white
+background, under the 3:1 floor `Accessibility floor` (below) demands for
+UI-sized text, and the code has carried a comment saying so since before
+this pass — this correction brings the doc in line with what was already
+there, not a new decision. Weight and position (leading, right after the
+day count) carry what emphasis this fact gets; colour carries none. No
+streak, no "tu n'as pas ouvert ce cours depuis 5 jours", no red — the
+streak (global now, `Screen notes`' own Aujourd'hui note, below) and
+Aujourd'hui's own countdown badge (scoped to its own course cards) are
+both exceptions elsewhere, not here.
 
 **A course whose deadline has already passed keeps showing coverage and
 readiness like every other card — the lapsed date is one more fact about
-the course, never a takeover of the whole card.** Previously this state
-replaced the entire card with a boxed message and a single button; the
-work already done on that course didn't stop existing just because a date
-passed, and hiding it was the actual defect, the wording was only a
-symptom. Both gauges render exactly as they do on any other card (`target`
-and `status`-derived facts stop applying past the deadline — see
+the course, never a takeover of the whole card.** Both gauges (and the
+ring) render exactly as they do on any other card (`target` and
+`status`-derived facts stop applying past the deadline — see
 `docs/modules/progress.md` — but `coverage` and `readiness` never depended
 on the deadline at all, so neither is affected).
 
-The message shortens to **"Cette échéance est passée."** (no second
-sentence) and moves above both gauges, the first thing read about this
-course — the most pressing fact on the card, so it reads first, the same
-way a due count already leads Aujourd'hui's own card. It carries no
+The message reads **"Cette échéance est passée."** (no second sentence)
+and sits directly under the course title, above the ring/gauges — the
+first thing read about this course after its name, the same way a due
+count already leads Aujourd'hui's own card. It carries no
 colour: `font-semibold`, full-strength `--text` (not `--text-muted`), same
 `text-sm` as everything else on the card — weight and position carry the
 emphasis a colour used to, the same lever `strong` already uses in
@@ -1362,14 +1427,36 @@ and action an upcoming deadline already uses (no separate "Mettre à jour"
 wording for a lapsed one: the message above it already says the deadline
 is stale, so the button doesn't need to repeat that, and a first attempt
 at a distinct label — "Mettre à jour l'échéance" — measured against this
-card's own real column width in the 3-column grid and, paired with
-"Supprimer l'échéance" on the same row, wrapped to two lines; "Modifier
-l'échéance" fits on one, checked the same way). `Supprimer l'échéance`
+card's own real width (originally the 3-column grid's own column, now the
+single detail card's own width, no narrower) and, paired with "Supprimer
+l'échéance" on the same row, wrapped to two lines; "Modifier l'échéance"
+fits on one, checked the same way). `Supprimer l'échéance`
 is the same plain `--text-muted` underlined link `Supprimer` uses
 everywhere else in this document, reused as-is rather than invented
 fresh. No confirmation modal, per `Forbidden`'s and this document's own
 destructive-actions rule (above): low visual weight already tells the
 story.
+
+**"Tous les cours"**: a `TrendingUp`-labelled section beneath the detail
+card, one compact row per course — a colour-tinted icon circle, the title,
+a short deadline sentence ("Contrôle dans N jours" / "C'est aujourd'hui" /
+"Échéance passée" / "Aucune échéance"), and the same two gauges as the
+detail card's own, at a smaller scale (label and percentage share one
+line, a 1.5px fill beneath, rather than the detail card's own dominant
+`--text-display` number) — a full duplicate `--text-display` reading per
+row would compete with the one course actually being read in detail
+above it. Every row is clickable, selecting that course the same way its
+pill does; the currently-selected row alone carries a left border in its
+own colour, `Subject colours`' own note above naming this the one
+exception to "no left border any more" — a selection cue, not a permanent
+identity marker repeated down every row the way this screen's own left
+border used to be before this pass.
+
+Four states, same as before this pass: **loading** is a skeleton, no
+mascot; **error** is `confused` and a retry; **empty** (no course at all)
+is `idle`, inviting a first photo; **ready** is the pill row, detail card
+and course list described above, no mascot on the ready state itself
+(data-dense).
 
 **Calendrier** (`workspace` module — see `docs/modules/workspace.md`'s
 Calendar section) — A month grid: seven weekday columns, a row per week,
@@ -1580,19 +1667,23 @@ skips the check must still land somewhere defined:
   colour dot, then the rendered markdown) plus the study panel beside it
 
 **Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
-own note above). Reachable two ways, the same dual-entry shape `Progression`
-already has (`Navigation`'s own note above): directly from the nav, with no
-course chosen yet, and from within a course, via a new toolbar entry on
-`NotionsScreen` ("Discuter du cours", next to "Lire le cours"/"Voir la
-progression"/"Réviser") that arrives with a course already set.
+own note above). Reachable two ways, the same two-source shape Progression
+also has (`Navigation`'s own note above; each source distinguished by
+whether a `documentId` arrived, not two different pages): directly from the
+nav, with no course chosen yet, and from within a course, via a toolbar
+entry on `NotionsScreen` ("Discuter du cours", next to "Lire le
+cours"/"Voir la progression"/"Réviser") that arrives with a course already
+set.
 
 **Entered without a course**: a picker reusing `Mes cours`' own list and its
 own four states, unmodified, each row now routing into Tuteur instead of
-Notions. Not the aggregate, every-course-at-once shape `Progression` uses
-when entered the same way: a conversation is scoped to exactly one document
-(`docs/modules/tutor.md`), so picking one first is unavoidable here, not
-optional the way it is for a screen that shows every course regardless of
-how it was entered.
+Notions — the one screen left that still lands on a separate picker page
+rather than a pill selector plus content shown directly (`Screen notes`'
+own Lecteur note, above, is the most recent of the others to drop it).
+Unlike Progression, entered the same way, a conversation is scoped to
+exactly one document (`docs/modules/tutor.md`), so picking one first is
+unavoidable here, not merely a default the way Progression's own first-pill
+selection is.
 
 **No conversation-list route exists** — `docs/modules/tutor.md`'s API has
 Start, History, Ask and Delete, never "list this document's conversations" —
