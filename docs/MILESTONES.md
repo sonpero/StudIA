@@ -387,7 +387,7 @@ Also not a new capability: each screen rebuilt from a user-supplied mockup
 screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
 it — a deliberate departure each time, not a silent drift, and reconciled
 back into `docs/UI.md`'s own Screen notes as each pass lands (all five
-below are reconciled as of commit `03fdfda`; that file is the authoritative
+below are reconciled as of commit `c745561`; that file is the authoritative
 detail source, this entry only tracks status). No acceptance criteria are
 written ahead of a mockup existing — each screen's own scope is only known
 once its mockup is in hand, the same way every one of the five done so far
@@ -417,9 +417,14 @@ was scoped.
   cours"), and a compact "Tous les cours" list — two deliberate reversals
   of `docs/UI.md`'s own rules along the way (subject colours now fill the
   gauges; the per-card left border is gone in favour of a tinted icon
-  circle). Commit `03fdfda`; full `pnpm test:e2e` green (16 passed, 1
-  pre-existing unrelated skip); visually checked live via a throwaway
-  Playwright screenshot, not just by test assertions.
+  circle). Commits `03fdfda`, `e867534` (a follow-up pass: the header
+  realigned into the ring's own right-hand column, every gauge/the ring
+  now animates from 0 on mount, a `Trash2` icon replaces the old
+  "Supprimer l'échéance" text link, "Voir le cours" gained the same tint
+  Lecteur's "Discuter avec le tuteur" uses); full `pnpm test:e2e` green
+  (16 passed, 1 pre-existing unrelated skip) after both; visually checked
+  live via a throwaway Playwright screenshot each time, not just by test
+  assertions.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
