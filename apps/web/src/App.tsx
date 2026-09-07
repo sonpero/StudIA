@@ -23,8 +23,11 @@ import { TutorScreen } from "./screens/TutorScreen.js";
 // the screen is now reachable two ways — from a course's NotionsScreen,
 // where "back" returns to that same course, and from the nav directly,
 // where there is no originating course and "back" returns to "documents"
-// instead. Neither is a scoping parameter for the progress screen itself,
-// which always shows every course regardless of how it was entered. "today"
+// instead. It is not a scoping parameter (the screen still lists every
+// course regardless of how it was entered), but its own later pill-selector
+// redesign (docs/UI.md's Progression note) does reuse it to pre-select that
+// course's own pill, the same idiom Notions/Lecteur already established for
+// their own documentId props. "today"
 // (M6, docs/modules/workspace.md; redesigned under M9) is reachable from
 // anywhere via the nav, not scoped to a document, has no "back" of its own
 // (docs/UI.md), and is now the app's own landing view — AppShell's initial
@@ -155,8 +158,10 @@ function AppShell() {
           )}
           {view.name === "progress" && (
             <ProgressScreen
+              documentId={view.fromDocumentId}
               onBack={() => (view.fromDocumentId ? setView({ name: "notions", documentId: view.fromDocumentId }) : setView({ name: "documents" }))}
               onOpenCourse={(documentId) => setView({ name: "notions", documentId })}
+              onReview={(documentId) => setView({ name: "review", documentId })}
             />
           )}
           {view.name === "today" && (

@@ -65,11 +65,18 @@ test.describe("progress", () => {
     await page.getByRole("button", { name: "Voir la progression" }).click();
     await expect(page.getByRole("heading", { name: "Progression" })).toBeVisible();
 
-    const progressCard = page.getByTestId("progress-card").filter({ hasText: "Cours à suivre" });
-    await expect(progressCard).toBeVisible({ timeout: 10_000 });
+    // "Voir la progression" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progression note) — one detail card, not a filtered
+    // pick among several, even though other specs' own courses coexist in
+    // the shared e2e database (docs/TESTING.md's "one database per run").
+    const progressCard = page.getByTestId("progress-detail-card");
+    await expect(progressCard.getByText("Cours à suivre")).toBeVisible({ timeout: 10_000 });
 
     // No deadline yet: the two raw numbers and an invitation, no countdown.
-    await expect(progressCard.getByText("0 %")).toHaveCount(2);
+    // "0 %" appears three times — coverage's own bar, plus readiness
+    // duplicated on both the ring and its own linear bar (docs/UI.md's
+    // Progression note).
+    await expect(progressCard.getByText("0 %")).toHaveCount(3);
     await expect(progressCard.getByRole("button", { name: "Définir une échéance" })).toBeVisible();
 
     await progressCard.getByRole("button", { name: "Définir une échéance" }).click();
@@ -112,7 +119,7 @@ test.describe("progress", () => {
     // that a request was accepted. aria-valuenow carries the FSRS-exact
     // value (a whole percentage point, per Gauge's rounding), so this
     // compares real numbers rather than re-parsing display text.
-    const progressCardAfter = page.getByTestId("progress-card").filter({ hasText: "Cours à suivre" });
+    const progressCardAfter = page.getByTestId("progress-detail-card");
     const readinessMeterAfter = progressCardAfter.getByRole("meter", { name: "Préparation" });
     await expect
       .poll(async () => Number(await readinessMeterAfter.getAttribute("aria-valuenow")), { timeout: 10_000, message: "waiting for readiness to rise above its pre-review floor" })

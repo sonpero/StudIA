@@ -65,8 +65,10 @@ test.describe("streak and countdown badge (M9)", () => {
 
     // A deadline, for the countdown badge.
     await page.getByRole("button", { name: "Voir la progression" }).click();
-    const progressCard = page.getByTestId("progress-card").filter({ hasText: "Cours du streak" });
-    await expect(progressCard).toBeVisible({ timeout: 10_000 });
+    // "Voir la progression" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progression note) — one detail card, not a filtered pick.
+    const progressCard = page.getByTestId("progress-detail-card");
+    await expect(progressCard.getByText("Cours du streak")).toBeVisible({ timeout: 10_000 });
     await progressCard.getByRole("button", { name: "Définir une échéance" }).click();
     await progressCard.getByLabel("Date").fill(localDateKeyPlusDays(14));
     await progressCard.getByRole("button", { name: "Enregistrer" }).click();

@@ -33,8 +33,10 @@ test.describe("calendar", () => {
 
     // Set a deadline for this course, same flow e2e/progress.spec.ts uses.
     await page.getByRole("button", { name: "Voir la progression" }).click();
-    const progressCard = page.getByTestId("progress-card").filter({ hasText: "Cours du calendrier" });
-    await expect(progressCard).toBeVisible({ timeout: 10_000 });
+    // "Voir la progression" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progression note) — one detail card, not a filtered pick.
+    const progressCard = page.getByTestId("progress-detail-card");
+    await expect(progressCard.getByText("Cours du calendrier")).toBeVisible({ timeout: 10_000 });
     await progressCard.getByRole("button", { name: "Définir une échéance" }).click();
     await progressCard.getByLabel("Date").fill("2026-03-20");
     await progressCard.getByRole("button", { name: "Enregistrer" }).click();

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, CalendarClock } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarClock, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { todayDateKey } from "../lib/day-boundary.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { getNotionsProgress, listNotions, type NotionProgress } from "../lib/notions-api.js";
 import { deleteDeadline, listProgress, setDeadline, type ProgressListItem } from "../lib/progress-api.js";
 
 const QUERY_KEY = ["progress-list"];
@@ -31,27 +32,123 @@ function widthPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-// A neutral progress device (docs/UI.md's Progress section): a --primary
-// bar over --border, the real number always visible next to it — never a
-// bare bar, never the course's own subject colour. role="meter" carries
-// the value to 2 decimal places, not the whole-point precision of the
-// display text: a small genuine change (e.g. one card's worth of a
-// 60-notion course) can round to the same whole percent, and a test
-// reading aria-valuenow to detect a real rise needs enough resolution to
-// see it even then.
-function Gauge({ label, value }: { label: string; value: number }) {
+// The dominant, --text-display gauge used on the detail card — one course's
+// own indicators only, so unlike the compact list row's own bar (below), a
+// mismatch of scale is never a risk here.
+function Gauge({ label, value, colour }: { label: string; value: number; colour: string }) {
   const precise = Math.round(value * 10_000) / 100;
   return (
     <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
-      {/* The percentage is the useful fact here (docs/UI.md's Type note):
-          dominant on its own line, the label small and muted above it,
-          not sharing a row at the same size as before. */}
       <span className="text-[length:var(--text-label)] text-text-muted">{label}</span>
       <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{percent(value)}</span>
       <div className="h-2 rounded-full bg-border">
-        <div data-testid="gauge-fill" className="h-2 rounded-full bg-primary" style={{ width: widthPercent(value) }} />
+        {/* Deliberately the selected course's own colour, not --primary — a
+            reversal of docs/UI.md's former "subject colours are for
+            identity only, never progress or state" rule, per the user's
+            explicit instruction for this screen. */}
+        <div data-testid="gauge-fill" className="h-2 rounded-full" style={{ width: widthPercent(value), backgroundColor: colour }} />
       </div>
     </div>
+  );
+}
+
+// The compact bar used on each "All courses" row: label and percentage share
+// one line, a thinner fill beneath — a full --text-display number here would
+// dominate a list meant to be scanned quickly, not read one course at a time.
+function CompactBar({ label, value, colour }: { label: string; value: number; colour: string }) {
+  const precise = Math.round(value * 10_000) / 100;
+  return (
+    <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-text-muted">{label}</span>
+        <span className="tabular-nums text-text">{percent(value)}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-border">
+        <div data-testid="gauge-fill" className="h-1.5 rounded-full" style={{ width: widthPercent(value), backgroundColor: colour }} />
+      </div>
+    </div>
+  );
+}
+
+// A decorative ring duplicating the readiness number the linear "Préparation"
+// gauge below already exposes with role="meter" — this SVG stays
+// aria-hidden rather than being a second accessible meter with the same
+// name, avoiding an ambiguous duplicate for both assistive tech and tests.
+function ReadinessRing({ value, colour }: { value: number; colour: string }) {
+  const size = 140;
+  const stroke = 10;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - value);
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-1">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={colour}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums text-text">{percent(value)}</span>
+          <span className="text-[length:var(--text-label)] text-text-muted">prêt</span>
+        </div>
+      </div>
+      <span className="text-sm text-text-muted">Préparation à l'examen</span>
+    </div>
+  );
+}
+
+function StatTile({ value, label, dataTestId }: { value: number | null; label: string; dataTestId: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 rounded-[var(--radius-button)] bg-canvas py-3 text-center" data-testid={dataTestId}>
+      {value === null ? (
+        <div className="h-7 w-6 animate-pulse rounded bg-border" />
+      ) : (
+        <span className="font-[family-name:var(--font-display)] text-xl font-extrabold tabular-nums text-text">{value}</span>
+      )}
+      <span className="text-[length:var(--text-label)] text-text-muted">{label}</span>
+    </div>
+  );
+}
+
+// Same idiom as NotionsScreen/ReaderScreen's own CoursePill, kept local
+// rather than shared — small enough that importing it across screens would
+// cost more than it saves.
+function CoursePill({ item, active, onSelect }: { item: ProgressListItem; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      onClick={onSelect}
+      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+        active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
+      }`}
+    >
+      <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={active ? "#fff" : item.colour} />
+      {item.title}
+    </button>
+  );
+}
+
+// A course's own icon in a colour-tinted circle, not the left-border
+// treatment docs/UI.md used to describe for this screen specifically — the
+// same departure Aujourd'hui/Mes cours already made from their own
+// mockups, extended here to a third screen.
+function CourseIcon({ colour }: { colour: string }) {
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${colour}26` }}>
+      <BookOpen aria-hidden="true" focusable="false" size={20} strokeWidth={ICON_STROKE_WIDTH} color={colour} />
+    </span>
   );
 }
 
@@ -93,7 +190,28 @@ function DeadlineForm({ initialDate, initialLabel, onSubmit, onCancel, pending }
   );
 }
 
-function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; onOpenCourse: (documentId: string) => void }) {
+type Bucket = "mastered" | "due" | "learning" | "not-started";
+
+// Mastery wins even over a technically-due card, the same precedent
+// NotionsScreen's own notionStatus already sets — a notion with zero cards
+// falls into its own "not-started" bucket here rather than being folded
+// into "learning" the way NotionsScreen's badge does (this screen's own
+// four-way stat row has room to distinguish it; that screen's badge does
+// not).
+function notionBucket(progress: NotionProgress | undefined): Bucket {
+  if (!progress || progress.totalCards === 0) return "not-started";
+  if (progress.masteredCards === progress.totalCards) return "mastered";
+  if (progress.dueNow) return "due";
+  return "learning";
+}
+
+// The selected course's own detail card: a readiness ring, the two
+// coloured gauges, the four-way notion stat row, deadline messaging/
+// management, and the "Combler l'écart" / "Voir le cours" actions. Kept as
+// its own component so switching the pill selection key-remounts it,
+// resetting the deadline form's own local editing state instead of leaking
+// it from the previously-selected course.
+function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressListItem; onOpenCourse: (documentId: string) => void; onReview: (documentId: string) => void }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
@@ -107,74 +225,93 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
   });
   const deleteDeadlineMutation = useMutation({ mutationFn: () => deleteDeadline(item.documentId), onSuccess: refresh });
 
+  const notionsQuery = useQuery({ queryKey: ["notions", item.documentId], queryFn: () => listNotions(item.documentId) });
+  const notionsProgressQuery = useQuery({ queryKey: ["notions-progress", item.documentId], queryFn: () => getNotionsProgress(item.documentId) });
+  const statsLoading = notionsQuery.status === "pending" || notionsProgressQuery.status === "pending";
+  const statsErrored = notionsQuery.status === "error" || notionsProgressQuery.status === "error";
+
+  const buckets: Record<Bucket, number> = { mastered: 0, due: 0, learning: 0, "not-started": 0 };
+  if (notionsQuery.data && notionsProgressQuery.data) {
+    for (const notion of notionsQuery.data) {
+      const progress = notionsProgressQuery.data.find((row) => row.notionId === notion.id);
+      buckets[notionBucket(progress)] += 1;
+    }
+  }
+  const dueCount = buckets.due;
+
   const todayKey = todayDateKey();
   const isToday = item.deadlineDate === todayKey;
   const isPast = item.progress.status === "deadline-in-past";
   const dataStatus = isPast ? "deadline-in-past" : isToday ? "today" : item.progress.status;
 
   return (
-    <Card
-      className="flex flex-col gap-3 border-l-4"
-      style={{ borderLeftColor: item.colour }}
-      data-testid="progress-card"
-      data-status={dataStatus}
-    >
-      <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h3>
+    <Card className="flex flex-col gap-[var(--space-section)]" data-testid="progress-detail-card" data-status={dataStatus}>
+      <div className="flex items-start gap-[var(--space-related)]">
+        <CourseIcon colour={item.colour} />
+        <div>
+          <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h2>
 
-      {/* A lapsed deadline is one more fact about the course, never a
-          takeover of the whole card (docs/UI.md's Progression note): the
-          gauges below render exactly as they do on any other card. The
-          message leads, before both gauges, since it's the most pressing
-          fact on the card — weight and position carry the emphasis, never
-          colour: font-semibold, full-strength text (not muted), the same
-          text-sm as everything else here. No box: the border-warning/
-          bg-warning/10 treatment this used to carry measured ~1.8:1
-          against the card's white background, under the 3:1 floor, and
-          was retired rather than patched. */}
-      {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}
+          {/* A lapsed deadline is one more fact about the course, never a
+              takeover of the whole card (docs/UI.md's Progression note):
+              the gauges below render exactly as they do on any other
+              card. Weight and position carry the emphasis, never colour. */}
+          {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}
 
-      {/* --space-block (16px) between the two gauges, not the card's
-          own 12px rhythm used everywhere else on it (docs/UI.md's
-          Progression note): title→gauge is buffered by the gauge's own
-          label, but gauge→gauge puts a bar directly against a bare
-          label with nothing between two 32px numbers — checked against
-          real sizes, not assumed from the general rule alone. */}
-      <div className="flex flex-col gap-[var(--space-block)]">
-        <Gauge label="Couverture" value={item.progress.coverage} />
-        <Gauge label="Préparation" value={item.progress.readiness} />
+          {isPast ? null : item.deadlineDate === null ? (
+            <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
+          ) : isToday ? (
+            <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
+          ) : (
+            <p className="text-sm text-text-muted">
+              Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
+              {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
+                <span className="ml-1 text-text">
+                  · {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
+                </span>
+              )}
+            </p>
+          )}
+        </div>
       </div>
 
       {item.progress.recentlyAddedUnreviewed > 0 && (
         <p className="text-sm text-text-muted">
-          {/* recentlyAddedUnreviewed counts notions (compute-progress.ts),
-              never cards — the two units coexist elsewhere in the app
-              (e.g. TodayScreen's "fiches à revoir") and must not blur here. */}
           {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
           {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
         </p>
       )}
 
-      {isPast ? null : item.deadlineDate === null ? (
-        <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
-      ) : isToday ? (
-        <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
-      ) : (
-        <p className="text-sm">
-          Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
-          {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
-            // Same weight as the rest of the card's text (docs/UI.md: a
-            // fact stated soberly, not the loudest element on the card):
-            // no box, no underline. --warning as a text colour is
-            // available but not used here on purpose — at body size it
-            // fails AA contrast against the card's background (~1.8:1,
-            // well under the 3:1 floor for UI-sized text), so this stays
-            // in the card's own default text colour instead.
-            <span className="ml-1">
-              {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
-            </span>
-          )}
-        </p>
-      )}
+      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-center">
+        <ReadinessRing value={item.progress.readiness} colour={item.colour} />
+        <div className="flex w-full flex-1 flex-col gap-[var(--space-block)]">
+          <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
+          <Gauge label="Préparation" value={item.progress.readiness} colour={item.colour} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatTile dataTestId="stat-mastered" value={statsLoading ? null : statsErrored ? 0 : buckets.mastered} label="Maîtrisées" />
+        <StatTile dataTestId="stat-learning" value={statsLoading ? null : statsErrored ? 0 : buckets.learning} label="En apprentissage" />
+        <StatTile dataTestId="stat-due" value={statsLoading ? null : statsErrored ? 0 : buckets.due} label="À réviser" />
+        <StatTile dataTestId="stat-not-started" value={statsLoading ? null : statsErrored ? 0 : buckets["not-started"]} label="Non commencées" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {dueCount > 0 ? (
+          <Button variant="accent" className="rounded-2xl" onClick={() => onReview(item.documentId)}>
+            Combler l'écart
+            <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          </Button>
+        ) : (
+          <Button variant="secondary" className="rounded-2xl" disabled>
+            Rien à réviser
+          </Button>
+        )}
+        <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
+          <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Voir le cours
+        </Button>
+      </div>
 
       {editing ? (
         <DeadlineForm
@@ -188,21 +325,8 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
         <div className="flex gap-3">
           <Button variant="secondary" onClick={() => setEditing(true)}>
             <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-            {/* No separate "Mettre à jour" wording for a lapsed deadline
-                (docs/UI.md's Progression note): the message above already
-                says it's stale, and a first attempt at a distinct label
-                wrapped to two lines paired with "Supprimer l'échéance" at
-                this card's real column width — "Modifier l'échéance" fits
-                on one, reused as-is from the upcoming-deadline case. */}
             {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
           </Button>
-          {/* Reused as-is, the same plain --text-muted underlined link
-              "Supprimer" already uses everywhere else in this app
-              (docs/UI.md's destructive-actions note): no colour, no
-              confirmation modal — low visual weight already tells the
-              story. Previously only reachable once a deadline was still
-              upcoming; a lapsed one (item.deadlineDate !== null here too)
-              had no way to be removed at all. */}
           {item.deadlineDate !== null && (
             <button type="button" className="text-sm text-text-muted underline" onClick={() => deleteDeadlineMutation.mutate()}>
               Supprimer l'échéance
@@ -210,21 +334,59 @@ function CourseProgressCard({ item, onOpenCourse }: { item: ProgressListItem; on
           )}
         </div>
       )}
-
-      {/* Always visible, independent of editing state or status. "Voir le
-          cours" never collides with the nav's "Progression" item — the
-          mistake made once on NotionsScreen's own button to this same
-          screen, avoided there by spelling out the full phrase. */}
-      <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
-        <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-        Voir le cours
-      </Button>
     </Card>
   );
 }
 
-export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; onOpenCourse: (documentId: string) => void }) {
+function CourseListRow({ item, active, onSelect }: { item: ProgressListItem; active: boolean; onSelect: () => void }) {
+  const todayKey = todayDateKey();
+  const isPast = item.progress.status === "deadline-in-past";
+  const isToday = item.deadlineDate === todayKey;
+  const deadlineSentence =
+    item.deadlineDate === null
+      ? "Aucune échéance"
+      : isPast
+        ? "Échéance passée"
+        : isToday
+          ? "C'est aujourd'hui"
+          : `Contrôle dans ${daysUntil(item.deadlineDate, todayKey)} jour${daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      data-testid="progress-list-row"
+      className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-4 text-left transition-colors hover:bg-canvas sm:flex-row sm:items-center sm:gap-[var(--space-related)]"
+      style={active ? { borderLeftWidth: 4, borderLeftColor: item.colour } : undefined}
+    >
+      <div className="flex items-center gap-[var(--space-related)] sm:w-56 sm:shrink-0">
+        <CourseIcon colour={item.colour} />
+        <div>
+          <h3 className="font-[family-name:var(--font-display)] text-sm font-extrabold text-text">{item.title}</h3>
+          <p className="text-[length:var(--text-label)] text-text-muted">{deadlineSentence}</p>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col gap-2">
+        <CompactBar label="Couverture" value={item.progress.coverage} colour={item.colour} />
+        <CompactBar label="Préparation" value={item.progress.readiness} colour={item.colour} />
+      </div>
+    </button>
+  );
+}
+
+export function ProgressScreen({
+  documentId,
+  onBack,
+  onOpenCourse,
+  onReview,
+}: {
+  documentId?: string;
+  onBack: () => void;
+  onOpenCourse: (documentId: string) => void;
+  onReview: (documentId: string) => void;
+}) {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: listProgress });
+  const [manualSelection, setManualSelection] = useState<string | undefined>(undefined);
 
   if (query.status === "pending") {
     return (
@@ -235,11 +397,7 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
             Retour
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-[var(--radius-card)] bg-border" />
-          ))}
-        </div>
+        <div className="h-56 animate-pulse rounded-[var(--radius-card)] bg-border" />
       </main>
     );
   }
@@ -257,27 +415,57 @@ export function ProgressScreen({ onBack, onOpenCourse }: { onBack: () => void; o
 
   const items = query.data;
 
+  if (items.length === 0) {
+    return (
+      <main className="flex flex-col gap-[var(--space-section)] p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+            Retour
+          </button>
+        </div>
+        <div className="flex flex-col items-center gap-4 py-12 text-center">
+          <Idle />
+          <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const selectedId = documentId ?? manualSelection ?? items[0]!.documentId;
+  const selectedItem = items.find((item) => item.documentId === selectedId) ?? items[0]!;
+
   return (
     <main className="flex flex-col gap-[var(--space-section)] p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <p className="text-sm text-text-muted">Ta préparation pour chaque examen, et la part de ton programme déjà couverte.</p>
+        </div>
         <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
           Retour
         </button>
       </div>
 
-      {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <Idle />
-          <p>Aucun cours pour l'instant. Prends ton cours en photo pour commencer.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-[var(--space-block)] sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <CoursePill key={item.documentId} item={item} active={item.documentId === selectedItem.documentId} onSelect={() => setManualSelection(item.documentId)} />
+        ))}
+      </div>
+
+      <ProgressDetailCard key={selectedItem.documentId} item={selectedItem} onOpenCourse={onOpenCourse} onReview={onReview} />
+
+      <div className="flex flex-col gap-[var(--space-related)]">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-text-muted">
+          <TrendingUp aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Tous les cours
+        </h2>
+        <div className="flex flex-col gap-[var(--space-block)]">
           {items.map((item) => (
-            <CourseProgressCard key={item.documentId} item={item} onOpenCourse={onOpenCourse} />
+            <CourseListRow key={item.documentId} item={item} active={item.documentId === selectedItem.documentId} onSelect={() => setManualSelection(item.documentId)} />
           ))}
         </div>
-      )}
+      </div>
     </main>
   );
 }
