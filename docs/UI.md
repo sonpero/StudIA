@@ -1287,48 +1287,67 @@ use. Switching pills, or clicking a row in "Tous les cours" (below), is a
 local selection, not a navigation — both change which course the one
 detail card shows.
 
-**The detail card, top to bottom**: the readiness ring sits in its own
-left column, spanning the full height of everything beside it; a right
-column carries, in order, the colour-tinted icon circle and the course's
-own title (`--text-title`) on one row, then, only when relevant, "Cette
-échéance est passée." or the recently-added-notions sentence (below), then
-the two linear gauges (Coverage, Readiness) — the ring's own left edge
-never lines up with the title above it, but the title and both gauges
-share the same left edge, a follow-up mockup's own realignment from this
-pass's first cut, which put the icon-and-title row full-width above the
-ring instead. Then, spanning the card's own full width again below both
-columns: a mastered/learning/due/not-started stat row, four notions-level
-counts that partition the course's own notions (composed client-side from
-`GET /api/documents/:id/notions` + `.../notions-progress`, the same two
-reads NotionsScreen's own pill-selector redesign already composes for its
-own per-notion status badge — `notionBucket`, kept local to this screen,
-differs from that screen's own `notionStatus` in one way: a notion with
-zero cards gets its own "not-started" bucket here rather than being folded
-into "learning", since this row has room to distinguish it and that
-screen's badge does not); then "Combler l'écart" (`ArrowRight`, `accent`,
-enabled whenever the due bucket is non-zero — the same
+**The detail card, top to bottom, three stacked rows — not the ring
+spanning everything beside it, this pass's first cut's own layout, nor a
+single right-hand column the way that cut's own one follow-up left it.**
+A second follow-up mockup moved the ring down to sit between "Couverture"
+and "Préparation" rather than beside the header, so it now shares a row
+with only the two gauges, vertically centred against them
+(`sm:items-center`, not `sm:items-start`). The header row and the lower
+row (stat tiles, actions) no longer have the ring beside them to align
+against, so each instead opens with `RingSpacer`, an invisible `sm:w-
+[140px]` column reserving exactly the ring's own width (`RING_SIZE`,
+shared between the two rather than a second magic number) — the same
+visual effect as sharing a row with the ring, without actually doing so.
+
+1. **Header row**: `RingSpacer`, then the colour-tinted icon circle and
+   the course's own title (`--text-title`) on one line, then, only when
+   relevant, "Cette échéance est passée." or the recently-added-notions
+   sentence (below).
+2. **The ring's own row**: the readiness ring, then the two linear gauges
+   (Coverage, Readiness) stacked beside it — the realignment itself.
+3. **Lower row**: `RingSpacer`, then a mastered/learning/due/not-started
+   stat row, four notions-level counts that partition the course's own
+   notions (composed client-side from `GET /api/documents/:id/notions` +
+   `.../notions-progress`, the same two reads NotionsScreen's own
+   pill-selector redesign already composes for its own per-notion status
+   badge — `notionBucket`, kept local to this screen, differs from that
+   screen's own `notionStatus` in one way: a notion with zero cards gets
+   its own "not-started" bucket here rather than being folded into
+   "learning", since this row has room to distinguish it and that
+   screen's badge does not); then one action row carrying all four of
+   "Combler l'écart", "Voir le cours", "Définir une échéance"/"Modifier
+   l'échéance" and, once a deadline exists, the delete icon together — a
+   second follow-up mockup's own request, merging what this pass's first
+   cut had as two separate rows (CTA/"Voir le cours", then deadline
+   management below it).
+
+**Every button on that merged action row**: "Combler l'écart" (`ArrowRight`,
+`accent`, enabled whenever the due bucket is non-zero — the same
 enabled/`disabled` "Rien à réviser" idiom NotionsScreen's own course
-summary card already uses for its "Réviser N fiches") and "Voir le cours"
-(`BookOpen`, `secondary` with the same light `bg-primary-soft`/`text-
-primary` tint Lecteur's own "Discuter avec le tuteur" and Mes cours' own
-"Lire le cours" already use, a follow-up mockup's own request — plain
-bordered `secondary` in this pass's first cut; opens that course's own
-Notions du cours, kept from the pre-redesign screen; not shown in the
-mockup's own crop, an addition rather than a literal copy, so this is
-flagged here as a judgement call, not a silent one); then the deadline
-management row (`CalendarClock` "Définir une échéance"/"Modifier
-l'échéance", unchanged, plus, once a deadline exists, a bare `Trash2`
-icon button — a follow-up mockup's own request, replacing the underlined
-"Supprimer l'échéance" text link this pass's first cut had. The accessible
-name stays the literal string "Supprimer l'échéance" (an `aria-label`,
-`Forbidden`'s own "icon-only button without an accessible label" rule,
-below, satisfied rather than violated), and the same low-visual-weight
-treatment every other destructive action in this app already carries —
-just an icon instead of underlined text now, not a `Button`, no border, no
-fill until hovered (`hover:bg-canvas`, matching this card's other plain
-icon-adjacent affordances)). Both actions are unchanged in mechanics from
-before this pass, simply relocated onto the one selected course's own
-card instead of every card in the old grid.
+summary card already uses for its "Réviser N fiches"); "Voir le cours"
+and "Modifier l'échéance"/"Définir une échéance" both `secondary` with
+the same light `bg-primary-soft`/`text-primary` tint Lecteur's own
+"Discuter avec le tuteur" and Mes cours' own "Lire le cours" already use
+— plain bordered `secondary` for both in this pass's first cut, until two
+separate follow-up requests added the tint to each in turn ("Voir le
+cours" first, "Modifier l'échéance" in the same pass as the row merge);
+then, once a deadline exists, a bare `Trash2` icon button, a follow-up
+mockup's own request replacing the underlined "Supprimer l'échéance" text
+link this pass's first cut had. The accessible name stays the literal
+string "Supprimer l'échéance" (an `aria-label`, `Forbidden`'s own
+"icon-only button without an accessible label" rule, below, satisfied
+rather than violated), and the same low-visual-weight treatment every
+other destructive action in this app already carries — just an icon
+instead of underlined text now, not a `Button`, no border, no fill until
+hovered (`hover:bg-canvas`, matching this card's other plain icon-adjacent
+affordances). "Voir le cours" opens that course's own Notions du cours,
+kept from the pre-redesign screen; not shown in any of this screen's own
+mockup crops, an addition rather than a literal copy, so this is flagged
+here as a judgement call, not a silent one. Every action here is
+unchanged in mechanics from before this pass, simply relocated (twice
+now) onto the one selected course's own card instead of every card in the
+old grid.
 
 **The readiness ring is decorative, `aria-hidden`, not a second
 accessible meter.** It duplicates the same readiness value the linear
