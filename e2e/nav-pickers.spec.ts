@@ -8,13 +8,12 @@ import { expect, test } from "@playwright/test";
 // (generate-and-review.spec.ts, App.unit.test.tsx's own fromNotions case) —
 // this one is only for the new nav-level picker path.
 //
-// Notions dropped its own separate picker page in its later redesign
-// (ignoring docs/UI.md, per the user): the nav's own "Notions" entry now
-// shows a pill selector plus a course's notions directly, no "Voir les
-// notions" click and no "Retour" at all — Lecteur is untouched, still the
-// original two-step picker → course flow this spec's own title describes.
+// Both Notions and Lecteur dropped their own separate picker page in later
+// redesigns (ignoring docs/UI.md, per the user): the nav's own entry for
+// each now shows a pill selector plus a course's own content directly, no
+// separate picker page and no "Retour" at all.
 test.describe("nav pickers (M9)", () => {
-  test("Notions and Lecteur are each reachable directly from the nav; Notions shows a course's own notions directly via its pill selector, Lecteur still via its picker with 'Retour' back to it", async ({ page }) => {
+  test("Notions and Lecteur are each reachable directly from the nav, each showing a course's own content directly via its pill selector, no 'Retour'", async ({ page }) => {
     test.setTimeout(30_000);
     await page.goto("/");
 
@@ -28,13 +27,6 @@ test.describe("nav pickers (M9)", () => {
     const card = page.getByTestId("document-card").filter({ hasText: "Cours pour les pickers" });
     await expect(card.getByRole("button", { name: "Lire le cours" })).toBeVisible({ timeout: 20_000 });
 
-    // Every spec in a full local run shares one e2e account and its
-    // "Mes cours" (docs/TESTING.md's "one database per run"), so by the
-    // time this spec runs, other specs' own courses already exist too —
-    // scoped by title, not a bare role query, the same way
-    // upload-document.spec.ts already scopes its own document-card.
-    const pickerRow = page.getByTestId("course-picker-row").filter({ hasText: "Cours pour les pickers" });
-
     // Notions: directly from the nav, its own pill selector picks the course
     // (not a navigation — no "Voir les notions", no separate picker page).
     await page.getByRole("button", { name: "Notions", exact: true }).click();
@@ -47,15 +39,13 @@ test.describe("nav pickers (M9)", () => {
     // No picker page was ever left, so there is nothing to return to.
     await expect(page.getByRole("button", { name: /retour/i })).not.toBeVisible();
 
-    // Lecteur: directly from the nav, no course chosen yet — its own
-    // picker, unchanged.
+    // Lecteur: directly from the nav, the same pill-selector unification
+    // (docs/UI.md's Lecteur note) — its own pill picks the course, no
+    // separate picker page.
     await page.getByRole("button", { name: "Lecteur", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Lecteur" })).toBeVisible();
-    await pickerRow.getByRole("button", { name: "Lire le cours" }).click();
-    await expect(page.getByRole("heading", { name: "Lecture" })).toBeVisible();
-
-    await page.getByRole("button", { name: "Retour" }).click();
-    await expect(page.getByRole("heading", { name: "Lecteur" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Mes cours" })).not.toBeVisible();
+    await page.getByRole("button", { name: "Cours pour les pickers", exact: true }).click();
+    await expect(page.getByTestId("reader-study-panel")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: /retour/i })).not.toBeVisible();
   });
 });

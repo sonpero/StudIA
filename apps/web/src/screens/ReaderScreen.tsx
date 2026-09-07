@@ -1,14 +1,15 @@
-import type { ExtractionStatus } from "@studia/contracts";
+import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpenText } from "lucide-react";
-import { useRef } from "react";
+import { BookOpen, Layers, MessageCircle } from "lucide-react";
+import { useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Button } from "../components/ui/button.js";
-import { getDocument } from "../lib/documents-api.js";
-import { CoursePickerScreen } from "./CoursePickerScreen.js";
+import { Card } from "../components/ui/card.js";
+import { getDocument, listDocuments } from "../lib/documents-api.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 
 function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
@@ -20,14 +21,14 @@ function isActive(status: ExtractionStatus): boolean {
 // does by hand.
 //
 // Heading levels are shifted down by two (source h1 -> DOM h3, and so on):
-// the screen already has its own h1 ("Lecture") and h2 (the course title),
-// so the document's own heading hierarchy nests under those rather than
-// competing with them. Content's own size scale (text-lg/text-base/
-// text-sm, 18/16/14px) is deliberately NOT the same visual size per level
-// as before this pass: it must sit strictly under --text-title (20px), the
-// smallest heading the chrome itself ever shows, so a fact stated inside
-// the document can never read at the same size as the screen's own name
-// or the document's own title (docs/UI.md's Lecteur note).
+// the reading card already has its own h2 (the course title), so the
+// document's own heading hierarchy nests under that rather than competing
+// with it. Content's own size scale (text-lg/text-base/text-sm, 18/16/14px)
+// is deliberately NOT the same visual size per level as the chrome around
+// it: it must sit strictly under --text-title (20px), the smallest heading
+// the chrome itself ever shows, so a fact stated inside the document can
+// never read at the same size as the course's own title (docs/UI.md's
+// Lecteur note).
 const READER_COMPONENTS: Components = {
   h1: (props) => <h3 className="mt-8 font-[family-name:var(--font-display)] text-lg font-extrabold first:mt-0" {...props} />,
   h2: (props) => <h4 className="mt-6 font-[family-name:var(--font-display)] text-base font-extrabold first:mt-0" {...props} />,
@@ -41,6 +42,25 @@ const READER_COMPONENTS: Components = {
   code: (props) => <code className="rounded bg-canvas px-1 py-0.5 text-sm" {...props} />,
 };
 
+// Same idiom as NotionsScreen's own CoursePill (docs/UI.md's Notions note),
+// kept local rather than shared — small enough that importing it across
+// screens would cost more than it saves.
+function CoursePill({ document, active, onSelect }: { document: DocumentSummary; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      onClick={onSelect}
+      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+        active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
+      }`}
+    >
+      <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={active ? "#fff" : document.colour} />
+      {document.title}
+    </button>
+  );
+}
+
 // Deliberately destination-agnostic (docs/UI.md's Lecteur note, same idiom
 // as ProgressScreen's own plain "Retour"): this screen is reachable from
 // Mes cours or from Notions du cours, and onBack (App.tsx) returns to
@@ -48,13 +68,54 @@ const READER_COMPONENTS: Components = {
 // other path.
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
-    <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+    <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
       Retour
     </button>
   );
 }
 
-function ReaderCourseScreen({ documentId, onBack }: { documentId: string; onBack: () => void }) {
+// The panel offering to turn what was just read into recall practice —
+// "renvoi vers les notions ou le tuteur" from the mockup. Only shown
+// alongside actual rendered content (the ready state): there is nothing to
+// study yet in any other state. Buttons use the same rounded-2xl pill shape
+// every other M9 screen's own primary/secondary actions already use
+// (NotionsScreen's own "Réviser"/"Créer les fiches"), and reuse the exact
+// icons the nav already assigns to each destination (Layers for Notions,
+// MessageCircle for Tuteur, docs/UI.md's Icons note) rather than inventing
+// new ones for the same place.
+function StudyPanel({ onOpenNotions, onOpenTutor }: { onOpenNotions: () => void; onOpenTutor: () => void }) {
+  return (
+    <Card className="flex h-fit w-full shrink-0 flex-col gap-[var(--space-related)] lg:w-72" data-testid="reader-study-panel">
+      <div>
+        <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">Étudier cette page</h3>
+        <p className="text-sm text-text-muted">Transforme ce que tu viens de lire en exercice de mémorisation.</p>
+      </div>
+      <Button variant="accent" className="rounded-2xl" onClick={onOpenNotions}>
+        <Layers aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        Réviser les notions
+      </Button>
+      <Button variant="secondary" className="rounded-2xl" onClick={onOpenTutor}>
+        <MessageCircle aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+        Discuter avec le tuteur
+      </Button>
+    </Card>
+  );
+}
+
+// One course's own reading content — kept as its own component (not inlined
+// into ReaderScreen below) so switching the pill selection can key-remount
+// it, resetting per-course polling state instead of leaking it from the
+// previously-selected course (same reasoning as NotionsScreen's own
+// NotionsCourseScreen split).
+function ReaderCourseContent({
+  documentId,
+  onOpenNotions,
+  onOpenTutor,
+}: {
+  documentId: string;
+  onOpenNotions: () => void;
+  onOpenTutor: () => void;
+}) {
   const pollStartedAt = useRef<number | null>(null);
 
   const query = useQuery({
@@ -76,52 +137,46 @@ function ReaderCourseScreen({ documentId, onBack }: { documentId: string; onBack
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] bg-surface p-8">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-4 animate-pulse rounded-[var(--radius-button)] bg-border" />
-          ))}
-        </div>
-      </main>
+      <div className="flex w-full max-w-2xl flex-col gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-4 animate-pulse rounded-[var(--radius-button)] bg-border" />
+        ))}
+      </div>
     );
   }
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Impossible de charger ce cours. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void query.refetch()}>Réessayer</Button>
-      </main>
+        <Button className="rounded-2xl" onClick={() => void query.refetch()}>
+          Réessayer
+        </Button>
+      </div>
     );
   }
 
   const document = query.data;
 
-  // Reachable by more than its one gated button (a stale render, a future
-  // entry point) — every extraction status this screen could see is
+  // Reachable by more than a single gated entry point (a stale render, a
+  // future entry point) — every extraction status this screen could see is
   // defined here, not left to chance (docs/UI.md's Lecteur note).
   if (isActive(document.status)) {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Reading />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours est encore en cours de lecture. Reviens dans un instant.</p>
-        <BackButton onBack={onBack} />
-      </main>
+      </div>
     );
   }
 
   if (document.status === "failed") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>La lecture de ce cours a échoué. Mets-la à jour depuis Mes cours.</p>
-        <BackButton onBack={onBack} />
-      </main>
+      </div>
     );
   }
 
@@ -129,64 +184,116 @@ function ReaderCourseScreen({ documentId, onBack }: { documentId: string; onBack
 
   if (markdown === "") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] bg-surface p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Idle />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
         <p>Ce cours ne contient pas encore de texte lisible.</p>
-        <BackButton onBack={onBack} />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] bg-surface p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecture</h1>
-        <BackButton onBack={onBack} />
-      </div>
-      <div className="mx-auto w-full max-w-2xl">
-        {/* --space-section (24px) below: a page-title-to-content boundary,
-            not a card-internal rhythm (docs/UI.md's Lecteur note) — there
-            was no gap here at all before, invisible while the title
-            rendered as plain text, a real defect once it renders as actual
-            bold 20px display type directly against the content's own first
-            line. */}
+    <div className="flex flex-col items-start gap-[var(--space-section)] lg:flex-row">
+      <Card className="w-full max-w-2xl">
         <div className="mb-[var(--space-section)] flex items-center gap-2">
           <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: document.colour }} />
           <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{document.title}</h2>
         </div>
         <Markdown components={READER_COMPONENTS}>{document.markdown}</Markdown>
-      </div>
-    </main>
+      </Card>
+      <StudyPanel onOpenNotions={onOpenNotions} onOpenTutor={onOpenTutor} />
+    </div>
   );
 }
 
-// M9 (docs/UI.md's Lecteur note): reachable directly from the nav with no
-// course chosen, landing on the same shared picker Tuteur's and Notions'
-// own notes describe. No hooks of its own — it only dispatches between the
-// picker and ReaderCourseScreen's own hooks, the same split TutorScreen
-// already uses for its own picker/chat halves, so switching between them
-// never violates the rules of hooks.
+// Redesigned per a "Lecteur" mockup, ignoring docs/UI.md per the user: one
+// unified page (a course-picker row of pills, then that course's own
+// reading surface), the same unification NotionsScreen's own redesign
+// already went through, not a separate picker page you leave to reach a
+// course's content. documentId (still optional, from App.tsx's own View)
+// keeps every existing deep link working (Mes cours' "Lire le cours",
+// Notions du cours' own toolbar) — when set, that course is pre-selected
+// and "Retour" appears; when absent (the nav's own direct entry), no back
+// link at all, matching Notions' own top-level entry, and the first course
+// is selected by default. Switching pills is a local selection, not a view
+// transition — there is no separate picker view left to transition into.
 export function ReaderScreen({
   documentId,
   onBack,
-  onSelectDocument,
+  onOpenNotions,
+  onOpenTutor,
 }: {
   documentId?: string;
   onBack: () => void;
-  onSelectDocument: (documentId: string) => void;
+  onOpenNotions: (documentId: string) => void;
+  onOpenTutor: (documentId: string) => void;
 }) {
-  if (documentId === undefined) {
+  const documentsQuery = useQuery({ queryKey: ["documents"], queryFn: listDocuments });
+  const [manualSelection, setManualSelection] = useState<string | undefined>(undefined);
+
+  if (documentsQuery.status === "pending") {
     return (
-      <CoursePickerScreen
-        heading="Lecteur"
-        description="Choisis un cours à lire."
-        emptyMessage="Ajoute un cours dans Mes cours pour le lire."
-        ctaLabel="Lire le cours"
-        ctaIcon={BookOpenText}
-        onSelectDocument={onSelectDocument}
-      />
+      <main className="p-8">
+        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
+          ))}
+        </div>
+      </main>
     );
   }
-  return <ReaderCourseScreen documentId={documentId} onBack={onBack} />;
+
+  if (documentsQuery.status === "error") {
+    return (
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+        <Confused />
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
+        <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
+        <Button className="rounded-2xl" onClick={() => void documentsQuery.refetch()}>
+          Réessayer
+        </Button>
+      </main>
+    );
+  }
+
+  const documents = documentsQuery.data;
+
+  if (documents.length === 0) {
+    return (
+      <main className="flex flex-col items-center gap-4 p-8 text-center">
+        <Idle />
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
+        <p>Ajoute un cours dans Mes cours pour le lire.</p>
+      </main>
+    );
+  }
+
+  const selectedId = documentId ?? manualSelection ?? documents[0]!.id;
+  const selectedDocument = documents.find((d) => d.id === selectedId) ?? documents[0]!;
+
+  return (
+    <main className="p-8">
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
+      <p className="mb-[var(--space-section)] text-sm text-text-muted">Le contenu de ton cours, mis en forme pour une lecture confortable.</p>
+
+      <div className="mb-[var(--space-section)] flex flex-wrap gap-2">
+        {documents.map((document) => (
+          <CoursePill key={document.id} document={document} active={document.id === selectedDocument.id} onSelect={() => setManualSelection(document.id)} />
+        ))}
+      </div>
+
+      {documentId !== undefined && (
+        <div className="mb-[var(--space-related)]">
+          <BackButton onBack={onBack} />
+        </div>
+      )}
+
+      <ReaderCourseContent
+        key={selectedDocument.id}
+        documentId={selectedDocument.id}
+        onOpenNotions={() => onOpenNotions(selectedDocument.id)}
+        onOpenTutor={() => onOpenTutor(selectedDocument.id)}
+      />
+    </main>
+  );
 }

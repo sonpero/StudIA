@@ -44,13 +44,14 @@ type View =
   | { name: "progress"; fromDocumentId?: string }
   | { name: "today" }
   | { name: "calendar" }
-  // documentId absent: the picker (M9, same shape as notions above).
-  // fromNotions and fromPicker are mutually exclusive sources, both only
-  // meaningful once documentId is set: fromNotions returns to that
-  // course's NotionsScreen, fromPicker returns to this picker, neither set
-  // (opened from a course's own card on Mes cours, unchanged since M7)
-  // returns to Mes cours.
-  | { name: "reader"; documentId?: string; fromNotions?: boolean; fromPicker?: boolean }
+  // documentId absent: the nav's own direct entry — Lecteur's own later
+  // redesign unified it with the same pill selector Notions already uses,
+  // no separate picker view left to transition into (fromPicker is gone:
+  // switching a course is now a local selection inside ReaderScreen, not a
+  // view transition). fromNotions, only meaningful once documentId is set,
+  // returns to that course's NotionsScreen; unset (opened from a course's
+  // own card on Mes cours, unchanged since M7) returns to Mes cours.
+  | { name: "reader"; documentId?: string; fromNotions?: boolean }
   | { name: "proposals"; jobId: string }
   // documentId absent: the picker (docs/UI.md's Tuteur note). fromNotions
   // mirrors reader's own field: only meaningful once documentId is set, and
@@ -169,14 +170,9 @@ function AppShell() {
           {view.name === "reader" && (
             <ReaderScreen
               documentId={view.documentId}
-              onBack={() =>
-                view.fromNotions
-                  ? setView({ name: "notions", documentId: view.documentId })
-                  : view.fromPicker
-                    ? setView({ name: "reader" })
-                    : setView({ name: "documents" })
-              }
-              onSelectDocument={(documentId) => setView({ name: "reader", documentId, fromPicker: true })}
+              onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "documents" }))}
+              onOpenNotions={(documentId) => setView({ name: "notions", documentId })}
+              onOpenTutor={(documentId) => setView({ name: "tutor", documentId })}
             />
           )}
           {view.name === "proposals" && <ProposalsScreen jobId={view.jobId} onBack={() => setView({ name: "today" })} />}

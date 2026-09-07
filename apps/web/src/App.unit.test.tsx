@@ -210,7 +210,12 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /retour/i })).not.toBeInTheDocument();
   });
 
-  it("Lecteur is reachable directly from the nav (a course picker); 'Retour' from there returns to the picker, not Mes cours", async () => {
+  // Lecteur's own later redesign unified it with the same pill selector
+  // Notions already uses (docs/UI.md's Lecteur note): the nav's own direct
+  // entry shows a pill selector plus the first course's own content
+  // immediately, no separate picker page and no back link — the same shape
+  // the Notions test above already covers.
+  it("Lecteur is reachable directly from the nav, showing a course pill selector and the first course's own content immediately, no back link", async () => {
     const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
     vi.stubGlobal(
       "fetch",
@@ -232,18 +237,12 @@ describe("App", () => {
     render(<App />);
     await screen.findByText("Bonjour, alex.");
 
-    // Directly from the nav: a picker, not a specific course's content yet.
     await user.click(screen.getByRole("button", { name: "Lecteur" }));
-    await screen.findByRole("heading", { name: "Lecteur" });
-    await screen.findByText("Cours test");
 
-    await user.click(screen.getByRole("button", { name: "Lire le cours" }));
-    await screen.findByRole("heading", { name: "Lecture" });
+    expect(await screen.findByRole("heading", { name: "Lecteur" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cours test" })).toHaveAttribute("aria-current", "page");
     await screen.findByText("Contenu du cours.");
-
-    await user.click(screen.getByRole("button", { name: "Retour" }));
-    await screen.findByRole("heading", { name: "Lecteur" });
-    expect(screen.queryByRole("heading", { name: "Mes cours" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retour/i })).not.toBeInTheDocument();
   });
 
   it("authenticated: the content area reserves space for the now-fixed desktop sidebar, so a long page's content never renders underneath it", async () => {
@@ -324,7 +323,8 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Cours test" });
 
     await user.click(screen.getByRole("button", { name: "Lire le cours" }));
-    await screen.findByRole("heading", { name: "Lecture" });
+    await screen.findByRole("heading", { name: "Lecteur" });
+    await screen.findByText("Contenu du cours.");
 
     await user.click(screen.getByRole("button", { name: "Retour" }));
     await screen.findByRole("heading", { name: "Cours test" });

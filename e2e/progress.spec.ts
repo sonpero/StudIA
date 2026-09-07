@@ -40,7 +40,7 @@ test.describe("progress", () => {
     // mechanic as this screen's own Progression round trip, checked further
     // down).
     await page.getByRole("button", { name: "Lire le cours" }).click();
-    await expect(page.getByRole("heading", { name: "Lecture" })).toBeVisible();
+    await expect(page.getByTestId("reader-study-panel")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Retour" }).click();
     await expect(page.getByRole("heading", { name: "Cours à suivre" })).toBeVisible();
 
