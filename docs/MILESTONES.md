@@ -287,7 +287,7 @@ redesign pass rather than a new milestone — still M9, since none of it is a
 new capability either. Phase 2 (below) tracks that ongoing, per-screen work.
 `docs/UI.md` is the authoritative detail source for every screen this
 milestone touches, reconciled with what actually shipped as of commit
-`47f6064`; this file only tracks status and acceptance.
+`17bc9b0` (Lecteur); this file only tracks status and acceptance.
 
 ### Phase 1 — merged colour, streak, countdown, nav to seven
 
@@ -357,9 +357,10 @@ was ever run for real).
 - [x] Lecteur is reachable from the nav with no course preselected, lands
       on a picker reusing `Mes cours`' own four states, and existing entry
       points (from a course, from Notions' own toolbar) are unchanged.
-      **Notions itself no longer works this way** — Phase 2's own Notions
-      redesign (below) replaced its picker with a pill-selector page before
-      this box was ever ticked; superseded, not satisfied as originally
+      **Neither Lecteur nor Notions still works this way** — Phase 2's own
+      Notions redesign (below) replaced its picker with a pill-selector
+      page first, and Lecteur's own later redesign (below) followed the
+      same pattern; both supersede this box, not satisfied as originally
       written
 - [x] Aujourd'hui's countdown badge shows only the relative form ("dans N
       jours"), never invented urgency wording beyond what `docs/UI.md`'s
@@ -367,9 +368,9 @@ was ever run for real).
 - [x] Playwright: a course with a deadline shows the countdown badge and a
       user with at least one review today or yesterday sees a non-zero
       streak (`e2e/streak-and-countdown.spec.ts`); Lecteur is reachable
-      from the nav via its own picker (`e2e/nav-pickers.spec.ts`) — that
-      same spec's own Notions half now covers its pill-selector page
-      instead of a picker, per the box above
+      from the nav (`e2e/nav-pickers.spec.ts`) — that spec's own Notions
+      and Lecteur halves both now cover a pill-selector page instead of a
+      picker, per the box above
 
 **Out of scope** — a configurable streak goal, a streak notification or
 reminder, a per-course streak, freezing/protecting a streak, any new
@@ -385,11 +386,11 @@ screen behind either).
 Also not a new capability: each screen rebuilt from a user-supplied mockup
 screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
 it — a deliberate departure each time, not a silent drift, and reconciled
-back into `docs/UI.md`'s own Screen notes as each pass lands (all three
-below are reconciled as of commit `47f6064`; that file is the authoritative
+back into `docs/UI.md`'s own Screen notes as each pass lands (all four
+below are reconciled as of commit `17bc9b0`; that file is the authoritative
 detail source, this entry only tracks status). No acceptance criteria are
 written ahead of a mockup existing — each screen's own scope is only known
-once its mockup is in hand, the same way every one of the three done so far
+once its mockup is in hand, the same way every one of the four done so far
 was scoped.
 
 **Done:**
@@ -404,6 +405,10 @@ was scoped.
   pill-selector page. Commit `e9440ce`, plus a related bug fix
   (`9030ad8`) and a full e2e-suite repair for regressions the earlier two
   redesigns had left unnoticed (`d8f1853`).
+- **Lecteur** — unified its old picker-plus-course-view into one
+  pill-selector page, the same pattern Notions used, plus a new "Étudier
+  cette page" panel linking to Notions/Tuteur. Commit `17bc9b0`; full
+  `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip).
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
@@ -420,19 +425,19 @@ with the user:** Notions' own per-notion "why isn't this mastered yet"
 sentence is gone from the redesigned card. Needs a decision before it is
 either restored or written off as a fourth intentional cut.
 
-**Remaining — next step:** **Lecteur, Progression, Calendrier, Tuteur**,
-same pattern, one at a time. Each needs its own mockup from the user
-before scoping starts — do not invent a redesign for any of these without
-one. `docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen
-notes both need updating as each lands, the same way all three done
-screens were.
+**Remaining — next step:** **Progression, Calendrier, Tuteur**, same
+pattern, one at a time. Each needs its own mockup from the user before
+scoping starts — do not invent a redesign for any of these without one.
+`docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen notes
+both need updating as each lands, the same way all four done screens were.
 
 **Acceptance**
 - [x] Aujourd'hui redesigned from mockup, `docs/UI.md` reconciled
 - [x] Mes cours redesigned from mockup, `docs/UI.md` reconciled
 - [x] Notions redesigned from mockup, `docs/UI.md` reconciled, full
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated `fixme`)
-- [ ] Lecteur redesigned from mockup, `docs/UI.md` reconciled
+- [x] Lecteur redesigned from mockup, `docs/UI.md` reconciled, full
+      `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
 - [ ] Progression redesigned from mockup, `docs/UI.md` reconciled
 - [ ] Calendrier redesigned from mockup, `docs/UI.md` reconciled
 - [ ] Tuteur redesigned from mockup, `docs/UI.md` reconciled

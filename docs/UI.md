@@ -695,8 +695,15 @@ direction the demotion was deliberately fighting.
 
 Not extended to `Calendrier` (a day cell, not a course card — the same
 reasoning `Subject colours` already gives for why that screen's colour
-treatment stops there too) or to `Lecteur`/`Révision` (a single "Retour", or
-grading controls — neither is a course-card grid). `NotionsScreen`'s own
+treatment stops there too) or to `Révision` (grading controls, not a
+course-card grid). `Lecteur`'s own later redesign (`Screen notes`' own
+Lecteur note, below) is an exception carved out since: its pill selector
+reuses `NotionsScreen`'s own `CoursePill` (`BookOpen` beside each course's
+title, the same nav-destination icon), and its "Étudier cette page" panel
+puts `Layers`/`MessageCircle` on its own two buttons — the same icons the
+nav already assigns to Notions/Tuteur, reused for the same destination
+rather than invented, each button living inside its own `Card` so the
+"actions of a card" boundary below still holds. `NotionsScreen`'s own
 toolbar ("Lire le cours" / "Voir la progression" / "Discuter du cours",
 `Screen notes`' own Notions note below) is plain page chrome, not inside a
 `Card`, so it is out of scope by the same "actions of a card" rule that
@@ -831,17 +838,23 @@ scattered to match some other logic** — the three together are "the course",
 read at increasing depth: the catalogue, then a course's own atomic units,
 then its full source text.
 
-**Lecteur** keeps the dual-entry shape `Tuteur` already established:
-reachable directly from the nav with no course chosen, landing on a picker
-that reuses `Mes cours`' own list and its four states unmodified (`Screen
-notes`'s own Tuteur note, above, already describes this mechanism in full),
-and reachable from within a course exactly as before M9 (a course's own
-card on `Mes cours`, `Notions du cours`' own toolbar). Its view shape
-carries `fromPicker?: boolean`, true only when opened from this nav-level
-picker, so "Retour" can tell that case apart from "opened from a course's
-own card on Mes cours" (still "Retour" to `Mes cours`, unchanged) and
-return to the picker itself instead — the same "which of several sources"
-problem `fromDocumentId`/`fromNotions` already solve elsewhere in this app.
+**Lecteur kept the dual-entry shape `Tuteur` established, until a later
+pass unified it with Notions' own pill selector instead, ignoring
+`docs/UI.md` per the user (`Screen notes`'s own Lecteur note, below,
+describes the replacement in full).** Reachable directly from the nav
+with no course chosen: instead of landing on a `Mes cours`-shaped picker
+list, it lands straight on its own pill row of courses (the first one
+selected) plus that course's own reading surface and "Étudier cette page"
+panel — one page, not two, the same unification Notions went through
+first. There is no `fromPicker` field on its view shape any more (removed
+along with the picker it once distinguished from) and no "which of several
+sources" problem left to solve for that case: a `documentId` still
+pre-selects a course from any existing deep link (a course's own card on
+`Mes cours`, `Notions du cours`' own toolbar) and shows "Retour"; its
+absence (the nav's own direct entry) shows the first course with no back
+link at all, matching Notions/Aujourd'hui/Mes cours' own top-level pages.
+`Tuteur` is the one dual-entry-with-a-picker screen left (`Screen notes`'s
+own Tuteur note, below, still describes that mechanism in full).
 
 **Notions dropped the picker entirely in a later pass, ignoring
 `docs/UI.md` per the user (`Screen notes`'s own Notions note, below,
@@ -1169,8 +1182,10 @@ at the nav-entry level;
 this note describes the page itself.
 
 **One page: a pill row of every course, then that course's own summary
-and notion list — no separate picker to leave, unlike Lecteur (above),
-which still has one.** Each pill: `BookOpen` plus the course's own title,
+and notion list — no separate picker to leave.** Lecteur went through the
+same unification in a later pass (`Screen notes`' own Lecteur note,
+below); Tuteur is the one screen left with a separate picker page
+(`Navigation`'s own note, above). Each pill: `BookOpen` plus the course's own title,
 filled `--primary`/white when active, plain otherwise — no left-border or
 tinted-circle treatment here, a plain filled/outline toggle instead.
 Switching pills is a local selection, not a navigation; the selected
@@ -1426,70 +1441,58 @@ itself is the useful surface even at zero events (you can still page to
 another month), unlike a list screen where zero rows really is nothing to
 show. No mascot for a quiet month.
 
-**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Reached three ways.
-Two predate M9, both "Lire le cours": from a course's card on Mes cours
-(replacing the old "Voir le texte" toggle, same `status === "done"` gate
-that button already had), and from Notions du cours' own toolbar. **M9 adds
-a third: directly from the nav**, reversing this note's own earlier "never
-from the nav" — written when Lecteur was purely a drill-down from an
-already-chosen course, no longer true now that `Navigation` (above) lists
-it as one of the app's seven top-level destinations. Entered that way it
-lands on the same picker `Tuteur`'s own note describes (reusing `Mes
-cours`' own list and its four states, each row routing into Lecteur
-instead), the same component Notions' own nav entry uses too — one picker,
-reused by name, not three near-identical ones.
+**Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Redesigned from a
+user-supplied mockup in a later M9 pass, ignoring this file's own former
+picker-plus-course-view description below in full, the same unification
+Notions went through first (`Screen notes`' own Notions note, above).
+`Navigation`'s own note (above) already describes what changed at the
+nav-entry level; this note describes the page itself.
 
-That back action reads plain **"Retour"**, not "Retour à mes cours": it
-returns to wherever the screen was opened from — Mes cours, Notions du
-cours, or (M9) the nav's own picker — the same `fromDocumentId`-shaped
-mechanic ProgressScreen already uses for its own two entry paths, now with
-a third source distinguished by a new `fromPicker?: boolean` (`Navigation`'s
-own note, above): `fromPicker` true returns to the picker with no course
-selected; `fromNotions` true (unchanged) returns to that course's Notions du
-cours; neither set (opened from a course's own card on Mes cours, unchanged
-since M7) returns to Mes cours. A label naming one specific destination
-would lie on the other two paths.
+**One page: a pill row of every course, then that course's own reading
+surface and "Étudier cette page" panel — no separate picker to leave.**
+Reached the same three ways as before this pass — a course's card on Mes
+cours ("Lire le cours"), Notions du cours' own toolbar, and directly from
+the nav — but all three now land on this one page rather than two of them
+skipping a separate picker page. Each pill reuses `NotionsScreen`'s own
+`CoursePill` component unmodified (`BookOpen` plus the course's own title,
+filled `--primary`/white when active). Switching pills is a local
+selection, not a navigation: the selected course's own content
+(`ReaderCourseContent`) resets on switch via a `key`-based remount, the
+same idiom `NotionsScreen`'s own course body already uses, so a stale poll
+from the previously-selected course never leaks into the new one.
+
+**"Retour" sits on its own line beneath the pill row, a plain underlined
+link — shown only when a `documentId` arrived from an existing deep link**
+(a course's card on Mes cours, Notions du cours' own toolbar); absent
+entirely on the nav's own direct entry, which shows the first course with
+nothing to go back to, the same as Notions/Aujourd'hui/Mes cours' own
+top-level pages. There is no `fromPicker` case any more (the picker it once
+distinguished from doesn't exist): `fromNotions` true returns to that
+course's Notions du cours; unset (opened from a course's own card on Mes
+cours, unchanged since M7) returns to Mes cours. The label stays plain
+"Retour", not "Retour à mes cours": a label naming one specific destination
+would lie on the other path. The page's own `<h1>` stays "Lecteur" in every
+state, never "Lecture" — one constant page name, the course's own title
+rendered separately as an `<h2>` inside the reading card below, the same
+"page name never duplicates the thing inside it" rule Notions' own summary
+card already follows.
 
 **The course content's own heading scale is a rule, not a calibration
 value: content can never render at the same size as the chrome that
 contains it.** This screen's own DOM already nests the document's
-headings two levels below the page's own (`h1` from the markdown becomes
-a DOM `h3`, and so on — see the code comment on `READER_COMPONENTS`), but
-nesting the DOM alone doesn't nest the *look*: until this pass, content
-`h1`/`h2`/`h3` rendered at `text-2xl`/`text-xl`/`text-lg` — literally the
-same Tailwind classes as the page's own `<h1>` ("Lecture", 24px) and the
-document's own title `<h2>` (`--text-title`, 20px). A fact stated inside
-the course text read at the identical size and weight as the screen's own
-name; scrolling past a content heading gave no visual signal that you
-were still inside one document, not looking at a new page. Checked on
-screen, not assumed: a static mockup of a multi-level course made this
-immediately obvious side by side, not only reasoned about in the abstract
-(`Shape and depth`'s own recalibration note, above, is the general form
-of why that check mattered here specifically).
-Content's own scale is now `text-lg`/`text-base`/`text-sm` (18/16/14px)
-for `h1`/`h2`/`h3` — every level strictly under `--text-title` (20px),
-the smallest heading the chrome itself ever shows, so no content heading
-can ever equal or outrank it, whatever the source document's own
-structure looks like. `h3` lands at the same 14px as ordinary body text;
-weight (extrabold) and typeface (`--font-display` vs. `--font-body`)
-still carry the "this is a heading" signal on their own, the same two
-channels every heading in this app already relies on, checked on the
-same mockup and legible there. The `mt-8`/`mt-6`/`mt-4` rhythm between
-levels is unchanged — smaller headings, checked on the same mockup, did
-not make that spacing read as oversized.
-
-**The document-title row and the course content beneath it carry
-`--space-section` (24px), not the 0px gap that used to sit between
-them.** Neither the title row nor the content wrapper ever had a gap or
-margin between them — invisible while the title rendered as unstyled
-plain text (`Type`'s own Tailwind-bug note, above), a real defect once it
-renders as actual bold 20px display type directly against the first line
-of body text, reading as though the title and the content had run
-together by mistake. `--space-section` is the right tier: this is a
-page-title-to-content boundary, the same relationship every other
-screen's own `<h1>` already has to what follows it (`NotionsScreen`'s own
-header, for one), not a card-internal rhythm — nothing here is wrapped in
-a `Card`.
+headings two levels below the reading card's own `<h2>` (`h1` from the
+markdown becomes a DOM `h3`, and so on — see the code comment on
+`READER_COMPONENTS`), but nesting the DOM alone doesn't nest the *look*.
+Content's own scale is `text-lg`/`text-base`/`text-sm` (18/16/14px) for
+`h1`/`h2`/`h3` — every level strictly under `--text-title` (20px), the
+smallest heading the chrome itself ever shows, so no content heading can
+ever equal or outrank it, whatever the source document's own structure
+looks like. `h3` lands at the same 14px as ordinary body text; weight
+(extrabold) and typeface (`--font-display` vs. `--font-body`) still carry
+the "this is a heading" signal on their own, the same two channels every
+heading in this app already relies on. The `mt-8`/`mt-6`/`mt-4` rhythm
+between levels is unchanged from the original calibration, checked on a
+static mockup at the time.
 
 **Renders the course's extracted markdown, never its notions strung
 together, and this is a deliberate distinction, not an oversight.** A
@@ -1501,25 +1504,31 @@ as written or photographed; that is what "read the course" means here.
 `react-markdown` renders it through this app's own token classes (headings,
 lists, emphasis), not `@tailwindcss/typography`, which would bring its own
 spacing and colour scale to reconcile against `tokens.css` for a job this app
-already does by hand on every other screen. The reading column caps at
+already does by hand on every other screen. The reading card caps at
 `max-w-2xl`, narrower than the rest of the app's 1152px content width — a
 deliberately shorter line length for continuous prose, the same "cap it
 instead of stretching it" principle as Shape and depth's form-width rule.
 
-**The reading surface itself is `--surface`, not `--canvas`** — this
-screen's one deliberate deviation from "Content area on `--canvas`"
-(Layout and responsiveness's own Desktop line): a full page of continuous
-prose reads as a page, the way a card or a panel already does on
-`--surface` elsewhere, not as bare canvas with text floating on it. No new
-token: the token table has nothing named for "a full-height reading
-surface" specifically, but `--surface` is already white and already used
-for exactly this kind of contained, page-like area (its own row says
-"Cards, sidebar, panels"); reusing it here is extending that row's
-coverage, not inventing a token for a gap a new one would fix better.
-Contrast improves, not just holds: `--text` on `--surface` measures
-17.75:1 against 16.54:1 on `--canvas`, and `--text-muted` 4.97:1 against
-4.64:1 — both already passed the 4.5:1 floor, this is a strict
-improvement, not a trade.
+**The reading card and the "Étudier cette page" panel sit side by side on
+`--canvas`, each its own `Card` (`--surface`, bordered) — the mockup's own
+layout, superseding this file's former one deliberate `--canvas`
+deviation** (a full-page `--surface` reading surface). That exception is
+gone: Lecteur now follows the same "content area on `--canvas`, cards on
+`--surface`" default every other M9 screen already uses, not a special
+case of its own. On narrow viewports the panel stacks beneath the reading
+card (`flex-col` below `lg`), never beside it — there is no room for two
+280px-plus columns under the mobile/tablet breakpoints `Layout and
+responsiveness` already defines.
+
+**"Étudier cette page"**: a title, one sentence ("Transforme ce que tu
+viens de lire en exercice de mémorisation."), and two rounded-2xl buttons —
+"Réviser les notions" (`Layers`, `accent`, primary) and "Discuter avec le
+tuteur" (`MessageCircle`, `secondary`) — this page's own answer to "un
+renvoi vers les notions ou le tuteur" from the mockup. Both icons are
+reused from the nav's own assignment for the same destination (`Icons`'
+own note, above), not invented. Shown only in the ready state: there is
+nothing to study yet while a course is still extracting, failed, or empty,
+so the panel is absent in every other state rather than shown disabled.
 
 **No progressive loading, no infinite scroll, one normal scrolling page.**
 Measured, not assumed: `react-markdown`'s own render pipeline, timed via
@@ -1533,15 +1542,19 @@ preference nobody asked for, and the measurement above is exactly why it
 was left as a preference rather than escalated into a technical
 requirement: there is no slowness here for pagination to fix.
 
-Four states: **loading** is a skeleton (short animated bars in the reading
-column, no mascot — no screen in this app puts a mascot on a plain network
-fetch); **error** is `confused` and a retry, same wording pattern as every
-other screen; **ready** is the rendered markdown, no mascot (data-dense,
-docs/UI.md's one-mascot rule already excludes it). Within ready, the
-document's own extraction status branches further, since this screen is
-reachable by more than its one gated button — a stale button render, a
-future entry point, anything that skips the check must still land somewhere
-defined:
+Four states, all beneath the page's own constant "Lecteur" header and pill
+row: **loading** is a skeleton (short animated bars, no mascot — no screen
+in this app puts a mascot on a plain network fetch), shown first for the
+course list itself and then, once a course is selected, for that course's
+own content; **error** is `confused` and a retry, same wording pattern as
+every other screen, at either level (the course list, or one course's own
+content); **empty** (no course at all) is `idle`, "Ajoute un cours dans Mes
+cours pour le lire."; **ready** is the reading card plus the study panel,
+no mascot on the reading card itself (data-dense, docs/UI.md's one-mascot
+rule already excludes it). Within a selected course, the extraction status
+branches further, since this screen is reachable by more than its one
+gated button — a stale button render, a future entry point, anything that
+skips the check must still land somewhere defined:
 - still extracting (`pending`/`running`): `reading`, "Ce cours est encore en
   cours de lecture. Reviens dans un instant.", polling on the same
   30-second-backoff schedule Mes cours already uses for exactly this,
@@ -1552,8 +1565,8 @@ defined:
   Mes cours and this screen does not duplicate it
 - `done` with nothing readable (markdown null or blank): `idle`, "Ce cours
   ne contient pas encore de texte lisible."
-- `done` with real content: the actual reader — course title and subject
-  colour dot, then the rendered markdown
+- `done` with real content: the reading card (course title and subject
+  colour dot, then the rendered markdown) plus the study panel beside it
 
 **Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
 own note above). Reachable two ways, the same dual-entry shape `Progression`

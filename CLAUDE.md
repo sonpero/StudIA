@@ -22,11 +22,11 @@ M9 has two phases. Phase 1 (merged colour, streak, countdown, nav to
 seven) is done. Phase 2 is an ongoing, per-screen redesign from
 user-supplied mockups, ignoring `docs/UI.md` where a mockup calls for
 it and reconciling `docs/UI.md`'s own Screen notes back into sync once
-each pass lands — Aujourd'hui, Mes cours and Notions are done this way;
-**Lecteur, Progression, Calendrier and Tuteur are next, in that order.**
-Before starting any of the four: ask the user for that screen's own
+each pass lands — Aujourd'hui, Mes cours, Notions and Lecteur are done this
+way; **Progression, Calendrier and Tuteur are next, in that order.**
+Before starting any of the three: ask the user for that screen's own
 mockup screenshot if one hasn't been supplied yet — do not invent a
-redesign without one, the same discipline the first three followed.
+redesign without one, the same discipline the first four followed.
 `docs/MILESTONES.md`'s own M9 section and `docs/UI.md`'s matching Screen
 notes both need updating as each screen lands, not deferred.
 
