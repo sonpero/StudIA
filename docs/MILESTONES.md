@@ -387,7 +387,7 @@ Also not a new capability: each screen rebuilt from a user-supplied mockup
 screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
 it — a deliberate departure each time, not a silent drift, and reconciled
 back into `docs/UI.md`'s own Screen notes as each pass lands (all five
-below are reconciled as of commit `c745561`; that file is the authoritative
+below are reconciled as of commit `1f8e299`; that file is the authoritative
 detail source, this entry only tracks status). No acceptance criteria are
 written ahead of a mockup existing — each screen's own scope is only known
 once its mockup is in hand, the same way every one of the five done so far
@@ -421,10 +421,16 @@ was scoped.
   realigned into the ring's own right-hand column, every gauge/the ring
   now animates from 0 on mount, a `Trash2` icon replaces the old
   "Supprimer l'échéance" text link, "Voir le cours" gained the same tint
-  Lecteur's "Discuter avec le tuteur" uses); full `pnpm test:e2e` green
-  (16 passed, 1 pre-existing unrelated skip) after both; visually checked
-  live via a throwaway Playwright screenshot each time, not just by test
-  assertions.
+  Lecteur's "Discuter avec le tuteur" uses), `164eb20` (a second
+  follow-up: the ring moved down to sit between "Couverture" and
+  "Préparation" instead of beside the header, the header and the lower
+  block each reserve the ring's own width with an invisible `RingSpacer`
+  instead of sharing a row with it, "Modifier l'échéance"/the delete icon
+  now share one action row with "Combler l'écart"/"Voir le cours", and
+  "Modifier l'échéance" gained the same tint "Voir le cours" already had);
+  full `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
+  after each pass; visually checked live via a throwaway Playwright
+  screenshot every time, not just by test assertions.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
