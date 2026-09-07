@@ -417,7 +417,7 @@ describe("ProgressScreen", () => {
     expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
   });
 
-  it("the header (icon, title, deadline) and the two gauges share one column, separate from the readiness ring — the title aligns with 'Couverture', per a follow-up mockup", async () => {
+  it("the readiness ring shares a row with the two gauges only, not the header — a second follow-up mockup moved it down so it sits between 'Couverture' and 'Préparation'", async () => {
     stubFetch({ items: [mathsItem] });
     renderScreen();
 
@@ -427,12 +427,52 @@ describe("ProgressScreen", () => {
     const coverageMeter = within(detail).getByRole("meter", { name: "Couverture" });
 
     expect(ringColumn.contains(title)).toBe(false);
-    expect(ringColumn.contains(coverageMeter)).toBe(false);
-    // Same right-hand column as the bars, not merely "somewhere else on
-    // the card" — the whole point of the realignment.
-    const rightColumn = within(detail).getByTestId("progress-detail-body");
-    expect(rightColumn.contains(title)).toBe(true);
-    expect(rightColumn.contains(coverageMeter)).toBe(true);
+    // Same row as the bars now (its own sibling), the ring no longer
+    // spans the header's own row above it.
+    const ringRow = ringColumn.parentElement;
+    expect(ringRow?.contains(coverageMeter)).toBe(true);
+    expect(ringRow?.contains(title)).toBe(false);
+  });
+
+  it("the header and the lower block (stat tiles, actions) each reserve the ring's own width with an invisible spacer, so both align with 'Couverture' — the same realignment extended further down, per a follow-up mockup", async () => {
+    stubFetch({ items: [mathsItem] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    await within(detail).findByText("Maths");
+    const spacers = within(detail).getAllByTestId("progress-ring-spacer");
+    // One above the ring's own row (for the header), one below it (for
+    // the stat tiles and action row) — both the same width as the ring.
+    expect(spacers.length).toBe(2);
+    for (const spacer of spacers) {
+      expect(spacer.className).toMatch(/w-\[140px\]/);
+    }
+  });
+
+  it("'Combler l'écart', 'Voir le cours', 'Modifier l'échéance' and the delete icon all share one row — a follow-up mockup's own request, replacing the separate deadline-actions row this pass's first cut had", async () => {
+    const item = { ...mathsItem, deadlineDate: "2020-01-01", progress: { ...mathsItem.progress, status: "deadline-in-past" as const } };
+    stubFetch({ items: [item] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    const reviserButton = await within(detail).findByRole("button", { name: /rien à réviser/i });
+    const voirButton = within(detail).getByRole("button", { name: "Voir le cours" });
+    const modifierButton = within(detail).getByRole("button", { name: /modifier l'échéance/i });
+    const deleteButton = within(detail).getByRole("button", { name: "Supprimer l'échéance" });
+
+    const row = reviserButton.parentElement;
+    expect(row?.contains(voirButton)).toBe(true);
+    expect(row?.contains(modifierButton)).toBe(true);
+    expect(row?.contains(deleteButton)).toBe(true);
+  });
+
+  it("'Modifier l'échéance' carries the same light green tint as 'Voir le cours' now — a follow-up mockup's own request", async () => {
+    stubFetch({ items: [mathsItem] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    const button = await within(detail).findByRole("button", { name: /définir une échéance/i });
+    expect(button.className).toContain("bg-primary-soft");
   });
 
   it("the coverage/readiness bars and the readiness ring are wired to animate from 0 to their real value, not render at full width/arc immediately — a follow-up mockup's own request", async () => {

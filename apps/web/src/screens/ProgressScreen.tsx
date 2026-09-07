@@ -94,12 +94,28 @@ function CompactBar({ label, value, colour }: { label: string; value: number; co
   );
 }
 
+// The ring's own outer width (ReadinessRing, below) — shared with
+// RingSpacer so the header and the lower block (stat tiles, actions) can
+// each reserve exactly the ring's own column width without duplicating
+// the number, even though neither of them shares a row with the ring
+// itself any more (a second follow-up mockup moved the ring down to sit
+// between "Couverture" and "Préparation" instead of spanning the header).
+const RING_SIZE = 140;
+
+// An invisible column-width spacer, sm+ only (everything stacks full-width
+// below that breakpoint, the ring included) — keeps the header and the
+// lower block's own left edge aligned with the bars' own "Couverture"
+// label without either of them needing to share a row with the ring.
+function RingSpacer() {
+  return <div className="hidden shrink-0 sm:block sm:w-[140px]" aria-hidden="true" data-testid="progress-ring-spacer" />;
+}
+
 // A decorative ring duplicating the readiness number the linear "Préparation"
 // gauge below already exposes with role="meter" — this SVG stays
 // aria-hidden rather than being a second accessible meter with the same
 // name, avoiding an ambiguous duplicate for both assistive tech and tests.
 function ReadinessRing({ value, colour }: { value: number; colour: string }) {
-  const size = 140;
+  const size = RING_SIZE;
   const stroke = 10;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -273,14 +289,15 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
 
   return (
     <Card className="flex flex-col gap-[var(--space-section)]" data-testid="progress-detail-card" data-status={dataStatus}>
-      {/* The ring sits in its own left column, spanning the header and the
-          two gauges below it; the header and gauges share one right-hand
-          column so the title's own left edge lines up with "Couverture"'s
-          — a follow-up mockup's own realignment, not the original pass's
-          full-width header above everything. */}
-      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-start">
-        <ReadinessRing value={item.progress.readiness} colour={item.colour} />
-        <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]" data-testid="progress-detail-body">
+      {/* The header reserves the ring's own column width with an
+          invisible spacer rather than sharing a row with it — a second
+          follow-up mockup moved the ring down to sit between "Couverture"
+          and "Préparation" instead of spanning the header's own row, so
+          the header can no longer align with the bars by sharing a flex
+          row with the ring the way this pass's first cut did. */}
+      <div className="flex flex-col gap-[var(--space-section)] sm:flex-row sm:items-start">
+        <RingSpacer />
+        <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]">
           <div className="flex items-start gap-[var(--space-related)]">
             <CourseIcon colour={item.colour} />
             <div>
@@ -315,74 +332,91 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
               {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
             </p>
           )}
-
-          <div className="flex flex-col gap-[var(--space-block)]">
-            <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
-            <Gauge label="Préparation" value={item.progress.readiness} colour={item.colour} />
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <StatTile dataTestId="stat-mastered" value={statsLoading ? null : statsErrored ? 0 : buckets.mastered} label="Maîtrisées" />
-        <StatTile dataTestId="stat-learning" value={statsLoading ? null : statsErrored ? 0 : buckets.learning} label="En apprentissage" />
-        <StatTile dataTestId="stat-due" value={statsLoading ? null : statsErrored ? 0 : buckets.due} label="À réviser" />
-        <StatTile dataTestId="stat-not-started" value={statsLoading ? null : statsErrored ? 0 : buckets["not-started"]} label="Non commencées" />
+      {/* The ring's own row: just the ring and the two gauges,
+          vertically centred against each other so the ring lands between
+          "Couverture" and "Préparation" — the realignment itself. */}
+      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-center">
+        <ReadinessRing value={item.progress.readiness} colour={item.colour} />
+        <div className="flex w-full flex-1 flex-col gap-[var(--space-block)]" data-testid="progress-detail-body">
+          <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
+          <Gauge label="Préparation" value={item.progress.readiness} colour={item.colour} />
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {dueCount > 0 ? (
-          <Button variant="accent" className="rounded-2xl" onClick={() => onReview(item.documentId)}>
-            Combler l'écart
-            <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-          </Button>
-        ) : (
-          <Button variant="secondary" className="rounded-2xl" disabled>
-            Rien à réviser
-          </Button>
-        )}
-        {/* Same secondary-with-tint idiom as Lecteur's "Discuter avec le
-            tuteur" and Mes cours' "Lire le cours" (DocumentsScreen.tsx) —
-            a light green wash, not the plain bordered secondary this
-            button used to be, per a follow-up mockup. */}
-        <Button variant="secondary" className="border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={() => onOpenCourse(item.documentId)}>
-          <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-          Voir le cours
-        </Button>
-      </div>
+      {/* The lower block (stat tiles, actions) reserves the same spacer
+          width so it aligns with "Couverture" too, leaving the space
+          beneath the ring empty rather than stretching under it. */}
+      <div className="flex flex-col gap-[var(--space-section)] sm:flex-row sm:items-start">
+        <RingSpacer />
+        <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile dataTestId="stat-mastered" value={statsLoading ? null : statsErrored ? 0 : buckets.mastered} label="Maîtrisées" />
+            <StatTile dataTestId="stat-learning" value={statsLoading ? null : statsErrored ? 0 : buckets.learning} label="En apprentissage" />
+            <StatTile dataTestId="stat-due" value={statsLoading ? null : statsErrored ? 0 : buckets.due} label="À réviser" />
+            <StatTile dataTestId="stat-not-started" value={statsLoading ? null : statsErrored ? 0 : buckets["not-started"]} label="Non commencées" />
+          </div>
 
-      {editing ? (
-        <DeadlineForm
-          initialDate={isPast ? "" : (item.deadlineDate ?? "")}
-          initialLabel={item.deadlineLabel ?? ""}
-          pending={setDeadlineMutation.isPending}
-          onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => setEditing(true)}>
-            <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-            {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
-          </Button>
-          {item.deadlineDate !== null && (
-            // A trash icon, not the text link this used to be, per a
-            // follow-up mockup — the accessible name stays "Supprimer
-            // l'échéance" via aria-label (Forbidden's own "icon-only
-            // button without an accessible label" rule, above), still the
-            // same low-visual-weight treatment every other destructive
-            // action in this app uses, an icon instead of underlined text.
-            <button
-              type="button"
-              aria-label="Supprimer l'échéance"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] text-text-muted hover:bg-canvas hover:text-text"
-              onClick={() => deleteDeadlineMutation.mutate()}
-            >
-              <Trash2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
-            </button>
+          {editing ? (
+            <DeadlineForm
+              initialDate={isPast ? "" : (item.deadlineDate ?? "")}
+              initialLabel={item.deadlineLabel ?? ""}
+              pending={setDeadlineMutation.isPending}
+              onSubmit={(date, label) => setDeadlineMutation.mutate({ date, label })}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            // "Modifier l'échéance" and the delete icon now share this row
+            // with "Combler l'écart"/"Voir le cours" instead of their own
+            // row below — a follow-up mockup's own request.
+            <div className="flex flex-wrap items-center gap-3">
+              {dueCount > 0 ? (
+                <Button variant="accent" className="rounded-2xl" onClick={() => onReview(item.documentId)}>
+                  Combler l'écart
+                  <ArrowRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                </Button>
+              ) : (
+                <Button variant="secondary" className="rounded-2xl" disabled>
+                  Rien à réviser
+                </Button>
+              )}
+              {/* Same secondary-with-tint idiom as Lecteur's "Discuter avec
+                  le tuteur" and Mes cours' "Lire le cours"
+                  (DocumentsScreen.tsx) — a light green wash, not the plain
+                  bordered secondary either button used to be, per a
+                  follow-up mockup (this one twice: first "Voir le cours",
+                  then "Modifier l'échéance" too). */}
+              <Button variant="secondary" className="border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={() => onOpenCourse(item.documentId)}>
+                <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                Voir le cours
+              </Button>
+              <Button variant="secondary" className="border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={() => setEditing(true)}>
+                <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
+              </Button>
+              {item.deadlineDate !== null && (
+                // A trash icon, not the text link this used to be, per a
+                // follow-up mockup — the accessible name stays "Supprimer
+                // l'échéance" via aria-label (Forbidden's own "icon-only
+                // button without an accessible label" rule, above), still
+                // the same low-visual-weight treatment every other
+                // destructive action in this app uses, an icon instead of
+                // underlined text.
+                <button
+                  type="button"
+                  aria-label="Supprimer l'échéance"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] text-text-muted hover:bg-canvas hover:text-text"
+                  onClick={() => deleteDeadlineMutation.mutate()}
+                >
+                  <Trash2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+                </button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </Card>
   );
 }
