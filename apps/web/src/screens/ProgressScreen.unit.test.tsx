@@ -361,8 +361,14 @@ describe("ProgressScreen", () => {
 
     const updateButton = within(detail).getByRole("button", { name: /modifier l'échéance/i });
     expect(updateButton.tagName).toBe("BUTTON");
-    const deleteLink = within(detail).getByRole("button", { name: /supprimer l'échéance/i });
-    expect(deleteLink.className).toMatch(/underline/);
+    // A trash icon, not the text link this used to be (per a follow-up
+    // mockup) — the accessible name stays "Supprimer l'échéance" via
+    // aria-label, but there is no visible text any more, only the icon.
+    const deleteButton = within(detail).getByRole("button", { name: "Supprimer l'échéance" });
+    expect(deleteButton.textContent?.trim()).toBe("");
+    const trashIcon = deleteButton.querySelector("svg");
+    expect(trashIcon).toHaveAttribute("aria-hidden", "true");
+    expect(trashIcon).toHaveAttribute("focusable", "false");
   });
 
   it("deleting a deadline sends a DELETE and refreshes", async () => {
@@ -409,5 +415,49 @@ describe("ProgressScreen", () => {
     renderScreen();
     await screen.findByTestId("progress-detail-card");
     expect(document.querySelectorAll("svg[data-testid='mascot']")).toHaveLength(0);
+  });
+
+  it("the header (icon, title, deadline) and the two gauges share one column, separate from the readiness ring — the title aligns with 'Couverture', per a follow-up mockup", async () => {
+    stubFetch({ items: [mathsItem] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    const ringColumn = within(detail).getByTestId("progress-ring-column");
+    const title = within(detail).getByText("Maths");
+    const coverageMeter = within(detail).getByRole("meter", { name: "Couverture" });
+
+    expect(ringColumn.contains(title)).toBe(false);
+    expect(ringColumn.contains(coverageMeter)).toBe(false);
+    // Same right-hand column as the bars, not merely "somewhere else on
+    // the card" — the whole point of the realignment.
+    const rightColumn = within(detail).getByTestId("progress-detail-body");
+    expect(rightColumn.contains(title)).toBe(true);
+    expect(rightColumn.contains(coverageMeter)).toBe(true);
+  });
+
+  it("the coverage/readiness bars and the readiness ring are wired to animate from 0 to their real value, not render at full width/arc immediately — a follow-up mockup's own request", async () => {
+    stubFetch({ items: [mathsItem] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    const coverageFill = within(within(detail).getByRole("meter", { name: "Couverture" })).getByTestId("gauge-fill");
+    expect(coverageFill.className).toMatch(/transition-\[width\]/);
+    expect(coverageFill.className).toMatch(/motion-reduce:transition-none/);
+
+    // SVG elements expose className as an SVGAnimatedString, not a plain
+    // string — read the class attribute directly instead.
+    const ringFill = within(detail).getByTestId("ring-fill");
+    const ringFillClass = ringFill.getAttribute("class") ?? "";
+    expect(ringFillClass).toMatch(/transition-\[stroke-dashoffset\]/);
+    expect(ringFillClass).toMatch(/motion-reduce:transition-none/);
+  });
+
+  it("'Voir le cours' carries a light green tint (--primary-soft), the same secondary-with-tint idiom Lecteur's 'Discuter avec le tuteur' and Mes cours' 'Lire le cours' already use — a follow-up mockup's own request", async () => {
+    stubFetch({ items: [mathsItem] });
+    renderScreen();
+
+    const detail = await screen.findByTestId("progress-detail-card");
+    const button = within(detail).getByRole("button", { name: "Voir le cours" });
+    expect(button.className).toContain("bg-primary-soft");
   });
 });

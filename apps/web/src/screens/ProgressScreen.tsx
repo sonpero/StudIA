@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, BookOpen, CalendarClock, TrendingUp } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, BookOpen, CalendarClock, Trash2, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
 import { Button } from "../components/ui/button.js";
@@ -32,11 +32,34 @@ function widthPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+// Every indicator on this screen loads from 0 to its real value, per a
+// follow-up mockup — a deliberate motion addition, not covered by
+// docs/UI.md's own Motion section (150-200ms ease-out, "the review card
+// flip is the one orchestrated moment"), reconciled there alongside this
+// note. A CSS transition needs two distinct rendered states to animate
+// between: this hook renders `false` on the first paint (0 width/full
+// offset, the "empty" state), then flips to `true` in a plain (not layout)
+// effect — deferred until after that first paint, exactly the gap the
+// transition needs — triggering the real value's own paint as a second,
+// transitioned frame. `motion-reduce:transition-none` on each animated
+// element (not here) respects a reduced-motion preference, jumping
+// straight to the real value instead.
+function useEnterAnimation(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(true);
+  }, []);
+  return ready;
+}
+
+const GAUGE_TRANSITION = "transition-[width] duration-700 ease-out motion-reduce:transition-none";
+
 // The dominant, --text-display gauge used on the detail card — one course's
 // own indicators only, so unlike the compact list row's own bar (below), a
 // mismatch of scale is never a risk here.
 function Gauge({ label, value, colour }: { label: string; value: number; colour: string }) {
   const precise = Math.round(value * 10_000) / 100;
+  const ready = useEnterAnimation();
   return (
     <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
       <span className="text-[length:var(--text-label)] text-text-muted">{label}</span>
@@ -46,7 +69,7 @@ function Gauge({ label, value, colour }: { label: string; value: number; colour:
             reversal of docs/UI.md's former "subject colours are for
             identity only, never progress or state" rule, per the user's
             explicit instruction for this screen. */}
-        <div data-testid="gauge-fill" className="h-2 rounded-full" style={{ width: widthPercent(value), backgroundColor: colour }} />
+        <div data-testid="gauge-fill" className={`h-2 rounded-full ${GAUGE_TRANSITION}`} style={{ width: ready ? widthPercent(value) : "0%", backgroundColor: colour }} />
       </div>
     </div>
   );
@@ -57,6 +80,7 @@ function Gauge({ label, value, colour }: { label: string; value: number; colour:
 // dominate a list meant to be scanned quickly, not read one course at a time.
 function CompactBar({ label, value, colour }: { label: string; value: number; colour: string }) {
   const precise = Math.round(value * 10_000) / 100;
+  const ready = useEnterAnimation();
   return (
     <div className="flex flex-col gap-1" role="meter" aria-label={label} aria-valuenow={precise} aria-valuemin={0} aria-valuemax={100} aria-valuetext={percent(value)}>
       <div className="flex items-center justify-between text-sm">
@@ -64,7 +88,7 @@ function CompactBar({ label, value, colour }: { label: string; value: number; co
         <span className="tabular-nums text-text">{percent(value)}</span>
       </div>
       <div className="h-1.5 rounded-full bg-border">
-        <div data-testid="gauge-fill" className="h-1.5 rounded-full" style={{ width: widthPercent(value), backgroundColor: colour }} />
+        <div data-testid="gauge-fill" className={`h-1.5 rounded-full ${GAUGE_TRANSITION}`} style={{ width: ready ? widthPercent(value) : "0%", backgroundColor: colour }} />
       </div>
     </div>
   );
@@ -80,12 +104,14 @@ function ReadinessRing({ value, colour }: { value: number; colour: string }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - value);
+  const ready = useEnterAnimation();
   return (
-    <div className="flex shrink-0 flex-col items-center gap-1">
+    <div className="flex shrink-0 flex-col items-center gap-1" data-testid="progress-ring-column">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
           <circle
+            data-testid="ring-fill"
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -94,8 +120,9 @@ function ReadinessRing({ value, colour }: { value: number; colour: string }) {
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={offset}
+            strokeDashoffset={ready ? offset : circumference}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            className="transition-[stroke-dashoffset] duration-700 ease-out motion-reduce:transition-none"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -246,46 +273,53 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
 
   return (
     <Card className="flex flex-col gap-[var(--space-section)]" data-testid="progress-detail-card" data-status={dataStatus}>
-      <div className="flex items-start gap-[var(--space-related)]">
-        <CourseIcon colour={item.colour} />
-        <div>
-          <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h2>
+      {/* The ring sits in its own left column, spanning the header and the
+          two gauges below it; the header and gauges share one right-hand
+          column so the title's own left edge lines up with "Couverture"'s
+          — a follow-up mockup's own realignment, not the original pass's
+          full-width header above everything. */}
+      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-start">
+        <ReadinessRing value={item.progress.readiness} colour={item.colour} />
+        <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]" data-testid="progress-detail-body">
+          <div className="flex items-start gap-[var(--space-related)]">
+            <CourseIcon colour={item.colour} />
+            <div>
+              <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h2>
 
-          {/* A lapsed deadline is one more fact about the course, never a
-              takeover of the whole card (docs/UI.md's Progression note):
-              the gauges below render exactly as they do on any other
-              card. Weight and position carry the emphasis, never colour. */}
-          {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}
+              {/* A lapsed deadline is one more fact about the course, never a
+                  takeover of the whole card (docs/UI.md's Progression note):
+                  the gauges below render exactly as they do on any other
+                  card. Weight and position carry the emphasis, never colour. */}
+              {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}
 
-          {isPast ? null : item.deadlineDate === null ? (
-            <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
-          ) : isToday ? (
-            <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
-          ) : (
-            <p className="text-sm text-text-muted">
-              Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
-              {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
-                <span className="ml-1 text-text">
-                  · {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
-                </span>
+              {isPast ? null : item.deadlineDate === null ? (
+                <p className="text-sm text-text-muted">Aucune échéance pour l'instant.</p>
+              ) : isToday ? (
+                <p className="text-sm text-text-muted">C'est aujourd'hui.</p>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  Contrôle dans {daysUntil(item.deadlineDate, todayKey)} jour{daysUntil(item.deadlineDate, todayKey) > 1 ? "s" : ""}
+                  {item.progress.status === "behind" && item.progress.behindByNotions > 0 && (
+                    <span className="ml-1 text-text">
+                      · {item.progress.behindByNotions} notion{item.progress.behindByNotions > 1 ? "s" : ""} à consolider avant l'échéance
+                    </span>
+                  )}
+                </p>
               )}
+            </div>
+          </div>
+
+          {item.progress.recentlyAddedUnreviewed > 0 && (
+            <p className="text-sm text-text-muted">
+              {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
+              {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
             </p>
           )}
-        </div>
-      </div>
 
-      {item.progress.recentlyAddedUnreviewed > 0 && (
-        <p className="text-sm text-text-muted">
-          {item.progress.recentlyAddedUnreviewed} notion{item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} ajoutée
-          {item.progress.recentlyAddedUnreviewed > 1 ? "s" : ""} récemment n'ont pas encore été travaillées.
-        </p>
-      )}
-
-      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-center">
-        <ReadinessRing value={item.progress.readiness} colour={item.colour} />
-        <div className="flex w-full flex-1 flex-col gap-[var(--space-block)]">
-          <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
-          <Gauge label="Préparation" value={item.progress.readiness} colour={item.colour} />
+          <div className="flex flex-col gap-[var(--space-block)]">
+            <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
+            <Gauge label="Préparation" value={item.progress.readiness} colour={item.colour} />
+          </div>
         </div>
       </div>
 
@@ -307,7 +341,11 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
             Rien à réviser
           </Button>
         )}
-        <Button variant="secondary" onClick={() => onOpenCourse(item.documentId)}>
+        {/* Same secondary-with-tint idiom as Lecteur's "Discuter avec le
+            tuteur" and Mes cours' "Lire le cours" (DocumentsScreen.tsx) —
+            a light green wash, not the plain bordered secondary this
+            button used to be, per a follow-up mockup. */}
+        <Button variant="secondary" className="border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={() => onOpenCourse(item.documentId)}>
           <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Voir le cours
         </Button>
@@ -328,8 +366,19 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
             {item.deadlineDate === null ? "Définir une échéance" : "Modifier l'échéance"}
           </Button>
           {item.deadlineDate !== null && (
-            <button type="button" className="text-sm text-text-muted underline" onClick={() => deleteDeadlineMutation.mutate()}>
-              Supprimer l'échéance
+            // A trash icon, not the text link this used to be, per a
+            // follow-up mockup — the accessible name stays "Supprimer
+            // l'échéance" via aria-label (Forbidden's own "icon-only
+            // button without an accessible label" rule, above), still the
+            // same low-visual-weight treatment every other destructive
+            // action in this app uses, an icon instead of underlined text.
+            <button
+              type="button"
+              aria-label="Supprimer l'échéance"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] text-text-muted hover:bg-canvas hover:text-text"
+              onClick={() => deleteDeadlineMutation.mutate()}
+            >
+              <Trash2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
             </button>
           )}
         </div>
