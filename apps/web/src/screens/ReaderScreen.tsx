@@ -87,14 +87,22 @@ function StudyPanel({ onOpenNotions, onOpenTutor }: { onOpenNotions: () => void;
   return (
     <Card className="flex h-fit w-full shrink-0 flex-col gap-[var(--space-related)] lg:w-72" data-testid="reader-study-panel">
       <div>
-        <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">Étudier cette page</h3>
-        <p className="text-sm text-text-muted">Transforme ce que tu viens de lire en exercice de mémorisation.</p>
+        {/* Deliberately lighter than a real heading (docs/UI.md's Lecteur
+            note): the body font at font-semibold, not --font-display's
+            extrabold every other card title in this app uses — this panel
+            is a secondary aside beside the reading card, not a competing
+            section of its own. */}
+        <h3 className="text-sm font-semibold text-text">Étudier ce cours</h3>
+        <p className="text-sm text-text-muted">Exercice de mémorisation.</p>
       </div>
       <Button variant="accent" className="rounded-2xl" onClick={onOpenNotions}>
         <Layers aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         Réviser les notions
       </Button>
-      <Button variant="secondary" className="rounded-2xl" onClick={onOpenTutor}>
+      {/* Same secondary-with-tint idiom as Mes cours' own "Lire le cours"
+          button (DocumentsScreen.tsx) — a light green wash, not the plain
+          bordered secondary every other non-accent button here uses. */}
+      <Button variant="secondary" className="rounded-2xl border-transparent bg-primary-soft text-primary hover:bg-primary-soft" onClick={onOpenTutor}>
         <MessageCircle aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         Discuter avec le tuteur
       </Button>

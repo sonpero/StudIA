@@ -699,7 +699,7 @@ treatment stops there too) or to `Révision` (grading controls, not a
 course-card grid). `Lecteur`'s own later redesign (`Screen notes`' own
 Lecteur note, below) is an exception carved out since: its pill selector
 reuses `NotionsScreen`'s own `CoursePill` (`BookOpen` beside each course's
-title, the same nav-destination icon), and its "Étudier cette page" panel
+title, the same nav-destination icon), and its "Étudier ce cours" panel
 puts `Layers`/`MessageCircle` on its own two buttons — the same icons the
 nav already assigns to Notions/Tuteur, reused for the same destination
 rather than invented, each button living inside its own `Card` so the
@@ -844,7 +844,7 @@ pass unified it with Notions' own pill selector instead, ignoring
 describes the replacement in full).** Reachable directly from the nav
 with no course chosen: instead of landing on a `Mes cours`-shaped picker
 list, it lands straight on its own pill row of courses (the first one
-selected) plus that course's own reading surface and "Étudier cette page"
+selected) plus that course's own reading surface and "Étudier ce cours"
 panel — one page, not two, the same unification Notions went through
 first. There is no `fromPicker` field on its view shape any more (removed
 along with the picker it once distinguished from) and no "which of several
@@ -1449,7 +1449,7 @@ Notions went through first (`Screen notes`' own Notions note, above).
 nav-entry level; this note describes the page itself.
 
 **One page: a pill row of every course, then that course's own reading
-surface and "Étudier cette page" panel — no separate picker to leave.**
+surface and "Étudier ce cours" panel — no separate picker to leave.**
 Reached the same three ways as before this pass — a course's card on Mes
 cours ("Lire le cours"), Notions du cours' own toolbar, and directly from
 the nav — but all three now land on this one page rather than two of them
@@ -1509,7 +1509,7 @@ already does by hand on every other screen. The reading card caps at
 deliberately shorter line length for continuous prose, the same "cap it
 instead of stretching it" principle as Shape and depth's form-width rule.
 
-**The reading card and the "Étudier cette page" panel sit side by side on
+**The reading card and the "Étudier ce cours" panel sit side by side on
 `--canvas`, each its own `Card` (`--surface`, bordered) — the mockup's own
 layout, superseding this file's former one deliberate `--canvas`
 deviation** (a full-page `--surface` reading surface). That exception is
@@ -1520,13 +1520,24 @@ card (`flex-col` below `lg`), never beside it — there is no room for two
 280px-plus columns under the mobile/tablet breakpoints `Layout and
 responsiveness` already defines.
 
-**"Étudier cette page"**: a title, one sentence ("Transforme ce que tu
-viens de lire en exercice de mémorisation."), and two rounded-2xl buttons —
-"Réviser les notions" (`Layers`, `accent`, primary) and "Discuter avec le
-tuteur" (`MessageCircle`, `secondary`) — this page's own answer to "un
-renvoi vers les notions ou le tuteur" from the mockup. Both icons are
-reused from the nav's own assignment for the same destination (`Icons`'
-own note, above), not invented. Shown only in the ready state: there is
+**"Étudier ce cours"**: a title, one short sentence ("Exercice de
+mémorisation."), and two rounded-2xl buttons — "Réviser les notions"
+(`Layers`, `accent`, primary) and "Discuter avec le tuteur"
+(`MessageCircle`, `secondary`) — this page's own answer to "un renvoi vers
+les notions ou le tuteur" from the mockup. Both icons are reused from the
+nav's own assignment for the same destination (`Icons`' own note, above),
+not invented. The panel's own title is deliberately lighter than a real
+heading — the body font at `font-semibold`, not `--font-display`'s
+extrabold every other card title in this app uses — since it names a
+secondary aside beside the reading card, not a competing section of its
+own; a second mockup pass shortened the original copy ("Étudier cette
+page" / "Transforme ce que tu viens de lire en exercice de mémorisation.")
+to this tighter pair. "Discuter avec le tuteur" carries a light green wash
+(`bg-primary-soft`/`text-primary`, borderless) rather than the plain
+bordered `secondary` every other non-accent button in this app uses — the
+same tint idiom Mes cours' own "Lire le cours" button
+(`DocumentsScreen.tsx`) already established, reused here rather than
+invented. Shown only in the ready state: there is
 nothing to study yet while a course is still extracting, failed, or empty,
 so the panel is absent in every other state rather than shown disabled.
 

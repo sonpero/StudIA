@@ -247,12 +247,14 @@ describe("ReaderScreen", () => {
     expect(title.className).toContain("text-[length:var(--text-title)]");
   });
 
-  it("ready: shows an 'Étudier cette page' panel offering the notions and the tutor, each a rounded button with its own icon", async () => {
+  it("ready: shows an 'Étudier ce cours' panel offering the notions and the tutor, each a rounded button with its own icon", async () => {
     stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
     renderScreen({ documentId: "doc-1" });
 
     await screen.findByText("Contenu du cours.");
     const panel = screen.getByTestId("reader-study-panel");
+    await within(panel).findByText("Étudier ce cours");
+    await within(panel).findByText("Exercice de mémorisation.");
     const notionsButton = within(panel).getByRole("button", { name: /notions/i });
     const tutorButton = within(panel).getByRole("button", { name: /tuteur/i });
     expect(notionsButton.className).toContain("rounded-2xl");
@@ -283,6 +285,23 @@ describe("ReaderScreen", () => {
     await user.click(within(screen.getByTestId("reader-study-panel")).getByRole("button", { name: /tuteur/i }));
 
     expect(onOpenTutor).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("ready: the study panel's own title is deliberately lighter than a real heading — not the display font or extrabold weight every other card title on this app uses", async () => {
+    stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
+    renderScreen({ documentId: "doc-1" });
+
+    const title = await screen.findByText("Étudier ce cours");
+    expect(title.className).not.toMatch(/font-extrabold|font-\[family-name:var\(--font-display\)\]/);
+  });
+
+  it("ready: 'Discuter avec le tuteur' carries a light green tint (--primary-soft), the same secondary-with-tint idiom Mes cours' own 'Lire le cours' button already uses", async () => {
+    stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Contenu du cours.");
+    const tutorButton = within(screen.getByTestId("reader-study-panel")).getByRole("button", { name: /tuteur/i });
+    expect(tutorButton.className).toContain("bg-primary-soft");
   });
 
   it("no panel shown outside the ready state: nothing to study yet while the course is still extracting", async () => {
