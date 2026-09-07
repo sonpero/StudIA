@@ -746,6 +746,13 @@ width through the tablet breakpoint for now.
 Mascot animations are idle-only and subtle. `prefers-reduced-motion` disables the
 flip and all mascot motion.
 
+**Progression's own gauges and readiness ring are a second, deliberately
+longer exception (`Screen notes`' own Progression note, below): 700ms
+ease-out, a one-time entrance read on mount, not a response to a
+click.** `motion-reduce:transition-none` respects a reduced-motion
+preference the same way the flip and mascot motion are meant to, jumping
+straight to the real value instead of animating toward it.
+
 ---
 
 ## The mascot
@@ -1280,15 +1287,21 @@ use. Switching pills, or clicking a row in "Tous les cours" (below), is a
 local selection, not a navigation — both change which course the one
 detail card shows.
 
-**The detail card**: a colour-tinted icon circle and the course's own
-title (`--text-title`); then, only when relevant, "Cette échéance est
-passée." or the recently-added-notions sentence (below); then a readiness
-ring beside the two linear gauges (Coverage, Readiness); then a
-mastered/learning/due/not-started stat row, four notions-level counts that
-partition the course's own notions (composed client-side from `GET
-/api/documents/:id/notions` + `.../notions-progress`, the same two reads
-NotionsScreen's own pill-selector redesign already composes for its own
-per-notion status badge — `notionBucket`, kept local to this screen,
+**The detail card, top to bottom**: the readiness ring sits in its own
+left column, spanning the full height of everything beside it; a right
+column carries, in order, the colour-tinted icon circle and the course's
+own title (`--text-title`) on one row, then, only when relevant, "Cette
+échéance est passée." or the recently-added-notions sentence (below), then
+the two linear gauges (Coverage, Readiness) — the ring's own left edge
+never lines up with the title above it, but the title and both gauges
+share the same left edge, a follow-up mockup's own realignment from this
+pass's first cut, which put the icon-and-title row full-width above the
+ring instead. Then, spanning the card's own full width again below both
+columns: a mastered/learning/due/not-started stat row, four notions-level
+counts that partition the course's own notions (composed client-side from
+`GET /api/documents/:id/notions` + `.../notions-progress`, the same two
+reads NotionsScreen's own pill-selector redesign already composes for its
+own per-notion status badge — `notionBucket`, kept local to this screen,
 differs from that screen's own `notionStatus` in one way: a notion with
 zero cards gets its own "not-started" bucket here rather than being folded
 into "learning", since this row has room to distinguish it and that
@@ -1296,13 +1309,25 @@ screen's badge does not); then "Combler l'écart" (`ArrowRight`, `accent`,
 enabled whenever the due bucket is non-zero — the same
 enabled/`disabled` "Rien à réviser" idiom NotionsScreen's own course
 summary card already uses for its "Réviser N fiches") and "Voir le cours"
-(`BookOpen`, `secondary`, opens that course's own Notions du cours — kept
-from the pre-redesign screen; not shown in the mockup's own crop, an
-addition rather than a literal copy, so this is flagged here as a
-judgement call, not a silent one); then the deadline management row
-(`CalendarClock` "Définir une échéance"/"Modifier l'échéance", plus
-"Supprimer l'échéance" once a deadline exists), unchanged in mechanics
-from before this pass, simply relocated onto the one selected course's own
+(`BookOpen`, `secondary` with the same light `bg-primary-soft`/`text-
+primary` tint Lecteur's own "Discuter avec le tuteur" and Mes cours' own
+"Lire le cours" already use, a follow-up mockup's own request — plain
+bordered `secondary` in this pass's first cut; opens that course's own
+Notions du cours, kept from the pre-redesign screen; not shown in the
+mockup's own crop, an addition rather than a literal copy, so this is
+flagged here as a judgement call, not a silent one); then the deadline
+management row (`CalendarClock` "Définir une échéance"/"Modifier
+l'échéance", unchanged, plus, once a deadline exists, a bare `Trash2`
+icon button — a follow-up mockup's own request, replacing the underlined
+"Supprimer l'échéance" text link this pass's first cut had. The accessible
+name stays the literal string "Supprimer l'échéance" (an `aria-label`,
+`Forbidden`'s own "icon-only button without an accessible label" rule,
+below, satisfied rather than violated), and the same low-visual-weight
+treatment every other destructive action in this app already carries —
+just an icon instead of underlined text now, not a `Button`, no border, no
+fill until hovered (`hover:bg-canvas`, matching this card's other plain
+icon-adjacent affordances)). Both actions are unchanged in mechanics from
+before this pass, simply relocated onto the one selected course's own
 card instead of every card in the old grid.
 
 **The readiness ring is decorative, `aria-hidden`, not a second
@@ -1315,6 +1340,25 @@ way. Its own caption reads "Préparation à l'examen", visually distinct
 from the linear gauge's plain "Préparation" label a few pixels below it,
 matching the mockup's own deliberate repetition of "Exam readiness" — a
 hero number, then the same fact again as supporting detail.
+
+**Every indicator on this screen loads from 0 to its real value — a
+follow-up mockup's own request, an addition to `Motion`'s own 150-200ms
+ease-out scale (below), not a change to it.** Both linear gauges (the
+detail card's own and each "Tous les cours" row's own compact bar) and the
+ring all animate on mount: 700ms ease-out, longer than this document's own
+150-200ms interaction-motion ceiling because this is a one-time entrance
+read on a data-dense screen, not a response to a click — the same
+reasoning that already sets the review card flip apart as its own
+orchestrated moment. Switching pills (or a "Tous les cours" row)
+key-remounts the detail card, replaying its own three animations each
+time; the list rows themselves animate once, on the page's own first
+load, and do not replay on a pill switch. `motion-reduce:transition-none`
+on every animated element respects a reduced-motion preference by jumping
+straight to the real value — this app's first use of Tailwind's
+`motion-reduce` variant anywhere in the codebase, checked by grep, not
+assumed from this document's own pre-existing (and unverified by this
+pass) claim that `prefers-reduced-motion` already disables the review card
+flip and mascot motion elsewhere.
 
 - **Coverage** — real percentage always shown, answering "how much of this
   course have I opened at all": the share of notions with at least one
