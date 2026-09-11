@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Calendar as CalendarIcon, CalendarClock } from "lucide-react";
+import { BookOpen, Calendar as CalendarIcon, CalendarClock } from "lucide-react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
@@ -71,6 +71,26 @@ function DayDots({ entries, titleById }: { entries: CalendarEntry[]; titleById: 
   );
 }
 
+// A lone deadline (no todo alongside it) gets the course's own name and
+// icon as a coloured pill, matching the mockup — a richer token than a
+// dot, only safe to show because there is exactly one thing to say that
+// day. Any additional entry falls back to DayDots' dot-or-count
+// treatment: a pill this wide next to even one more dot would not fit
+// the cell, and the density rule (docs/UI.md's Calendrier note) still
+// applies to everything but this single-entry case.
+function DeadlineBadge({ entry, titleById }: { entry: CalendarEntry; titleById: Map<string, string> }) {
+  const label = entry.documentId ? (titleById.get(entry.documentId) ?? entry.title) : entry.title;
+  return (
+    <span
+      className={cn("flex max-w-full items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", !entry.colour && "bg-canvas text-text-muted")}
+      style={entry.colour ? { backgroundColor: `${entry.colour}26`, color: entry.colour } : undefined}
+    >
+      <BookOpen aria-hidden="true" focusable="false" size={10} strokeWidth={ICON_STROKE_WIDTH} className="shrink-0" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
 function DayCell({
   dateKey,
   entries,
@@ -87,6 +107,7 @@ function DayCell({
   onSelect: (dateKey: string) => void;
 }) {
   const dayNumber = Number(dateKey.slice(8, 10));
+  const soleDeadline = entries.length === 1 && entries[0]!.kind === "deadline" ? entries[0]! : null;
   return (
     <button
       type="button"
@@ -95,20 +116,19 @@ function DayCell({
       aria-pressed={isSelected}
       onClick={() => onSelect(dateKey)}
       className={cn(
-        "flex min-h-11 flex-col items-center gap-1 rounded-xl p-1 text-sm transition-colors",
-        isSelected ? "bg-primary-soft" : "hover:bg-canvas",
-        isToday && "ring-1 ring-inset ring-primary",
+        "flex min-h-14 flex-col items-center gap-1 rounded-xl border p-1 text-sm transition-colors",
+        isSelected ? "border-primary bg-primary-soft" : isToday ? "border-primary bg-surface" : "border-border bg-surface hover:bg-canvas",
       )}
     >
       <span>{dayNumber}</span>
-      <DayDots entries={entries} titleById={titleById} />
+      {soleDeadline ? <DeadlineBadge entry={soleDeadline} titleById={titleById} /> : <DayDots entries={entries} titleById={titleById} />}
     </button>
   );
 }
 
 function DayPanelEntry({ entry, onOpenCourse }: { entry: CalendarEntry; onOpenCourse: (documentId: string) => void }) {
   return (
-    <li className="flex items-center gap-2" data-testid="calendar-entry-row">
+    <Card className="flex items-center gap-2 rounded-2xl" data-testid="calendar-entry-row">
       <span
         aria-hidden="true"
         className={cn("h-2 w-2 shrink-0 rounded-full", !entry.colour && "bg-text-muted")}
@@ -117,10 +137,11 @@ function DayPanelEntry({ entry, onOpenCourse }: { entry: CalendarEntry; onOpenCo
       <span className={entry.done ? "flex-1 line-through text-text-muted" : "flex-1 text-text"}>{entry.title}</span>
       {entry.kind === "deadline" && entry.documentId && (
         <Button variant="secondary" className="rounded-2xl" onClick={() => onOpenCourse(entry.documentId!)}>
+          <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Voir le cours
         </Button>
       )}
-    </li>
+    </Card>
   );
 }
 
@@ -131,7 +152,7 @@ function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; tod
     .slice(0, UPCOMING_DEADLINES_LIMIT);
 
   return (
-    <Card className="flex flex-col gap-[var(--space-block)] rounded-2xl" data-testid="upcoming-deadlines">
+    <div className="flex flex-col gap-[var(--space-block)]" data-testid="upcoming-deadlines">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-text-muted">
         <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         Prochaines échéances
@@ -139,9 +160,9 @@ function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; tod
       {upcoming.length === 0 ? (
         <p className="text-sm text-text-muted">Aucune échéance à venir.</p>
       ) : (
-        <ul className="flex flex-col gap-[var(--space-block)]">
+        <div className="flex flex-col gap-2">
           {upcoming.map((item) => (
-            <li key={item.documentId} className="flex items-center gap-3" data-testid="upcoming-deadline-row">
+            <Card key={item.documentId} className="flex items-center gap-3 rounded-2xl" data-testid="upcoming-deadline-row">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${item.colour}26` }}>
                 <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={item.colour} />
               </span>
@@ -152,11 +173,11 @@ function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; tod
               <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-primary">
                 {countdownLabel(daysUntil(item.deadlineDate!, todayKey))}
               </span>
-            </li>
+            </Card>
           ))}
-        </ul>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -268,26 +289,27 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
                   onSelect={setSelectedDate}
                 />
               ) : (
-                <div key={day.dateKey} data-testid="calendar-filler-day" aria-hidden="true" className="p-1 text-center text-sm text-text-muted">
+                <div
+                  key={day.dateKey}
+                  data-testid="calendar-filler-day"
+                  aria-hidden="true"
+                  className="min-h-14 rounded-xl border border-border p-1 text-center text-sm text-text-muted"
+                >
                   {Number(day.dateKey.slice(8, 10))}
                 </div>
               ),
             )}
           </div>
 
-          <Card className="flex flex-col gap-2 rounded-xl" data-testid="day-panel">
+          <div className="flex flex-col gap-2" data-testid="day-panel">
             {selectedEntries === null ? (
               <p className="text-sm text-text-muted">Sélectionne un jour pour voir son contenu.</p>
             ) : selectedEntries.length === 0 ? (
               <p className="text-sm text-text-muted">Rien ce jour-là.</p>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {selectedEntries.map((entry) => (
-                  <DayPanelEntry key={entry.id} entry={entry} onOpenCourse={onOpenCourse} />
-                ))}
-              </ul>
+              selectedEntries.map((entry) => <DayPanelEntry key={entry.id} entry={entry} onOpenCourse={onOpenCourse} />)
             )}
-          </Card>
+          </div>
         </Card>
 
         <div className="flex flex-col gap-[var(--space-block)]">

@@ -112,6 +112,30 @@ describe("CalendarScreen", () => {
       calendar: (start, end) => ({
         start,
         end,
+        days: [
+          {
+            date: "2026-03-10",
+            entries: [
+              { kind: "todo", id: "t1", title: "Réviser", documentId: "doc-1", colour: "#F87171", done: false },
+              { kind: "todo", id: "t2", title: "Rendre le devoir", documentId: null, colour: null, done: false },
+            ],
+          },
+        ],
+      }),
+    });
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    const cell = screen.getByTestId("calendar-day-2026-03-10");
+    expect(within(cell).getAllByRole("img")).toHaveLength(2);
+    expect(within(cell).queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it("a day with a single deadline and nothing else shows the course as a coloured name badge, not a bare dot", async () => {
+    stubFetch({
+      calendar: (start, end) => ({
+        start,
+        end,
         days: [{ date: "2026-03-10", entries: [{ kind: "deadline", id: "d1", title: "Maths", documentId: "doc-1", colour: "#F87171", done: null }] }],
       }),
     });
@@ -119,8 +143,24 @@ describe("CalendarScreen", () => {
     await screen.findByTestId("calendar-grid");
 
     const cell = screen.getByTestId("calendar-day-2026-03-10");
-    expect(within(cell).getAllByRole("img")).toHaveLength(1);
-    expect(within(cell).queryByText(/^\+/)).not.toBeInTheDocument();
+    expect(within(cell).getByText("Maths")).toBeInTheDocument();
+    expect(within(cell).queryAllByRole("img")).toHaveLength(0);
+  });
+
+  it("the deadline badge's course name is resolved from the course-progress list, same as a dot's accessible name", async () => {
+    stubFetch({
+      calendar: (start, end) => ({
+        start,
+        end,
+        days: [{ date: "2026-03-10", entries: [{ kind: "deadline", id: "d1", title: "Ancien nom", documentId: "doc-1", colour: "#F87171", done: null }] }],
+      }),
+      progress: [progressItem({ documentId: "doc-1", title: "Nouveau nom", colour: "#F87171" })],
+    });
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    const cell = screen.getByTestId("calendar-day-2026-03-10");
+    expect(within(cell).getByText("Nouveau nom")).toBeInTheDocument();
   });
 
   it("a day with exactly 3 entries renders 3 dots, no badge — the boundary the overflow rule turns on", async () => {

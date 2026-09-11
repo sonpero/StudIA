@@ -67,7 +67,10 @@ test.describe("calendar", () => {
 
     const deadlineDay = page.getByTestId("calendar-day-2026-03-20");
     const todoDay = page.getByTestId("calendar-day-2026-03-15");
-    await expect(deadlineDay.getByRole("img")).toHaveCount(1);
+    // A lone deadline renders as a coloured course-name badge (M9), not a
+    // bare dot — only a day with more than one entry still falls back to
+    // dots, which is what the todo's own day still exercises below.
+    await expect(deadlineDay.getByText("Cours du calendrier")).toBeVisible();
     await expect(todoDay.getByRole("img")).toHaveCount(1);
 
     // The deadline's day: dot links through to the panel, panel links
@@ -93,7 +96,7 @@ test.describe("calendar", () => {
 
     await page.getByRole("button", { name: /mois précédent/i }).click();
     await expect(page.getByRole("heading", { name: "Mars 2026" })).toBeVisible();
-    await expect(page.getByTestId("calendar-day-2026-03-20").getByRole("img")).toHaveCount(1);
+    await expect(page.getByTestId("calendar-day-2026-03-20").getByText("Cours du calendrier")).toBeVisible();
 
     // "Aller à aujourd'hui" (distinct label from the nav's own "Aujourd'hui"
     // destination) jumps back to the real current month and selects today,
