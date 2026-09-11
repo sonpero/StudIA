@@ -449,7 +449,15 @@ was scoped.
   app's data, and building one would be a new capability, not a reskin.
   Commit `de504de`; full `pnpm test:e2e` green (16 passed, 1 pre-existing
   unrelated skip); visually checked live via a throwaway Playwright
-  screenshot, same discipline as the four passes above.
+  screenshot, same discipline as the four passes above. Commit `12a45d1`
+  (a follow-up pass, four more mockup crops: every day cell gets a
+  visible neutral border, "Prochaines échéances" rows and the day panel's
+  own entries each became their own bordered `Card` instead of sharing
+  one outer border, a lone deadline renders as a coloured named pill
+  instead of a bare dot, and "Voir le cours" finally got the `BookOpen`
+  icon `docs/UI.md` had named for it since an earlier pass but no pass
+  had actually implemented); full `pnpm test:e2e` green again, visually
+  checked live the same way.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):

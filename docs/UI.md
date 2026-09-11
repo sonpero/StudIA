@@ -1587,6 +1587,43 @@ from the shared token toward Tailwind's own `rounded-2xl`/`rounded-full`
 scale that CoursePill and every other M9 pass already made, not a change
 to the tokens themselves (still 8px/12px everywhere neither pass touched).
 
+**A follow-up pass, same mockup family, four more mockup crops:**
+
+1. **Every day cell is now visibly outlined** (`border border-border`, the
+   filler days from adjacent months too, for a uniform grid), not just a
+   plain button relying on hover for shape. Today's cell and the selected
+   cell both swap that neutral border for `border-primary` (selected also
+   keeps its `bg-primary-soft` fill) — this is still not the coloured
+   left-border idiom `Not extended to a left border` (above) refuses:
+   that paragraph is about a *subject-coloured* border marking which
+   course a card belongs to, and still holds — this new border is neutral
+   on every cell regardless of what course, if any, it carries.
+2. **"Prochaines échéances" rows are each their own bordered `Card` now**,
+   stacked with a gap, rather than plain flex rows sharing one outer
+   card's border — the outer element keeps the "Prochaines échéances"
+   heading but is no longer itself a bordered `Card`, just a plain
+   container; each row supplies its own.
+3. **A lone deadline (the only entry that day) renders as a coloured,
+   named pill instead of a bare dot** — `BookOpen` icon plus the course's
+   own title (truncated, `titleById`-resolved the same way a dot's
+   `aria-label` already was), pill background the course's own colour at
+   low opacity, text in the course's own colour. This is additive to the
+   density rule below, not a replacement for it: the pill only appears
+   when the day has exactly one entry and it is a deadline; two or more
+   entries (a deadline plus even one todo) still fall back to dots — a
+   pill this wide has nowhere to go next to a second token in a cell this
+   narrow. Because the course name is now real, visible text, this case
+   no longer needs the dot's `role="img"`/`aria-label` workaround at all.
+4. **The day panel's own entries are each their own bordered `Card` too**
+   (same brick treatment as "Prochaines échéances"), and its "Voir le
+   cours" button finally carries the `BookOpen` icon `Icons`' own
+   inventory (above) already named for it — present in this document
+   since an earlier pass but never actually implemented until now.
+
+`e2e/calendar.spec.ts`'s own deadline-day assertion changed from counting
+`role="img"` dots to reading the badge's visible course-name text
+directly, following point 3 above.
+
 Every day is clickable, including an empty one; selecting a day highlights
 its cell (`--primary-soft`, the same selected-state token used elsewhere)
 and reveals its contents in a panel below the grid, inside the same card,
