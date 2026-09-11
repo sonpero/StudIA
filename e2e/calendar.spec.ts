@@ -42,9 +42,18 @@ test.describe("calendar", () => {
     await progressCard.getByRole("button", { name: "Enregistrer" }).click();
     await expect(progressCard.getByText(/contrôle dans/i)).toBeVisible({ timeout: 10_000 });
 
+    // Redesign (M9): the deadline just set also surfaces, unprompted, in
+    // Calendrier's own "Prochaines échéances" sidebar — reusing the same
+    // course-progress read as Progression, no separate endpoint.
+    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
+    const upcoming = page.getByTestId("upcoming-deadlines");
+    await expect(upcoming.getByText("Cours du calendrier")).toBeVisible({ timeout: 10_000 });
+
     // A course-less todo dated inside the same month, same flow
     // e2e/today.spec.ts uses.
-    await page.getByRole("button", { name: "Aujourd'hui" }).click();
+    // exact: true — Calendrier's own "Aller à aujourd'hui" jump button
+    // (M9) now also matches "Aujourd'hui" as a substring.
+    await page.getByRole("button", { name: "Aujourd'hui", exact: true }).click();
     // Collapsed by default behind its own trigger (docs/UI.md), same as
     // e2e/today.spec.ts's manual-add flow.
     await page.getByRole("button", { name: "Ajouter un todo" }).click();
@@ -85,5 +94,14 @@ test.describe("calendar", () => {
     await page.getByRole("button", { name: /mois précédent/i }).click();
     await expect(page.getByRole("heading", { name: "Mars 2026" })).toBeVisible();
     await expect(page.getByTestId("calendar-day-2026-03-20").getByRole("img")).toHaveCount(1);
+
+    // "Aller à aujourd'hui" (distinct label from the nav's own "Aujourd'hui"
+    // destination) jumps back to the real current month and selects today,
+    // from anywhere in the browsed calendar.
+    await page.getByRole("button", { name: /mois suivant/i }).click();
+    await expect(page.getByRole("heading", { name: "Avril 2026" })).toBeVisible();
+    await page.getByRole("button", { name: "Aller à aujourd'hui" }).click();
+    await expect(page.getByRole("heading", { name: "Mars 2026" })).toBeVisible();
+    await expect(page.getByTestId("calendar-day-2026-03-02")).toHaveAttribute("aria-pressed", "true");
   });
 });

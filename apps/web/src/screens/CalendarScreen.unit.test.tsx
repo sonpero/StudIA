@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarScreen } from "./CalendarScreen.js";
 import type { CalendarView } from "../lib/calendar-api.js";
+import type { ProgressListItem } from "../lib/progress-api.js";
 
 function renderScreen(overrides: Partial<{ onOpenCourse: (documentId: string) => void }> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -18,6 +19,13 @@ function renderScreen(overrides: Partial<{ onOpenCourse: (documentId: string) =>
 
 const emptyView = (start: string, end: string): CalendarView => ({ start, end, days: [] });
 
+const noProgress = (): CourseProgress => ({ coverage: 0, readiness: 0, status: "no-deadline", behindByNotions: 0, recentlyAddedUnreviewed: 0 });
+type CourseProgress = ProgressListItem["progress"];
+
+function progressItem(overrides: Partial<ProgressListItem> & { documentId: string; title: string }): ProgressListItem {
+  return { colour: "#0f7b5f", deadlineDate: null, deadlineLabel: null, progress: noProgress(), ...overrides };
+}
+
 // today is fixed mid-month throughout, so the browsed month on first
 // render is always March 2026 unless a test navigates away from it.
 beforeEach(() => {
@@ -25,7 +33,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 2, 15));
 });
 
-function stubFetch(handlers: { calendar?: (start: string, end: string) => CalendarView; documents?: { id: string; title: string; colour: string }[] }) {
+function stubFetch(handlers: { calendar?: (start: string, end: string) => CalendarView; progress?: ProgressListItem[] }) {
   const calendarCalls: { start: string; end: string }[] = [];
   vi.stubGlobal(
     "fetch",
@@ -38,8 +46,8 @@ function stubFetch(handlers: { calendar?: (start: string, end: string) => Calend
         const view = handlers.calendar?.(start, end) ?? emptyView(start, end);
         return Promise.resolve(new Response(JSON.stringify(view), { status: 200 }));
       }
-      if (typeof url === "string" && url.startsWith("/api/documents")) {
-        return Promise.resolve(new Response(JSON.stringify(handlers.documents ?? []), { status: 200 }));
+      if (typeof url === "string" && url.startsWith("/api/course-progress")) {
+        return Promise.resolve(new Response(JSON.stringify(handlers.progress ?? []), { status: 200 }));
       }
       return Promise.resolve(new Response(null, { status: 404 }));
     }),
@@ -54,9 +62,10 @@ describe("CalendarScreen", () => {
     vi.useRealTimers();
   });
 
-  it("loading state: shows the month heading and a skeleton grid, never a bare spinner", () => {
+  it("loading state: shows the page title, the month heading and a skeleton grid, never a bare spinner", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
+    expect(screen.getByRole("heading", { name: "Calendrier" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Mars 2026" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
@@ -71,7 +80,7 @@ describe("CalendarScreen", () => {
   it("the gap between the heading row (or the title) and what follows it is the same --space-section token in every state (docs/UI.md's Grid and spacing note)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    const loadingMain = screen.getByRole("heading", { name: "Mars 2026" }).closest("main");
+    const loadingMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
     expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
     cleanup();
 
@@ -85,7 +94,7 @@ describe("CalendarScreen", () => {
     stubFetch({});
     renderScreen();
     await screen.findByTestId("calendar-grid");
-    const readyMain = screen.getByRole("heading", { name: "Mars 2026" }).closest("main");
+    const readyMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
     expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
   });
 
@@ -175,14 +184,14 @@ describe("CalendarScreen", () => {
     expect(within(screen.getByTestId("calendar-day-2026-03-10")).getByRole("img", { name: "Todo sans cours" })).toBeInTheDocument();
   });
 
-  it("a course-linked entry's dot is named after the course, resolved from the documents list", async () => {
+  it("a course-linked entry's dot is named after the course, resolved from the course-progress list", async () => {
     stubFetch({
       calendar: (start, end) => ({
         start,
         end,
         days: [{ date: "2026-03-10", entries: [{ kind: "todo", id: "t1", title: "Rendre le devoir", documentId: "doc-1", colour: "#F87171", done: false }] }],
       }),
-      documents: [{ id: "doc-1", title: "Maths", colour: "#F87171" }],
+      progress: [progressItem({ documentId: "doc-1", title: "Maths", colour: "#F87171" })],
     });
     renderScreen();
     await screen.findByTestId("calendar-grid");
@@ -321,5 +330,76 @@ describe("CalendarScreen", () => {
     await user.click(screen.getByTestId("calendar-day-2026-03-10"));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  describe("Prochaines échéances sidebar", () => {
+    it("empty: no course has a future deadline shows a plain-fact message, not a mascot", async () => {
+      stubFetch({ progress: [progressItem({ documentId: "doc-1", title: "Maths" })] });
+      renderScreen();
+      await screen.findByTestId("calendar-grid");
+
+      expect(within(screen.getByTestId("upcoming-deadlines")).getByText(/aucune échéance à venir/i)).toBeInTheDocument();
+    });
+
+    it("lists only future-or-today deadlines, soonest first, a past one excluded", async () => {
+      stubFetch({
+        progress: [
+          progressItem({ documentId: "doc-past", title: "Histoire", deadlineDate: "2026-03-01" }),
+          progressItem({ documentId: "doc-later", title: "SVT", deadlineDate: "2026-03-25" }),
+          progressItem({ documentId: "doc-soon", title: "Maths", deadlineDate: "2026-03-18" }),
+        ],
+      });
+      renderScreen();
+      await screen.findByTestId("calendar-grid");
+
+      const rows = within(screen.getByTestId("upcoming-deadlines")).getAllByTestId("upcoming-deadline-row");
+      expect(rows).toHaveLength(2);
+      expect(within(rows[0]!).getByText("Maths")).toBeInTheDocument();
+      expect(within(rows[1]!).getByText("SVT")).toBeInTheDocument();
+      expect(within(screen.getByTestId("upcoming-deadlines")).queryByText("Histoire")).not.toBeInTheDocument();
+    });
+
+    it("caps the list at four, the soonest four when more courses have a deadline", async () => {
+      stubFetch({
+        progress: [
+          progressItem({ documentId: "doc-1", title: "Un", deadlineDate: "2026-03-16" }),
+          progressItem({ documentId: "doc-2", title: "Deux", deadlineDate: "2026-03-17" }),
+          progressItem({ documentId: "doc-3", title: "Trois", deadlineDate: "2026-03-18" }),
+          progressItem({ documentId: "doc-4", title: "Quatre", deadlineDate: "2026-03-19" }),
+          progressItem({ documentId: "doc-5", title: "Cinq", deadlineDate: "2026-03-20" }),
+        ],
+      });
+      renderScreen();
+      await screen.findByTestId("calendar-grid");
+
+      const panel = screen.getByTestId("upcoming-deadlines");
+      expect(within(panel).getAllByTestId("upcoming-deadline-row")).toHaveLength(4);
+      expect(within(panel).queryByText("Cinq")).not.toBeInTheDocument();
+    });
+
+    it("a same-day deadline reads 'Examen aujourd'hui', not 'dans 0 jours'", async () => {
+      stubFetch({ progress: [progressItem({ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-15" })] });
+      renderScreen();
+      await screen.findByTestId("calendar-grid");
+
+      expect(within(screen.getByTestId("upcoming-deadlines")).getByText("Examen aujourd'hui")).toBeInTheDocument();
+    });
+  });
+
+  describe("'Aller à aujourd'hui'", () => {
+    it("jumps back to the real current month and selects today, from a different browsed month", async () => {
+      stubFetch({});
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByTestId("calendar-grid");
+
+      await user.click(screen.getByRole("button", { name: /mois suivant/i }));
+      await screen.findByRole("heading", { name: "Avril 2026" });
+
+      await user.click(screen.getByRole("button", { name: "Aller à aujourd'hui" }));
+      await screen.findByRole("heading", { name: "Mars 2026" });
+
+      expect(screen.getByTestId("calendar-day-2026-03-15")).toHaveAttribute("aria-pressed", "true");
+    });
   });
 });
