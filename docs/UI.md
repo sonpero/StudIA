@@ -706,10 +706,17 @@ already named as destructive/secondary in this document or in code
 comments, and adding an icon would raise their visual weight in exactly the
 direction the demotion was deliberately fighting.
 
-Not extended to `Calendrier` (a day cell, not a course card — the same
-reasoning `Subject colours` already gives for why that screen's colour
-treatment stops there too) or to `Révision` (grading controls, not a
-course-card grid). `Lecteur`'s own later redesign (`Screen notes`' own
+Not extended to a day cell itself (still true after `Calendrier`'s own
+later M9 reskin — a day cell is not a course card, the same reasoning
+`Subject colours` already gives for why that screen's colour treatment
+stops there too) or to `Révision` (grading controls, not a course-card
+grid). `Calendrier`'s own later redesign (`Screen notes`' own Calendrier
+note, below) carves out the same kind of exception `Lecteur` did, for the
+same reason: the page-level `Calendar` icon beside its own "h1" is plain
+page chrome like a nav icon, not a card action, and its new "Prochaines
+échéances" sidebar's `CalendarClock` icon sits on each row of a real
+`Card`, satisfying the "actions of a card" rule below rather than
+violating it. `Lecteur`'s own later redesign (`Screen notes`' own
 Lecteur note, below) is an exception carved out since: its pill selector
 reuses `NotionsScreen`'s own `CoursePill` (`BookOpen` beside each course's
 title, the same nav-destination icon), and its "Étudier ce cours" panel
@@ -1522,14 +1529,69 @@ and course list described above, no mascot on the ready state itself
 (data-dense).
 
 **Calendrier** (`workspace` module — see `docs/modules/workspace.md`'s
-Calendar section) — A month grid: seven weekday columns, a row per week,
-"‹ Mois précédent" / "Mois suivant ›" navigation either side of the current
-month's name ("Mars 2026"), both real `--secondary` buttons with their own
-accessible label, never a bare arrow glyph. Every day is clickable,
-including an empty one; selecting a day highlights its cell (`--primary-soft`,
-the same selected-state token used elsewhere) and reveals its contents in a
-panel below the grid, never a modal — a day can hold several entries, and
-the Forbidden list below reserves modals for something shorter than that.
+Calendar section) — Reskinned from a user-supplied mockup in a later M9
+pass: colour, icons, corner radii and page layout changed; the underlying
+data (deadlines + todos from `GET /api/calendar`) and every rule below
+about what a day cell shows did not. Unlike Notions/Lecteur/Progression's
+own M9 passes, this one did not unify or restructure what the screen
+*does* — the day grid, the click-through day panel and the density rule
+are the same mechanism as before this pass, just restyled.
+
+**The mockup's own per-day review count ("8 reviews" + a progress bar)
+and its "This week — about 50 reviews planned" summary were deliberately
+not built.** Neither exists anywhere in this app's data: `GET
+/api/calendar` carries deadlines and todos only, never a forecast of how
+many FSRS cards will be due on a future date, and no module computes one.
+Building that forecast would be a new capability, not a reskin — out of
+scope for this pass, confirmed with the user rather than assumed away.
+
+**Page chrome, new in this pass:** a `Calendar` icon plus an "h1"
+"Calendrier" and a one-line, plain-fact subtitle ("Tes échéances et ce
+qui est prévu, d'un coup d'œil.") sit above everything else, present in
+every state including loading — previously this screen had no page-level
+heading at all outside the error state, only the month name. The month
+grid itself now lives inside its own `rounded-2xl` `Card`, and a second
+column beside it (stacked below the grid on narrow screens,
+`lg:grid-cols-[2fr_1fr]`) carries two new, self-contained pieces:
+
+1. **"Aller à aujourd'hui"** — a full-width `primary` button, `rounded-2xl`,
+   always visible regardless of which month is browsed. Resets the browsed
+   month to the real current one and selects today's cell, the same as
+   clicking it directly. Named distinctly from the nav's own "Aujourd'hui"
+   destination (which navigates to a different screen entirely) precisely
+   because the two buttons are visible together on this screen — an
+   accessible-name collision a Playwright locator caught during this pass
+   (`e2e/calendar.spec.ts` now clicks the nav one with `exact: true`).
+2. **"Prochaines échéances"** — every course whose `deadlineDate` is today
+   or later, soonest first, capped at four. Sourced from `listProgress()`
+   (`GET /api/course-progress`), the exact same read Progression's own
+   detail card uses — no new endpoint, and this pass also retired the
+   screen's own separate `listDocuments()` call in favour of it, since
+   `listProgress()` already returns every course's id/title/colour
+   regardless of deadline status. Each row: a colour-tinted icon circle
+   (`CalendarClock`, the same icon Progression uses for deadline actions),
+   the course title, the plain deadline date (day + long month, no year —
+   `Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" })`), and
+   a countdown pill reusing `TodayScreen`'s own exported `countdownLabel`
+   ("Examen aujourd'hui"/"Examen demain"/"Examen dans N jours") — the same
+   wording as Aujourd'hui's own countdown badge, imported rather than
+   redefined, so the two can't drift apart. Empty state is a plain
+   sentence, "Aucune échéance à venir." — no mascot, the same reasoning a
+   quiet month gets none (below).
+
+Nav buttons, the day panel's own "Voir le cours", and the day cells
+themselves all gained a rounder corner radius (`rounded-2xl` on buttons
+and cards, `rounded-xl` on day cells, up from the shared
+`--radius-button`/`--radius-card` tokens' 8px/12px) — the same departure
+from the shared token toward Tailwind's own `rounded-2xl`/`rounded-full`
+scale that CoursePill and every other M9 pass already made, not a change
+to the tokens themselves (still 8px/12px everywhere neither pass touched).
+
+Every day is clickable, including an empty one; selecting a day highlights
+its cell (`--primary-soft`, the same selected-state token used elsewhere)
+and reveals its contents in a panel below the grid, inside the same card,
+never a modal — a day can hold several entries, and the Forbidden list
+below reserves modals for something shorter than that.
 
 Not extended to a left border here: this screen's unit is a day cell, not a
 course card, and it already carries subject colour fully through its own
@@ -1583,13 +1645,20 @@ todos stays on Aujourd'hui, this screen only says what is due when. A
 done todo appears struck through, matching Aujourd'hui's own treatment of
 one.
 
-Four states: **loading** is a skeleton grid, the same shape as the real one
-(placeholder cells, no numbers, per the Required states rule); **error** is
-the `confused` mascot and a retry; **ready** is the grid, with or without
-dots — **a month with nothing in it is still ready, not empty.** The grid
-itself is the useful surface even at zero events (you can still page to
-another month), unlike a list screen where zero rows really is nothing to
-show. No mascot for a quiet month.
+Four states, gated on the calendar read alone: **loading** is the page
+header plus a skeleton grid inside the calendar card, the same shape as
+the real one (placeholder cells, no numbers, per the Required states
+rule) — no sidebar yet, since it has nothing to show until the grid's own
+query settles; **error** is the `confused` mascot and a retry, full-page,
+same as before this pass; **ready** is the grid, with or without dots —
+**a month with nothing in it is still ready, not empty.** The grid itself
+is the useful surface even at zero events (you can still page to another
+month), unlike a list screen where zero rows really is nothing to show.
+No mascot for a quiet month. The sidebar's own `listProgress()` read is
+never one of these four gates — same "nothing blocks on a job" reasoning
+as the old `listDocuments()` call it replaced: while it loads, the
+sidebar briefly renders its own empty-list sentence rather than holding
+up the grid.
 
 **Lecteur** (M7 addition — see `docs/MILESTONES.md`) — Redesigned from a
 user-supplied mockup in a later M9 pass, ignoring this file's own former

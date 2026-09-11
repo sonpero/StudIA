@@ -431,6 +431,25 @@ was scoped.
   full `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
   after each pass; visually checked live via a throwaway Playwright
   screenshot every time, not just by test assertions.
+- **Calendrier** — a reskin, not a restructuring: unlike the four screens
+  above, the month grid, its click-through day panel and the density rule
+  (three dots, or two plus a "+N" count) are unchanged from before this
+  pass. What changed is page chrome (a persistent "Calendrier" header +
+  subtitle, absent before outside the error state), rounder corners
+  throughout (`rounded-2xl`/`rounded-xl`, the same departure from the
+  shared radius tokens CoursePill already made), and a new two-column
+  layout: the grid in its own card, plus a sidebar with an "Aller à
+  aujourd'hui" jump button and a "Prochaines échéances" list (soonest
+  four courses with a future deadline). Both sidebar pieces reuse
+  `listProgress()` (`GET /api/course-progress`, the same read Progression
+  already made), replacing the screen's own separate `listDocuments()`
+  call outright rather than adding a second one. The mockup's own
+  per-day review-count forecast and "This week" summary were confirmed
+  out of scope with the user before starting — neither exists in this
+  app's data, and building one would be a new capability, not a reskin.
+  Commit `de504de`; full `pnpm test:e2e` green (16 passed, 1 pre-existing
+  unrelated skip); visually checked live via a throwaway Playwright
+  screenshot, same discipline as the four passes above.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
@@ -457,11 +476,11 @@ wrong default. Clicking a row in "Tous les cours" selects that course
 Notions du cours. Both worth confirming; neither blocks the redesign from
 counting as done.
 
-**Remaining — next step:** **Calendrier, Tuteur**, same pattern, one at a
-time. Each needs its own mockup from the user before scoping starts — do
-not invent a redesign for either without one. `docs/MILESTONES.md` (this
-file) and `docs/UI.md`'s own per-screen notes both need updating as each
-lands, the same way all five done screens were.
+**Remaining — next step:** **Tuteur**, same pattern. Needs its own mockup
+from the user before scoping starts — do not invent a redesign without
+one. `docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen
+notes both need updating once it lands, the same way all six done
+screens were.
 
 **Acceptance**
 - [x] Aujourd'hui redesigned from mockup, `docs/UI.md` reconciled
@@ -472,7 +491,8 @@ lands, the same way all five done screens were.
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
 - [x] Progression redesigned from mockup, `docs/UI.md` reconciled, full
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
-- [ ] Calendrier redesigned from mockup, `docs/UI.md` reconciled
+- [x] Calendrier redesigned from mockup, `docs/UI.md` reconciled, full
+      `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
 - [ ] Tuteur redesigned from mockup, `docs/UI.md` reconciled
 - [ ] This file's own M9 section fully reconciled once all seven screens
       are done — until then, treat both boxes above and this file's own
