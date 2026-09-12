@@ -671,8 +671,18 @@ visible). Every icon is `aria-hidden="true"` and `focusable="false"`,
 exactly like the mascot: the accessible name of a nav destination or a card
 action is its text label alone, unaffected by the icon beside it.
 
-**One exception, and it stays an exception: ReviewScreen's graded-MCQ
-`Check`/`X`.** Every icon above is redundant with a label already on
+**Two exceptions now, not one: ReviewScreen's graded-MCQ `Check`/`X`, and
+`Calendrier`'s own month-nav `ChevronLeft`/`ChevronRight` (a second M9
+follow-up pass, `Screen notes`' own Calendrier note below) — the latter
+is a genuine icon-only button, confirmed with the user as a deliberate
+reversal the same way the streak/countdown badges were, not a rediscovery
+that the rule was wrong. Its accessible name lives entirely in
+`aria-label` ("Mois précédent"/"Mois suivant"), since there is no visible
+text left for the rule's "keeps the label itself always visible" clause to
+apply to.**
+
+The graded-MCQ pair predates this and stays decorative rather than
+icon-only: every icon above is redundant with a label already on
 screen — that's what lets it stay purely decorative. Those two are not:
 each marks a fact — "correct answer", "your pick" — attached to one
 specific option, that nothing else on screen says for that option. Their
@@ -1623,6 +1633,34 @@ to the tokens themselves (still 8px/12px everywhere neither pass touched).
 `e2e/calendar.spec.ts`'s own deadline-day assertion changed from counting
 `role="img"` dots to reading the badge's visible course-name text
 directly, following point 3 above.
+
+**A second follow-up pass, four more requests against the shipped
+screen:**
+
+1. **The day panel's own leading marker is now an icon in a tinted
+   circle** (the entry's colour at low opacity, `BookOpen` for a deadline,
+   `ListTodo` for a todo, `--text-muted`/`bg-canvas` for a course-less
+   todo) — the same idiom "Prochaines échéances" rows already used,
+   replacing the bare coloured dot this row alone still had. Its own
+   "Voir le cours" gained the secondary-with-tint idiom (`bg-primary-soft`
+   text-primary) Progression's own button and Lecteur's "Discuter avec le
+   tuteur" already use, in place of the plain bordered `secondary` it had
+   kept until now.
+2. **"Prochaines échéances" rows are now themselves clickable**, each a
+   `button` (not a plain `Card`) navigating straight to that course —
+   previously the row was read-only and only the day panel's own "Voir le
+   cours" could get there.
+3. **A lone-deadline day cell's badge now stretches the full width of its
+   cell** (`self-stretch`, in place of shrinking to its own text width)
+   — still truncates past that width, still the same one-entry condition
+   point 3 of the first follow-up pass set.
+4. **Month navigation is icon-only** (`ChevronLeft`/`ChevronRight`, in
+   place of "‹ Mois précédent"/"Mois suivant ›") — a deliberate reversal
+   of `Icons`' own "no icon-only button" rule, confirmed with the user
+   rather than assumed, and recorded as this document's second exception
+   there (above). `e2e/calendar.spec.ts`'s own `/mois (suivant|précédent)/i`
+   button-name matchers still resolve, unchanged, against the
+   `aria-label` the buttons now carry instead of visible text.
 
 Every day is clickable, including an empty one; selecting a day highlights
 its cell (`--primary-soft`, the same selected-state token used elsewhere)

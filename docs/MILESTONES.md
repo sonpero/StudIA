@@ -457,7 +457,16 @@ was scoped.
   instead of a bare dot, and "Voir le cours" finally got the `BookOpen`
   icon `docs/UI.md` had named for it since an earlier pass but no pass
   had actually implemented); full `pnpm test:e2e` green again, visually
-  checked live the same way.
+  checked live the same way. Commit `ca8051b` (a second follow-up pass,
+  four more requests: the day panel's own leading marker became an icon
+  in a tinted circle instead of a bare dot, its "Voir le cours" gained the
+  secondary-with-tint idiom other screens already use, "Prochaines
+  échéances" rows became clickable through to their course, a
+  lone-deadline badge now stretches its cell's full width, and month
+  navigation moved to icon-only chevrons — a deliberate reversal of
+  `docs/UI.md`'s own icon-accompanies-label rule, confirmed with the
+  user); full `pnpm test:e2e` green again, visually checked live the same
+  way.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):
