@@ -24,15 +24,26 @@ M9 deliberately reverses two of `docs/UI.md`'s own rules (the streak and
 countdown bans) and adds two more scoped exceptions along the way
 (Calendrier's icon-only month nav, alongside `ReviewScreen`'s pre-existing
 graded-MCQ one) — read `docs/UI.md`'s own notes on each before assuming
-this file is stale.
+this file is stale. Phase 2 is now formally closed, not left open-ended.
 
-**No milestone is currently open.** A mockup screenshot for one of the
-seven M9 screens is still fair game as more polish (the user returned to
-Calendrier three times and to no screen more than that) — treat it as
-such rather than as new-milestone work. Anything else (a new capability,
-a new screen, a new data model) needs a milestone defined first: ask the
-user rather than inventing scope, per the `no work outside a milestone`
-rule below.
+**M10 — Mobile and focus is open.** Two phases: Phase 1 (mobile
+adaptation — responsive conventions written into `docs/UI.md` first, then
+the shell, then the seven screens one by one) and Phase 2 (focus tools —
+the pomodoro's countdown reaching zero, the ring/arc progress visual,
+short/long breaks, and wiring the still-mock study-sounds card). Phase 2's
+own persistent-visibility lot (the header widget, the tab title) is
+already merged, ahead of this milestone's own opening — `docs/MILESTONES.md`'s
+own M10 section has the full scope and acceptance criteria for both
+phases; this line only tracks position.
+
+A mockup screenshot for one of the seven M9 screens is still fair game as
+more polish under M10 Phase 1 (the user returned to Calendrier three times
+and to no screen more than that during M9) — treat it as such rather than
+as new-milestone work, the same permission M9 itself used to carry, now
+migrated here since M9 is closed. Anything else (a new capability, a new
+screen, a new data model unrelated to mobile or focus tools) still needs a
+milestone defined first: ask the user rather than inventing scope, per the
+`no work outside a milestone` rule below.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,

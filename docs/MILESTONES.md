@@ -283,12 +283,15 @@ before it, per `CLAUDE.md`'s "no work outside a milestone" rule.
 
 Grew in scope after Phase 1 landed: the user kept supplying mockup
 screenshots for individual screens, one at a time, and each became its own
-redesign pass rather than a new milestone — still M9, since none of it is a
-new capability either. Phase 2 (below) tracks that ongoing, per-screen work.
-`docs/UI.md` is the authoritative detail source for every screen this
-milestone touches, reconciled with what actually shipped as of commit
-`ff982ae` (Tuteur, the last of Phase 2's seven screens); this file only
-tracks status and acceptance.
+redesign pass rather than a new milestone — still M9, since none of it was a
+new capability either. Phase 2 (below) tracked that per-screen work and is
+now closed: further mockup polish on any of the seven screens continues
+under M10 Phase 1, not here (`docs/MILESTONES.md`'s own M10 section carries
+the same fair-game-as-polish permission forward). `docs/UI.md` is the
+authoritative detail source for every screen this milestone touched,
+reconciled with what actually shipped as of commit `ff982ae` (Tuteur, the
+last of Phase 2's seven screens); this file only tracks status and
+acceptance.
 
 ### Phase 1 — merged colour, streak, countdown, nav to seven
 
@@ -392,10 +395,11 @@ back into `docs/UI.md`'s own Screen notes as each pass lands; that file is
 the authoritative detail source, this entry only tracks status. No
 acceptance criteria are written ahead of a mockup existing — each screen's
 own scope is only known once its mockup is in hand, the same way every one
-of the seven below was scoped. **All seven screens are done** — Calendrier
-and Tuteur both then received follow-up polish passes from more mockup
-crops, and Phase 2 stays open to more of that rather than formally
-closing, per `CLAUDE.md`'s own Current milestone note.
+of the seven below was scoped. **All seven screens are done, and this
+phase is now formally closed** — Calendrier and Tuteur both received
+follow-up polish passes from more mockup crops while it was still open.
+Any further mockup crop for one of the seven moves to M10 Phase 1
+instead, which carries the same permission forward.
 
 **Done:**
 - **Aujourd'hui** — rebuilt wholesale from mockup (greeting header, a
@@ -531,6 +535,120 @@ counting as done.
 - [x] This file's own M9 section fully reconciled once all seven screens
       are done — done in this same pass, alongside closing Phase 1's own
       last open box (below)
+
+---
+
+## M10 — Mobile and focus
+
+Not the next vertical slice either — like M9, a cross-cutting pass over
+what already shipped, not a new capability. Two phases: mobile adaptation
+first, then focus-tool depth, building on the pomodoro's
+persistent-visibility work, lot 1 of which is already merged (Phase 2,
+below).
+
+### Phase 1 — Mobile adaptation
+
+**Scope**
+- Responsive conventions written into `docs/UI.md` before any screen pass
+  touches it: page padding under 768px, a 44px minimum touch target, the
+  stacking rule for a two-column layout, a ban on authoring a separate
+  mobile and desktop component tree for the same screen (one tree, `md:*`
+  classes, never two parallel JSX blocks), and the chosen approach for
+  testing mobile layouts in Playwright given that `playwright.config.ts`
+  currently defines a single Desktop Chrome project.
+- The shell (`AppNav.tsx`, `App.tsx`'s own header bar) adapted for 375px.
+- Each of the seven screens (Aujourd'hui, Mes cours, Notions, Lecteur,
+  Progression, Calendrier, Tuteur) adapted for 375px, one at a time, in
+  its own pass, after the shell.
+- A mockup screenshot for one of the seven M9 screens is still fair game
+  as more polish under this phase (the user returned to Calendrier three
+  times and to no screen more than that during M9) — treat it as such
+  rather than as new-milestone work, the same permission M9 itself used
+  to carry.
+
+**Demo** — Load the app at 375px width: every nav destination is
+reachable, the header bar and the bottom safe-area render correctly, and
+each of the seven screens is usable in all four of its states without
+horizontal overflow.
+
+**Acceptance**
+- [ ] `docs/UI.md` states, as binding convention: page padding under
+      768px, a 44px minimum touch target, the stacking rule for a
+      two-column layout at narrow widths, the one-tree-not-two rule (no
+      separate mobile/desktop component trees), and the chosen approach
+      for testing mobile layouts in Playwright against a
+      Desktop-Chrome-only `playwright.config.ts`
+- [ ] The shell is usable at 375px: all seven nav destinations reachable,
+      the header bar renders without horizontal overflow, and the bottom
+      tab bar (or whatever replaces it) respects iOS's own
+      safe-area-inset-bottom
+- [ ] Each of the seven screens is usable at 375px without horizontal
+      overflow, in each of its four required states (loading, empty,
+      error, ready)
+- [ ] Desktop rendering above 768px is unchanged by each pass: every
+      existing Playwright scenario (all authored against the desktop
+      viewport) still passes unmodified after that pass
+- [ ] Playwright, at a 375px viewport: navigating between all seven
+      screens
+
+### Phase 2 — Focus tools
+
+**Scope**
+- Pomodoro visibility across every screen and the browser tab title —
+  **lot 1 of this already shipped, ahead of this milestone's own
+  opening** (commits `69be23d`, `456a430`, `a290687`, `0ec9b9f`: the
+  cross-screen state-loss bug fixed first, the shared `useActivePomodoro`
+  hook, the header widget, the tab title, and the cached-session validity
+  guard) — retroactively counted as this phase's own first acceptance box
+  below, not built again from zero.
+- The countdown reaching zero: a visual state, also reflected in the tab
+  title, with the session closed exactly once by a single effect owner —
+  a not-found response on close treated as already-closed, not an error.
+- The ring/arc progress visual, derived from the same ratio the countdown
+  itself already uses.
+- Short and long breaks: the route accepts a session type and derives the
+  duration server-side from it (never a client-supplied duration), a new
+  type column with its own Drizzle migration, and the three-segment
+  selector becomes a real radio-button group.
+- The study-sounds card (`StudySoundsCard`, still mock since M9) wired to
+  real, licensed audio — no third-party embed, no OAuth.
+
+**Demo** — Start a pomodoro on Aujourd'hui, navigate to another screen,
+see the countdown in the header and the tab title; let it reach zero and
+watch it close itself exactly once; switch to a short break; play a real
+ambient sound from the study-sounds card.
+
+**Acceptance**
+- [x] A running session is visible, discreetly, on every screen and in
+      the browser tab title — lot 1, shipped before this milestone opened
+      (commits `69be23d`, `456a430`, `a290687`, `0ec9b9f`)
+- [ ] Reaching zero is signalled visually and in the tab title, and the
+      session is closed exactly once, by a single effect owner — a
+      not-found response on close is treated as already-closed, never
+      surfaced as an error
+- [ ] The ring/arc progress visual is derived from the same ratio the
+      countdown itself uses, is `aria-hidden`, and that ratio is
+      unit-tested as a pure function
+- [ ] `POST /api/pomodoro` accepts a session type and derives the
+      duration server-side from it — never a client-supplied duration,
+      asserted by an integration test; a new `type` column exists with
+      its own Drizzle migration; the composer's three-segment selector is
+      a real `radiogroup` of radio buttons, not three decorative `<span>`s
+- [ ] The study-sounds card plays real audio, no third-party embed, no
+      OAuth; the provenance and licence of every audio file are recorded
+      in the repo
+- [ ] `docs/UI.md`'s Screen notes are reconciled with each phase-2 pass as
+      it lands, not deferred
+
+**A rule reversal to document when delivered, not before — the same
+discipline M9 itself used for its own two reversals (the streak and
+countdown bans):** `docs/UI.md`'s Aujourd'hui — pomodoro note currently
+describes the countdown as colourless and non-escalating, on purpose. The
+zero-arrival visual state reverses that rule — a deliberate one, scoped
+above, not a rediscovery that the rule was wrong. Record the reversal in
+`docs/UI.md` itself, in the same commit that delivers it, the way M9's own
+streak/countdown reversal was recorded there rather than left only in this
+file.
 
 ---
 
