@@ -907,7 +907,85 @@ Tuteur's own "Retour" targets) and shows "Retour à mes cours"; its absence
 all, matching Aujourd'hui/Mes cours' own top-level pages — never a second
 screen to return to.
 
-Touch targets are 44px minimum everywhere.
+### Responsive conventions
+
+Written before any per-screen mobile-adaptation pass touches a screen
+(`docs/MILESTONES.md`'s own M10 Phase 1), so the same questions aren't
+re-decided seven times. Extends the breakpoints and rules this section
+already fixed, above, rather than a competing set: **375px, already
+named above as the width every screen must work at, is this project's
+own reference width for verification** — every rule below is checked
+there, not against "narrow" left implicit.
+
+**Page padding: 16px below 768px (this section's own mobile/tablet
+boundary), 32px at or above it** — `p-4 md:p-8`, not the flat 32px every
+screen currently hardcodes regardless of width. 32px is a sixth of a
+375px viewport's own width before any real content renders; 16px matches
+`--space-block` (`Shape and depth`, above), already on the sanctioned
+scale, and 32px matches the desktop figure this section's own Desktop
+paragraph, above, already names for the content area.
+
+**Touch targets are 44px minimum everywhere** (unchanged from this
+section's own prior rule, folded in here rather than left as a bare
+orphaned sentence). **44px is a deliberate exception to the spacing
+scale, not an oversight for a reviewer or a scale-checking test to
+flag**: the sanctioned scale (`Shape and depth`, above; enforced for
+`TodayScreen.tsx` by `TodayScreen.spacing.unit.test.ts`) is
+4/8/12/16/24/32/48px, and 44 is none of those. `AppNav.tsx` already
+carries this exact exception, unremarked until now, via `min-h-11` on
+every nav item.
+
+**A two-column layout stacks by default and becomes a row from 768px
+up.** A fixed-width side panel becomes full width below that point. The
+one shape to never write: a fixed pixel width combined with `shrink-0`
+and no responsive variant at all.
+
+**One responsive tree per component, via `md:*` classes — never a
+separate mobile tree and a separate desktop tree for the same screen.**
+`AppNav.tsx`'s own header comment already carries the reason and it
+isn't restated differently here: two parallel trees would double every
+nav landmark and every button's accessible name, breaking
+`getByRole("button", { name })` queries that assume one match. The same
+reasoning holds for any screen, not only the nav.
+
+**No horizontal scroll at 375px.** The recurring cause is a missing
+`min-w-0` on a flex container whose child carries long text — a flex
+item's default `min-width: auto` refuses to shrink below its own
+content's natural width and pushes the row wider than the viewport
+instead. `min-w-0` on the container plus `truncate` (or a multi-line
+`line-clamp-*`) on the text is the expected fix, never a smaller font or
+a shortened string.
+
+**A fixed element pinned to the bottom of the viewport (the mobile nav
+bar) must account for iOS's own `safe-area-inset-bottom`, and the
+shell's own reserved vertical space for it (`App.tsx`'s `pb-16`) must be
+derived from that same bar's real rendered height** — not two numbers
+that happen to agree today and drift apart the next time either changes
+on its own.
+
+**A screen counts as adapted only once verified in all four of its
+required states — loading, empty, error, ready — at 375px.** This is a
+verification obligation before a pass can be marked done, not a
+suggestion: the same four-state rule (`Required states`, below) already
+holds for a screen full stop; this is that same rule, checked at the
+width it's written for.
+
+**Mobile is tested with a 375×812 viewport override inside the relevant
+Playwright spec (`test.use({ viewport: { width: 375, height: 812 } })`),
+not a second `playwright.config.ts` project.** `playwright.config.ts`
+already runs its one "Desktop Chrome" project at `workers: 1`
+(`docs/TESTING.md`'s own End-to-end note: one shared extraction queue,
+more workers only lengthens everyone's wait); a second project would
+double every spec's own run under that same serial constraint for what
+a per-spec viewport override gets for free. `docs/TESTING.md`'s own
+Front-end tests rule — query by role and label, never by class name,
+unless there is genuinely no accessible handle — still holds here:
+asserting on a class name (`TodayScreen.spacing.unit.test.ts`'s own
+scale check is the existing precedent for when this is legitimate)
+is reached for only where no behaviour actually differs to assert on
+instead, never the default where a Playwright scenario can check the
+real thing directly — no horizontal scroll, a button actually reachable
+and clickable, all four states actually visible.
 
 ---
 
