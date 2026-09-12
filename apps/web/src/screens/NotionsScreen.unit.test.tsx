@@ -220,7 +220,7 @@ describe("NotionsScreen", () => {
     expect(onReview).toHaveBeenCalledWith("doc-1", undefined);
   });
 
-  it("'Lire le cours', 'Voir la progression' and 'Discuter du cours' each call back with the selected course's id", async () => {
+  it("'Lire le cours', 'Voir tes progrès' and 'Discuter du cours' each call back with the selected course's id", async () => {
     const onOpenReader = vi.fn();
     const onOpenProgress = vi.fn();
     const onOpenTutor = vi.fn();
@@ -231,7 +231,7 @@ describe("NotionsScreen", () => {
     await screen.findByText("Photosynthèse");
 
     await user.click(screen.getByRole("button", { name: "Lire le cours" }));
-    await user.click(screen.getByRole("button", { name: "Voir la progression" }));
+    await user.click(screen.getByRole("button", { name: "Voir tes progrès" }));
     await user.click(screen.getByRole("button", { name: "Discuter du cours" }));
 
     expect(onOpenReader).toHaveBeenCalledWith("doc-1");

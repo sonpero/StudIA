@@ -78,7 +78,7 @@ describe("buildCalendarView", () => {
   });
 
   // The property the whole "several elements the same day" question turns
-  // on (docs/UI.md's Calendrier note, docs/modules/workspace.md's Calendar
+  // on (docs/UI.md's Agenda note, docs/modules/workspace.md's Calendar
   // section "Order is a contract"): deadlines first, always, regardless of
   // which array a given day's entries happen to come from or in what order
   // this function receives them.

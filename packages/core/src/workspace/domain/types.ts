@@ -38,7 +38,7 @@ export type TodayView = {
 // separate concerns. Within a day, deadlines always precede todos — a
 // contract `buildCalendarView` guarantees by construction, not a sort the
 // screen must redo, so the density rule that decides "N dots" vs "two
-// dots plus a count" (docs/UI.md's Calendrier note) applies directly to
+// dots plus a count" (docs/UI.md's Agenda note) applies directly to
 // `entries` with no regrouping or resorting on the screen side.
 export type CalendarEntry = {
   kind: "deadline" | "todo";

@@ -25,7 +25,7 @@ function daysUntil(dateKey: string, todayKey: string): number {
 }
 
 // A day cell holds at most three tokens, always: up to three dots, or two
-// dots plus a count (docs/UI.md's Calendrier note). Each dot's accessible
+// dots plus a count (docs/UI.md's Agenda note). Each dot's accessible
 // name is the course title, resolved from documentId — never the colour
 // alone, which is never the only carrier of meaning.
 function DayDots({ entries, titleById }: { entries: CalendarEntry[]; titleById: Map<string, string> }) {
@@ -76,7 +76,7 @@ function DayDots({ entries, titleById }: { entries: CalendarEntry[]; titleById: 
 // dot, only safe to show because there is exactly one thing to say that
 // day. Any additional entry falls back to DayDots' dot-or-count
 // treatment: a pill this wide next to even one more dot would not fit
-// the cell, and the density rule (docs/UI.md's Calendrier note) still
+// the cell, and the density rule (docs/UI.md's Agenda note) still
 // applies to everything but this single-entry case.
 function DeadlineBadge({ entry, titleById }: { entry: CalendarEntry; titleById: Map<string, string> }) {
   const label = entry.documentId ? (titleById.get(entry.documentId) ?? entry.title) : entry.title;

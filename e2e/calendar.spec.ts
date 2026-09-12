@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// docs/UI.md's Calendrier note + docs/modules/workspace.md's Calendar
+// docs/UI.md's Agenda note + docs/modules/workspace.md's Calendar
 // section: a month grid composing progress's deadlines and workspace's
 // own dated todos, a day's dot clicking through to its full contents, and
 // colour that only ever marks a course, never how soon something is due.
@@ -32,9 +32,9 @@ test.describe("calendar", () => {
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
 
     // Set a deadline for this course, same flow e2e/progress.spec.ts uses.
-    await page.getByRole("button", { name: "Voir la progression" }).click();
-    // "Voir la progression" pre-selects this exact course (fromDocumentId,
-    // docs/UI.md's Progression note) — one detail card, not a filtered pick.
+    await page.getByRole("button", { name: "Voir tes progrès" }).click();
+    // "Voir tes progrès" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progrès note) — one detail card, not a filtered pick.
     const progressCard = page.getByTestId("progress-detail-card");
     await expect(progressCard.getByText("Cours du calendrier")).toBeVisible({ timeout: 10_000 });
     await progressCard.getByRole("button", { name: "Définir une échéance" }).click();
@@ -43,15 +43,15 @@ test.describe("calendar", () => {
     await expect(progressCard.getByText(/contrôle dans/i)).toBeVisible({ timeout: 10_000 });
 
     // Redesign (M9): the deadline just set also surfaces, unprompted, in
-    // Calendrier's own "Prochaines échéances" sidebar — reusing the same
-    // course-progress read as Progression, no separate endpoint.
+    // Agenda's own "Prochaines échéances" sidebar — reusing the same
+    // course-progress read as Progrès, no separate endpoint.
     await page.getByRole("button", { name: "Agenda", exact: true }).click();
     const upcoming = page.getByTestId("upcoming-deadlines");
     await expect(upcoming.getByText("Cours du calendrier")).toBeVisible({ timeout: 10_000 });
 
     // A course-less todo dated inside the same month, same flow
     // e2e/today.spec.ts uses.
-    // exact: true — Calendrier's own "Aller à aujourd'hui" jump button
+    // exact: true — Agenda's own "Aller à aujourd'hui" jump button
     // (M9) now also matches "Aujourd'hui" as a substring.
     await page.getByRole("button", { name: "Aujourd'hui", exact: true }).click();
     // Collapsed by default behind its own trigger (docs/UI.md), same as

@@ -113,7 +113,7 @@ describe("listProgress — cross-document isolation (mandatory integration cover
   });
 
   // docs/UI.md: subject colour identifies a course everywhere, including a
-  // Progression card — this is the read side that makes that possible.
+  // Progrès card — this is the read side that makes that possible.
   // Two distinct colours, not one repeated, so a leak (wrong document's
   // colour, or a shared default) shows up as a specific wrong value
   // instead of an accidental pass.

@@ -29,7 +29,7 @@ import { TutorScreen } from "./screens/TutorScreen.js";
 // where there is no originating course and "back" returns to "documents"
 // instead. It is not a scoping parameter (the screen still lists every
 // course regardless of how it was entered), but its own later pill-selector
-// redesign (docs/UI.md's Progression note) does reuse it to pre-select that
+// redesign (docs/UI.md's Progrès note) does reuse it to pre-select that
 // course's own pill, the same idiom Notions/Lecteur already established for
 // their own documentId props. "today"
 // (M6, docs/modules/workspace.md; redesigned under M9) is reachable from
@@ -42,8 +42,8 @@ type View =
   // documentId absent: the nav's own direct entry (M9's Navigation note) —
   // NotionsScreen picks its own first course and shows a pill selector,
   // no separate picker page to have come from any more (its own redesign,
-  // later). documentId set: a deep link from elsewhere (Progression's
-  // "Voir le cours", Calendrier's day panel, Lecteur/Tuteur's own "Retour"
+  // later). documentId set: a deep link from elsewhere (Progrès'
+  // "Voir le cours", Agenda's day panel, Lecteur/Tuteur's own "Retour"
   // targets) — that course is pre-selected and "Retour à mes cours"
   // reappears.
   | { name: "notions"; documentId?: string }

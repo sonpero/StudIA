@@ -304,7 +304,7 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
               <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-title)] font-extrabold">{item.title}</h2>
 
               {/* A lapsed deadline is one more fact about the course, never a
-                  takeover of the whole card (docs/UI.md's Progression note):
+                  takeover of the whole card (docs/UI.md's Progrès note):
                   the gauges below render exactly as they do on any other
                   card. Weight and position carry the emphasis, never colour. */}
               {isPast && <p className="text-sm font-semibold text-text">Cette échéance est passée.</p>}

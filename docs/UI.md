@@ -27,7 +27,7 @@ not the same thing as a ticking timer or a red "3 jours restants"
 pressuring a specific action. Progress and review
 keep the stricter rule exactly as written above — no status word ever
 implies lateness, no colour turns urgent on a deadline's own day
-(`Progression`'s own note, below) — because unlike Aujourd'hui's badge, both
+(`Progrès`' own note, below) — because unlike Aujourd'hui's badge, both
 screens attach a day count to an evaluative judgement, which is the part
 this rule was always actually protecting against.
 
@@ -282,8 +282,8 @@ Two rules:
 - A subject colour is always paired with the course name or an icon. Colour alone
   never carries meaning.
 - Subject colours are for identity only. They never indicate progress or
-  state — **except Progression's own detail card and its gauges**
-  (`Screen notes`' own Progression note, below), a deliberate reversal per
+  state — **except Progrès' own detail card and its gauges**
+  (`Screen notes`' own Progrès note, below), a deliberate reversal per
   the user's explicit instruction for that screen only: coverage and
   readiness are filled with the selected course's own colour there, not
   `--primary`. Every other screen keeps this rule exactly as written.
@@ -292,11 +292,11 @@ Two rules:
 card, the colour runs as a 4px solid border down the card's left edge,
 `aria-hidden` like the dot it replaces, paired with the course title the
 same rule above already requires. **Aujourd'hui's, Mes cours' and
-Progression's own course cards no longer follow this rule**, each
+Progrès' own course cards no longer follow this rule**, each
 redesigned from its own mockup to a colour-tinted icon circle instead
 (`Screen notes`' own notes for all three, below, explain each departure) —
 this rule still holds everywhere it has not been named as an exception.
-Progression's own "Tous les cours" list (below) is the one partial
+Progrès' own "Tous les cours" list (below) is the one partial
 exception to the exception: its rows keep a left border, but only on
 whichever row is currently selected, a selection cue rather than a
 permanent identity marker.
@@ -363,12 +363,12 @@ regardless of role before this pass:
 |---|---|---|
 | `--text-label` | 12px | Small muted labels: a section header ("Todos"), a gauge's own label ("Couverture"), a fieldset legend. Never the loudest thing on its card. |
 | `--text-body` | 14px | The default — everything not a label, a title, or a display number. Already every screen's baseline (Tailwind's own `text-sm`); named here for completeness, not a new class to apply anywhere. |
-| `--text-title` | 20px | Card and course titles — Aujourd'hui's course cards, Progression's, a notion's own, the reader's course heading. One step up from the 16px they shared with plain body text before. |
+| `--text-title` | 20px | Card and course titles — Aujourd'hui's course cards, Progrès', a notion's own, the reader's course heading. One step up from the 16px they shared with plain body text before. |
 | `--text-display` | 32px | The one dominant number on its line: a due count, a gauge percentage, a mastered-notions count. Display face (Plus Jakarta Sans, 800, `tabular-nums`), its unit and qualifier beside it in `--text-label` and `--text-muted` — never the reverse, and never both the same size. |
 
 **`--text-display` marks a card's own number, never a page's chrome.** The
 table above names "a mastered-notions count" as one dominant-number
-example among the others — true for one drawn inside a card (Progression's
+example among the others — true for one drawn inside a card (Progrès'
 own gauges, Aujourd'hui's own due count), where the number is that card's
 one piece of information and nothing else on it competes for the same
 attention. It stops being true the moment the same count sits in a
@@ -402,8 +402,8 @@ sized up). This ties two hierarchies that used to be decided separately
 loudest read — into one rule with one criterion, not a fresh visual
 judgement call for every future card. It does not apply to two numbers
 deliberately paired for side-by-side comparison, never meant to be read
-as competing facts about different questions — Progression's own
-Coverage/Readiness gauges (`Progression`'s own note, below) are exactly
+as competing facts about different questions — Progrès' own
+Coverage/Readiness gauges (`Progrès`' own note, below) are exactly
 this: both stay `--text-display`, and any imbalance there is a spacing
 question, not a hierarchy one. That screen's later redesign adds a third:
 its own readiness ring duplicates the linear Readiness gauge's own number
@@ -484,7 +484,7 @@ number's own line and card, not a competition with the screen chrome.
   a "32px" number was, in the browser that picked the gap, a title next to
   browser-default text. Four gaps turned out to be wrong once the real
   sizes were checked on screen, not assumed: a course-progress card's two
-  gauges (`Progression`'s own note, below) sat only 12px apart, the card's
+  gauges (`Progrès`' own note, below) sat only 12px apart, the card's
   ordinary internal rhythm, when two 32px numbers wanted more air between
   them than a title-to-label step does — now 16px (`--space-block`),
   title→gauge and gauge→status left at 12px, where a label already
@@ -586,7 +586,7 @@ number's own line and card, not a competition with the screen chrome.
     a form or a file picker — a button flipping into a set of fields isn't
     the same kind of control any more, so it cannot also double as its own
     closer the way a text toggle can.
-  - **"Annuler"** (`UploadCard`'s own confirm step, `Progression`'s
+  - **"Annuler"** (`UploadCard`'s own confirm step, `Progrès`'
     deadline form) — the revealed area unmounts and does not keep its own
     state alive anywhere else: reopening starts genuinely fresh. Right
     when there is nothing worth returning to — staged files or a
@@ -634,7 +634,7 @@ number's own line and card, not a competition with the screen chrome.
   step further: the toolbar's own "Réviser" moved off the toolbar
   entirely**, onto its own accent button on the course summary card
   (`Screen notes`' own Notions note, below) — today's toolbar
-  ("Lire le cours" / "Voir la progression" / "Discuter du cours") is three
+  ("Lire le cours" / "Voir tes progrès" / "Discuter du cours") is three
   plain links and nothing else, not one Button demoted down to two.
 
 ### Icons
@@ -672,8 +672,8 @@ exactly like the mascot: the accessible name of a nav destination or a card
 action is its text label alone, unaffected by the icon beside it.
 
 **Two exceptions now, not one: ReviewScreen's graded-MCQ `Check`/`X`, and
-`Calendrier`'s own month-nav `ChevronLeft`/`ChevronRight` (a second M9
-follow-up pass, `Screen notes`' own Calendrier note below) — the latter
+`Agenda`'s own month-nav `ChevronLeft`/`ChevronRight` (a second M9
+follow-up pass, `Screen notes`' own Agenda note below) — the latter
 is a genuine icon-only button, confirmed with the user as a deliberate
 reversal the same way the streak/countdown badges were, not a rediscovery
 that the rule was wrong. Its accessible name lives entirely in
@@ -696,14 +696,14 @@ Aujourd'hui, `BookOpen` for Mes cours, `Layers` for Notions (M9 — distinct
 from `BookOpen`, a course's atomic units rather than its catalogue entry),
 `BookOpenText` for Lecteur (M9 — the same icon this section already gives
 "Lire le cours" on a card, reused rather than invented since it is the same
-destination), `TrendingUp` for Progression, `Calendar` for Calendrier,
+destination), `TrendingUp` for Progrès, `Calendar` for Agenda,
 `MessageCircle` for Tuteur — plain and literal, matching the rest, not
 `Bot`: the mascot section's own "Fiche is a tool, not a friend, never a chat
 persona" already argues against a nav icon that reads as an anthropomorphic
 AI), and
 on each card's own primary, forward-moving actions — the ones docs/UI.md
 already calls "a path to action" on Aujourd'hui's own course card:
-`BookOpen` for "Voir le cours" (Calendrier's own day panel, landing on
+`BookOpen` for "Voir le cours" (Agenda's own day panel, landing on
 that course's Notions), `BookOpenText` for "Lire le cours" (a distinct
 destination, the continuous-reading Lecteur), `Repeat` for "Réviser",
 `CalendarClock` for setting or updating a deadline, `RotateCw` for a
@@ -716,11 +716,11 @@ already named as destructive/secondary in this document or in code
 comments, and adding an icon would raise their visual weight in exactly the
 direction the demotion was deliberately fighting.
 
-Not extended to a day cell itself (still true after `Calendrier`'s own
+Not extended to a day cell itself (still true after `Agenda`'s own
 later M9 reskin — a day cell is not a course card, the same reasoning
 `Subject colours` already gives for why that screen's colour treatment
 stops there too) or to `Révision` (grading controls, not a course-card
-grid). `Calendrier`'s own later redesign (`Screen notes`' own Calendrier
+grid). `Agenda`'s own later redesign (`Screen notes`' own Agenda
 note, below) carves out the same kind of exception `Lecteur` did, for the
 same reason: the page-level `Calendar` icon beside its own "h1" is plain
 page chrome like a nav icon, not a card action, and its new "Prochaines
@@ -734,7 +734,7 @@ puts `Layers`/`MessageCircle` on its own two buttons — the same icons the
 nav already assigns to Notions/Tuteur, reused for the same destination
 rather than invented, each button living inside its own `Card` so the
 "actions of a card" boundary below still holds. `NotionsScreen`'s own
-toolbar ("Lire le cours" / "Voir la progression" / "Discuter du cours",
+toolbar ("Lire le cours" / "Voir tes progrès" / "Discuter du cours",
 `Screen notes`' own Notions note below) is plain page chrome, not inside a
 `Card`, so it is out of scope by the same "actions of a card" rule that
 puts an icon on that screen's per-notion `Card`'s own "Réviser" instead —
@@ -763,8 +763,8 @@ width through the tablet breakpoint for now.
 Mascot animations are idle-only and subtle. `prefers-reduced-motion` disables the
 flip and all mascot motion.
 
-**Progression's own gauges and readiness ring are a second, deliberately
-longer exception (`Screen notes`' own Progression note, below): 700ms
+**Progrès' own gauges and readiness ring are a second, deliberately
+longer exception (`Screen notes`' own Progrès note, below): 700ms
 ease-out, a one-time entrance read on mount, not a response to a
 click.** `motion-reduce:transition-none` respects a reduced-motion
 preference the same way the flip and mascot motion are meant to, jumping
@@ -1197,7 +1197,7 @@ reviewing it — no longer exists, on this screen alone.** Confirmed with
 the user (2026-09-06) as an intentional cut, not a bug or an oversight.
 Once every due card for a course has been reviewed, nothing on its card
 reaches that course's own
-Notions, Lecteur or Progression any more — only the nav's own
+Notions, Lecteur or Progrès any more — only the nav's own
 destinations do. `Mes cours`' own card (below) kept its equivalent, "Lire
 le cours": the two cards are no longer symmetric on this one point.
 
@@ -1408,14 +1408,14 @@ page's own `<h1>` stays "Notions", never duplicated), "N notion(s) · M
 maîtrisée(s) · **K à réviser**", and the page's one accent button —
 "Réviser K fiche(s)" above zero due, a disabled "Rien à réviser" at zero.
 This is now the *only* accent action on the page: the toolbar below it
-("Lire le cours" / "Voir la progression" / "Discuter du cours") is three
+("Lire le cours" / "Voir tes progrès" / "Discuter du cours") is three
 plain underlined links, none of them a `Button` any more — the
 "which of four is still accent" question this file used to answer at
 length no longer has more than one candidate to weigh.
 
 **"Retour à mes cours" sits above the summary card, its own line, flush
 left, a plain underlined link — shown only when a `documentId` arrived
-from an existing deep link (Progression, Calendrier, Lecteur/Tuteur's own
+from an existing deep link (Progrès, Agenda, Lecteur/Tuteur's own
 "Retour" targets); absent entirely on the nav's own direct entry**, which
 shows the first course with nothing to go back to, the same as
 Aujourd'hui/Mes cours' own top-level pages. There is no "Retour"-only
@@ -1469,7 +1469,7 @@ describes the page itself.
 idiom, reused), then the selected course's own detail card, then a
 compact "Tous les cours" list — no uniform grid of one full card per
 course any more.** A `documentId` prop pre-selects a course from an
-existing deep link (Notions du cours' own "Voir la progression"); its
+existing deep link (Notions du cours' own "Voir tes progrès"); its
 absence (the nav's own direct entry) selects the first course, the same
 `documentId ?? manualSelection ?? items[0]` idiom Notions/Lecteur already
 use. Switching pills, or clicking a row in "Tous les cours" (below), is a
@@ -2048,7 +2048,7 @@ skips the check must still land somewhere defined:
 **Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
 own note above). Redesigned from a user-supplied mockup in a later M9
 pass, ignoring this file's own former picker-plus-chat description in
-full, the same unification Notions/Lecteur/Progression already went
+full, the same unification Notions/Lecteur/Progrès already went
 through.
 
 **One page: a pill row of every course, then that course's own chat — no
@@ -2134,7 +2134,7 @@ student to send a question just to learn the course was never readable.
   alongside it) with a per-course placeholder ("Pose ta question sur
   {titre}…"), and its send button gained a `Send` icon beside "Envoyer" —
   an icon accompanying its label, not replacing it, so no `Icons` rule
-  exception was needed the way Calendrier's month nav (below) required
+  exception was needed the way Agenda's month nav (below) required
   one.
 
 **Streaming.** Sending a question appends it to the list immediately (not
@@ -2251,7 +2251,7 @@ French, tutoiement, sentence case, no emoji.
   line is register, not subject: `docs/UI.md`'s M9 note under `Who this is
   for` (above) is what actually decides which day counts are in bounds.
 
-**No badges, no points, anywhere.** Progression's own progress is the real
+**No badges, no points, anywhere.** Progrès' own progress is the real
 count of notions mastered, never gamified — that number is true, and it is
 what the exam measures. Aujourd'hui's own streak (M9, `Screen notes` below)
 is the one narrow exception to "no streaks", not a reopening of this line:
@@ -2297,7 +2297,7 @@ Checked in the Playwright suite:
   or a ticking clock is) — narrowed by M9 from a blanket ban on any
   countdown or streak, which the streak (global, in the nav sidebar) and
   Aujourd'hui's own countdown badge (scoped to its course cards) are now a
-  deliberate exception to (`Screen notes`, below); Progression and
+  deliberate exception to (`Screen notes`, below); Progrès and
   Révision keep the original, stricter reading
 
 ---
@@ -2318,7 +2318,7 @@ Checked in the Playwright suite:
   every other variant gets from `min-h-11`, through a pseudo-element
   instead. Reintroducing a raw underlined `<button>` is a regression, not
   a stylistic choice — it's exactly the pattern that had reaccumulated,
-  independently, on Notions, Lecteur, Progression and Tuteur before this
+  independently, on Notions, Lecteur, Progrès and Tuteur before this
   variant existed.
 - **A Tailwind arbitrary value referencing a token (`text-[var(--...)]`,
   `font-[var(--...)]`, and any other prefix covering more than one CSS

@@ -152,7 +152,7 @@ describe("ProgressScreen", () => {
     expect(screen.getByRole("button", { name: "Histoire" })).not.toHaveAttribute("aria-current");
   });
 
-  it("a documentId prop pre-selects that course's pill (deep link from Notions du cours' own 'Voir la progression')", async () => {
+  it("a documentId prop pre-selects that course's pill (deep link from Notions du cours' own 'Voir tes progrès')", async () => {
     const histoire: ProgressListItem = { ...mathsItem, documentId: "doc-2", title: "Histoire", colour: "#38BDF8" };
     stubFetch({ items: [mathsItem, histoire] });
     renderScreen({ documentId: "doc-2" });
@@ -183,7 +183,7 @@ describe("ProgressScreen", () => {
     expect(within(detail).getByText(/54\s?%/)).toBeInTheDocument();
     // 30 % (readiness) is deliberately shown twice on this card — the ring
     // and the linear "Préparation" gauge both duplicate it (docs/UI.md's
-    // Progression note) — so this checks presence, not uniqueness.
+    // Progrès note) — so this checks presence, not uniqueness.
     expect(within(detail).getAllByText(/30\s?%/).length).toBeGreaterThan(0);
   });
 

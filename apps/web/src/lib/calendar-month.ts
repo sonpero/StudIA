@@ -17,7 +17,7 @@ export function monthRange(year: number, month: number): { start: string; end: s
   return { start, end };
 }
 
-// "Mars 2026" (docs/UI.md's Calendrier note): fr-FR's own long-month
+// "Mars 2026" (docs/UI.md's Agenda note): fr-FR's own long-month
 // format is lower-case ("mars 2026"), so the first letter is capitalised
 // by hand rather than assuming the locale already matches the reference.
 export function monthLabel(year: number, month: number): string {
@@ -29,7 +29,7 @@ export type CalendarGridDay = { dateKey: string; inMonth: boolean };
 
 // A whole number of Monday-first weeks, always — leading days from the
 // previous month and trailing days from the next fill the first and last
-// rows so every row is a complete week (docs/UI.md's Calendrier note: "a
+// rows so every row is a complete week (docs/UI.md's Agenda note: "a
 // row per week"). getDay() is Sunday-first (0-6); +6 mod 7 reindexes it
 // Monday-first (0-6) without a lookup table.
 export function buildMonthGrid(year: number, month: number): CalendarGridDay[] {

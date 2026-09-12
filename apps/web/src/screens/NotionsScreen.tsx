@@ -348,7 +348,7 @@ function NotionsCourseScreen({
           Lire le cours
         </button>
         <button type="button" className="text-text-muted underline" onClick={onOpenProgress}>
-          Voir la progression
+          Voir tes progrès
         </button>
         <button type="button" className="text-text-muted underline" onClick={onOpenTutor}>
           Discuter du cours
@@ -437,8 +437,8 @@ function NotionsCourseScreen({
 // unified page (a course-picker row of pills, then that course's own
 // summary card and notion list), not a separate picker page you leave to
 // reach a course's notions. documentId (still optional, from App.tsx's own
-// View) keeps every existing deep link working exactly as before (Progression's
-// "Voir le cours", Calendrier's day panel, Lecteur/Tuteur's own "Retour"
+// View) keeps every existing deep link working exactly as before (Progrès'
+// "Voir le cours", Agenda's day panel, Lecteur/Tuteur's own "Retour"
 // targets) — when set, that course is pre-selected and "Retour à mes cours"
 // reappears; when absent (the nav's own direct entry, M9), no back link at
 // all, matching Aujourd'hui/Mes cours' own top-level pages, and the first

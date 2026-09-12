@@ -64,9 +64,9 @@ test.describe("streak and countdown badge (M9)", () => {
       .toBe(notionCount);
 
     // A deadline, for the countdown badge.
-    await page.getByRole("button", { name: "Voir la progression" }).click();
-    // "Voir la progression" pre-selects this exact course (fromDocumentId,
-    // docs/UI.md's Progression note) — one detail card, not a filtered pick.
+    await page.getByRole("button", { name: "Voir tes progrès" }).click();
+    // "Voir tes progrès" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progrès note) — one detail card, not a filtered pick.
     const progressCard = page.getByTestId("progress-detail-card");
     await expect(progressCard.getByText("Cours du streak")).toBeVisible({ timeout: 10_000 });
     await progressCard.getByRole("button", { name: "Définir une échéance" }).click();
@@ -83,7 +83,7 @@ test.describe("streak and countdown badge (M9)", () => {
     await expect(courseCard).toBeVisible({ timeout: 10_000 });
     // The relative form only — no absolute date, no custom label
     // (docs/UI.md's Aujourd'hui — deadline note: the badge is a fixed,
-    // generic "Examen", not a repaint of Progression's own labelled fact).
+    // generic "Examen", not a repaint of Progrès' own labelled fact).
     await expect(courseCard.getByText("Examen dans 14 jours")).toBeVisible();
 
     // A review today: submit one, then see the streak read at least 1.

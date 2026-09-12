@@ -37,7 +37,7 @@ test.describe("progress", () => {
 
     // Lecteur opened from a course's own Notions page returns there, not to
     // Mes cours (docs/UI.md's Lecteur note — same fromDocumentId-shaped
-    // mechanic as this screen's own Progression round trip, checked further
+    // mechanic as this screen's own Progrès round trip, checked further
     // down).
     await page.getByRole("button", { name: "Lire le cours" }).click();
     await expect(page.getByTestId("reader-study-panel")).toBeVisible({ timeout: 15_000 });
@@ -62,11 +62,11 @@ test.describe("progress", () => {
       )
       .toBe(notionCount);
 
-    await page.getByRole("button", { name: "Voir la progression" }).click();
+    await page.getByRole("button", { name: "Voir tes progrès" }).click();
     await expect(page.getByRole("heading", { name: "Progrès" })).toBeVisible();
 
-    // "Voir la progression" pre-selects this exact course (fromDocumentId,
-    // docs/UI.md's Progression note) — one detail card, not a filtered
+    // "Voir tes progrès" pre-selects this exact course (fromDocumentId,
+    // docs/UI.md's Progrès note) — one detail card, not a filtered
     // pick among several, even though other specs' own courses coexist in
     // the shared e2e database (docs/TESTING.md's "one database per run").
     const progressCard = page.getByTestId("progress-detail-card");
@@ -75,7 +75,7 @@ test.describe("progress", () => {
     // No deadline yet: the two raw numbers and an invitation, no countdown.
     // "0 %" appears three times — coverage's own bar, plus readiness
     // duplicated on both the ring and its own linear bar (docs/UI.md's
-    // Progression note).
+    // Progrès note).
     await expect(progressCard.getByText("0 %")).toHaveCount(3);
     await expect(progressCard.getByRole("button", { name: "Définir une échéance" })).toBeVisible();
 
@@ -111,7 +111,7 @@ test.describe("progress", () => {
 
     await page.getByRole("button", { name: "Quitter" }).click();
     await expect(notionCards.first()).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Voir la progression" }).click();
+    await page.getByRole("button", { name: "Voir tes progrès" }).click();
     await expect(page.getByRole("heading", { name: "Progrès" })).toBeVisible();
 
     // Readiness has risen off its floor now that a card has been

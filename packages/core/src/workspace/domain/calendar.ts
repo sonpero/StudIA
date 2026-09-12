@@ -18,7 +18,7 @@ export type CourseInfo = { id: string; title: string; colour: string };
 // the same date — a contract, not an accident (docs/modules/workspace.md):
 // deadlines are folded in fully before any todo is, so the order within a
 // day's `entries` follows from iteration order alone, needing no sort
-// step the density rule (docs/UI.md's Calendrier note) could then get
+// step the density rule (docs/UI.md's Agenda note) could then get
 // wrong by sorting on the wrong key. Trusts both inputs are already
 // scoped to [start, end] — filterDeadlinesInRange and
 // TodoRepository.getTodosForUserInRange are what enforce that, not this

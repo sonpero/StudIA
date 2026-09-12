@@ -8,7 +8,7 @@ import { Button } from "./button.js";
 // deliberate exception to the spacing scale, and every other Button
 // variant gets it for free via the shared cva base class (min-h-11).
 // A plain text link (the "Retour"/toggle pattern repeated across Notions,
-// Lecteur, Progression, Tuteur) must NOT get a 44px visual box — that
+// Lecteur, Progrès, Tuteur) must NOT get a 44px visual box — that
 // would change the vertical rhythm of four screens' desktop rendering,
 // which M10 Phase 1 requires stay pixel-identical. The only way to reach
 // 44px of real tap target without resizing the visible box is a

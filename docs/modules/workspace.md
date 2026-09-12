@@ -174,7 +174,7 @@ grounds that `TodayView`'s separate per-kind arrays are exactly what made
 Aujourd'hui show the same course three times before its own reprise
 (`docs/UI.md`) merged them client-side — true, but beside the point once
 the actual requirement was named: the day-cell density rule
-(`docs/UI.md`'s Calendrier note — three dots, or two dots plus a count)
+(`docs/UI.md`'s Agenda note — three dots, or two dots plus a count)
 has to apply to a day's entries with no regrouping or resorting on the
 screen side. A flat array would still make every consumer re-derive "which
 entries share this date" before it could apply that rule at all — the same
@@ -825,7 +825,7 @@ above):
 Notifications and reminders, which need push infrastructure. **Calendar
 sync** — pushing StudIA's dates out to Google Calendar, iCal, or any other
 external calendar, still excluded, still needs its own integration and
-its own consent flow. The in-app, read-only Calendrier screen (the
+its own consent flow. The in-app, read-only Agenda screen (the
 Calendar section above) is a different thing entirely — nothing leaves
 this app — and was never what this line meant to exclude; restated so it
 isn't cited to reopen a settled question. Anything that generates content.
@@ -916,7 +916,7 @@ works," each proven by a targeted mutation run and reverted
 - A course-less dot is named "Todo sans cours"; a course-linked dot is
   named after the course, resolved from `listDocuments` (the same read
   `TodayScreen`'s own add-form already makes) — not the todo's own label,
-  which has nowhere to print at dot size (`docs/UI.md`'s Calendrier note)
+  which has nowhere to print at dot size (`docs/UI.md`'s Agenda note)
 - Today's cell carries `aria-current="date"`, and only today's
 - Leading/trailing filler days from adjacent months render (so every row
   is a complete week) but are not buttons — not fetched for, so making
