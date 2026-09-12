@@ -475,7 +475,7 @@ export function ProgressScreen({
     return (
       <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
           <Button type="button" variant="link" onClick={onBack}>
             Retour
           </Button>
@@ -489,7 +489,7 @@ export function ProgressScreen({
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
         <p>Impossible de charger ta progression. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>
@@ -502,7 +502,7 @@ export function ProgressScreen({
     return (
       <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
           <Button type="button" variant="link" onClick={onBack}>
             Retour
           </Button>
@@ -522,7 +522,7 @@ export function ProgressScreen({
     <main className="flex flex-col gap-[var(--space-section)] p-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
           <p className="text-sm text-text-muted">Ta préparation pour chaque examen, et la part de ton programme déjà couverte.</p>
         </div>
         <Button type="button" variant="link" onClick={onBack}>

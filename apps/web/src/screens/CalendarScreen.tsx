@@ -234,7 +234,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
     <header className="flex flex-col gap-1">
       <h1 className="flex items-center gap-2 font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold">
         <CalendarIcon aria-hidden="true" focusable="false" size={ICON_SIZE_NAV} strokeWidth={ICON_STROKE_WIDTH} />
-        Calendrier
+        Agenda
       </h1>
       <p className="text-sm text-text-muted">Tes échéances et ce qui est prévu, d'un coup d'œil.</p>
     </header>
@@ -277,7 +277,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
     return (
       <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Calendrier</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Agenda</h1>
         <p>Impossible de charger le calendrier. Vérifie ta connexion et réessaie.</p>
         <Button onClick={() => void query.refetch()}>Réessayer</Button>
       </main>

@@ -31,8 +31,8 @@ test.describe("mobile shell (M10 Phase 1)", () => {
       { label: "Mes cours", heading: "Mes cours" },
       { label: "Notions", heading: "Notions" },
       { label: "Lecteur", heading: "Lecteur" },
-      { label: "Progression", heading: "Progression" },
-      { label: "Calendrier", heading: "Calendrier" },
+      { label: "Progrès", heading: "Progrès" },
+      { label: "Agenda", heading: "Agenda" },
       { label: "Tuteur", heading: "Tuteur" },
     ];
 

@@ -10,7 +10,7 @@ function items(overrides: Partial<Record<string, Partial<AppNavItem>>> = {}): Ap
   const base: AppNavItem[] = [
     { key: "today", label: "Aujourd'hui", shortLabel: "Accueil", icon: Home, active: false, onClick: () => undefined },
     { key: "documents", label: "Mes cours", shortLabel: "Cours", icon: BookOpen, active: false, onClick: () => undefined },
-    { key: "progress", label: "Progression", shortLabel: "Progrès", icon: TrendingUp, active: false, onClick: () => undefined },
+    { key: "progress", label: "Progrès", icon: TrendingUp, active: false, onClick: () => undefined },
   ];
   return base.map((item) => ({ ...item, ...overrides[item.key] }));
 }
@@ -31,7 +31,7 @@ describe("AppNav", () => {
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Aujourd'hui" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mes cours" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Progression" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Progrès" })).toBeInTheDocument();
   });
 
   it("marks the active item with aria-current, and only that one", () => {
@@ -39,7 +39,7 @@ describe("AppNav", () => {
 
     expect(screen.getByRole("button", { name: "Mes cours" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "Aujourd'hui" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("button", { name: "Progression" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("button", { name: "Progrès" })).not.toHaveAttribute("aria-current");
   });
 
   it("clicking an item calls its own onClick, and only its own", async () => {
@@ -57,7 +57,7 @@ describe("AppNav", () => {
   it("each destination pairs a decorative icon with its own label — the accessible name stays exactly the label, unaffected by the icon (docs/UI.md's Icons note)", () => {
     render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
 
-    for (const label of ["Aujourd'hui", "Mes cours", "Progression"]) {
+    for (const label of ["Aujourd'hui", "Mes cours", "Progrès"]) {
       const button = screen.getByRole("button", { name: label });
       const icon = button.querySelector("svg");
       expect(icon).not.toBeNull();
@@ -154,7 +154,7 @@ describe("AppNav", () => {
   it("every destination keeps its exact accessible name once stacked, unaffected by the icon-above-label layout (docs/UI.md's Icons note)", () => {
     render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
 
-    for (const label of ["Aujourd'hui", "Mes cours", "Progression"]) {
+    for (const label of ["Aujourd'hui", "Mes cours", "Progrès"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
   });
@@ -186,5 +186,21 @@ describe("AppNav", () => {
     expect(desktopSpan).toHaveAttribute("aria-hidden", "true");
     expect(desktopSpan.className).toMatch(/(?:^|\s)hidden(?:\s|$)/);
     expect(desktopSpan.className).toMatch(/md:inline(?:\s|$)/);
+  });
+
+  // Copy rename follow-up: "Progrès" and "Agenda" are already short enough
+  // (7 characters or fewer) to be their own mobile form, the same as
+  // Notions/Lecteur/Tuteur before them — an item with no shortLabel at all
+  // (AppNavItem's own field is optional, this fixture's own "progress" item
+  // carries none) must still show something on mobile, not a blank button.
+  it("an item with no shortLabel falls back to the full label as its mobile-visible text", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    const button = screen.getByRole("button", { name: "Progrès" });
+    expect(button).toHaveAttribute("aria-label", "Progrès");
+
+    const mobileSpan = within(button).getAllByText("Progrès").find((el) => el.className.includes("md:hidden"));
+    expect(mobileSpan).not.toBeUndefined();
+    expect(mobileSpan).toHaveAttribute("aria-hidden", "true");
   });
 });

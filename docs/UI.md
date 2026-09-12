@@ -856,15 +856,15 @@ Primary (bottom bar on mobile, top group in the sidebar):
 - **Mes cours** — documents, upload
 - **Notions** — a course's atomic notions, generation, review entry point
 - **Lecteur** — a course's source text, read continuously
-- **Progression** — deadlines, coverage and readiness per course
-- **Calendrier** — this month's deadlines and dated todos, at a glance
+- **Progrès** — deadlines, coverage and readiness per course
+- **Agenda** — this month's deadlines and dated todos, at a glance
 - **Tuteur** — AI chat scoped to a course
 
 Secondary (sidebar only, below a divider; behind the user chip on mobile):
 **Mes notes**, **Réglages**.
 
 This is the target set (see "Not yet built" above for what the nav actually
-renders today). **Progression is reachable directly from the nav now, not
+renders today). **Progrès is reachable directly from the nav now, not
 only from within a course** — when entered that way there is no originating
 course to return to, so its own screen's "Retour" goes to `Mes cours`
 instead of a specific course's notion list. The screen's own content is
@@ -901,7 +901,7 @@ it lands straight on its own pill row of courses (the first one selected)
 plus that course's own summary and notion list — one page, not two. There
 is no `fromPicker` field on its view shape and no "which of several
 sources" problem to solve for it any more: a `documentId` still pre-selects
-a course from any existing deep link (Progression, Calendrier, Lecteur/
+a course from any existing deep link (Progrès, Agenda, Lecteur/
 Tuteur's own "Retour" targets) and shows "Retour à mes cours"; its absence
 (the nav's own direct entry) shows the first course with no back link at
 all, matching Aujourd'hui/Mes cours' own top-level pages — never a second
@@ -922,6 +922,38 @@ lever available (padding, stacked layout, short labels) without
 reducing the count or restructuring the bar itself; whether seven is
 the right number for a bottom tab bar at all is a different, larger
 question this pass deliberately didn't take on.
+
+**Copy rename, later: "Progression" became "Progrès" and "Calendrier"
+became "Agenda" — visible copy only, no identifier, route, endpoint or
+screen note structure changed (`ProgressScreen`/`CalendarScreen`,
+`progress`/`calendar` module names, all untouched).** Both new names were
+chosen so the destination's own short mobile form (`shortLabel`, above)
+becomes identical to its full label — the same shape Notions, Lecteur and
+Tuteur already had — closing two of the three WCAG 2.5.3 "Label in Name"
+gaps this shell pass's own short-label mechanism had opened. `shortLabel`
+is genuinely optional now (`AppNavItem`'s own comment has the reasoning),
+needed only where a full label still exceeds 7 characters at 375px: down
+to two destinations, Aujourd'hui/Accueil and Mes cours/Cours, from the
+original five.
+
+**Accueil (mobile) against Aujourd'hui (the accessible name, on both
+breakpoints, and the desktop label) is the one WCAG 2.5.3 gap left, and
+it stays — an argued departure, on the same footing as this document's
+other deliberate exceptions, not an oversight.** "Aujourd'hui" is 11
+characters; the measured single-line width a stacked mobile label gets
+at 375px is 46px, well short of what 11 characters need. The two renamed
+destinations each swapped a longer French word for a shorter synonym that
+still names the exact same thing ("progression" → "progrès", "calendrier"
+→ "agenda"); "Aujourd'hui" ("today") has no equivalent short synonym in
+this app's own register — the closest short words, "Accueil" (home) or
+"Maintenant" (now), each describe the destination's *role* in the nav or
+change what it names, rather than merely shortening the same word. That
+is exactly the kind of destination renaming this pass declines to invent
+on its own: what a screen is called is a product decision, not a layout
+constraint's to make by itself. The accessible name still carries
+"Aujourd'hui" on both breakpoints regardless, so no screen reader user
+loses the real name — the gap sits between the mobile-visible text and
+that accessible name, never a missing one.
 
 ### Responsive conventions
 
@@ -1425,7 +1457,7 @@ are meant to be unhurried and leaving must never feel like a trap. One card at a
 time, generous whitespace. Space to reveal, 1 to 4 to rate on desktop. Leaving
 mid-session saves progress. No timer, no countdown, no "hurry".
 
-**Progression** (M5: `progress` module — see `docs/modules/progress.md`) —
+**Progrès** (M5: `progress` module — see `docs/modules/progress.md`) —
 Redesigned from a user-supplied mockup in a later M9 pass, ignoring this
 file's own former uniform-grid-of-cards description below in full, the
 same unification Notions/Lecteur already went through for their own
@@ -1633,7 +1665,7 @@ rendered markdown elsewhere in this app. This also retires the boxed
 which measured roughly 1.8:1 against the card's white background — well
 under the 3:1 floor for a UI-component border, and never actually checked
 until this pass. Not patched: removed, since a coloured box was never
-right here to begin with — `Calendrier`'s own rule already states a past
+right here to begin with — `Agenda`'s own rule already states a past
 date "renders exactly like one still to come — no `--warning`, no colour
 of any kind marking it overdue" (below), and this state was the one place
 on the app that still contradicted it.
@@ -1678,11 +1710,11 @@ is `idle`, inviting a first photo; **ready** is the pill row, detail card
 and course list described above, no mascot on the ready state itself
 (data-dense).
 
-**Calendrier** (`workspace` module — see `docs/modules/workspace.md`'s
+**Agenda** (`workspace` module — see `docs/modules/workspace.md`'s
 Calendar section) — Reskinned from a user-supplied mockup in a later M9
 pass: colour, icons, corner radii and page layout changed; the underlying
 data (deadlines + todos from `GET /api/calendar`) and every rule below
-about what a day cell shows did not. Unlike Notions/Lecteur/Progression's
+about what a day cell shows did not. Unlike Notions/Lecteur/Progrès'
 own M9 passes, this one did not unify or restructure what the screen
 *does* — the day grid, the click-through day panel and the density rule
 are the same mechanism as before this pass, just restyled.
@@ -1696,7 +1728,7 @@ Building that forecast would be a new capability, not a reskin — out of
 scope for this pass, confirmed with the user rather than assumed away.
 
 **Page chrome, new in this pass:** a `Calendar` icon plus an "h1"
-"Calendrier" and a one-line, plain-fact subtitle ("Tes échéances et ce
+"Agenda" and a one-line, plain-fact subtitle ("Tes échéances et ce
 qui est prévu, d'un coup d'œil.") sit above everything else, present in
 every state including loading — previously this screen had no page-level
 heading at all outside the error state, only the month name. The month
@@ -1714,12 +1746,12 @@ column beside it (stacked below the grid on narrow screens,
    (`e2e/calendar.spec.ts` now clicks the nav one with `exact: true`).
 2. **"Prochaines échéances"** — every course whose `deadlineDate` is today
    or later, soonest first, capped at four. Sourced from `listProgress()`
-   (`GET /api/course-progress`), the exact same read Progression's own
+   (`GET /api/course-progress`), the exact same read Progrès' own
    detail card uses — no new endpoint, and this pass also retired the
    screen's own separate `listDocuments()` call in favour of it, since
    `listProgress()` already returns every course's id/title/colour
    regardless of deadline status. Each row: a colour-tinted icon circle
-   (`CalendarClock`, the same icon Progression uses for deadline actions),
+   (`CalendarClock`, the same icon Progrès uses for deadline actions),
    the course title, the plain deadline date (day + long month, no year —
    `Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" })`), and
    a countdown pill reusing `TodayScreen`'s own exported `countdownLabel`
@@ -1783,7 +1815,7 @@ screen:**
    todo) — the same idiom "Prochaines échéances" rows already used,
    replacing the bare coloured dot this row alone still had. Its own
    "Voir le cours" gained the secondary-with-tint idiom (`bg-primary-soft`
-   text-primary) Progression's own button and Lecteur's "Discuter avec le
+   text-primary) Progrès' own button and Lecteur's "Discuter avec le
    tuteur" already use, in place of the plain bordered `secondary` it had
    kept until now.
 2. **"Prochaines échéances" rows are now themselves clickable**, each a

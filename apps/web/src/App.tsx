@@ -113,16 +113,20 @@ function AppShell() {
   // shortLabel: mobile-only visible text, ≤7 characters, hidden from
   // assistive tech (AppNav.tsx's own comment on the field has the full
   // reasoning) — a presentation choice for the stacked mobile bar alone,
-  // never a rename: label stays "Aujourd'hui"/"Progression"/etc.
-  // everywhere else (screen titles, desktop nav, the accessible name).
+  // never a rename: label stays "Aujourd'hui"/"Mes cours"/etc. everywhere
+  // else (screen titles, desktop nav, the accessible name). Optional now
+  // (AppNavItem's own comment): a later copy rename made "Progression" and
+  // "Calendrier" into "Progrès" and "Agenda", both already 7 characters or
+  // fewer, so only Aujourd'hui and Mes cours still need a distinct short
+  // form — the other five's own shortLabel would just repeat their label.
   const navItems: AppNavItem[] = [
     { key: "today", label: "Aujourd'hui", shortLabel: "Accueil", icon: Home, active: view.name === "today", onClick: () => setView({ name: "today" }) },
     { key: "documents", label: "Mes cours", shortLabel: "Cours", icon: BookOpen, active: view.name === "documents", onClick: () => setView({ name: "documents" }) },
-    { key: "notions", label: "Notions", shortLabel: "Notions", icon: Layers, active: view.name === "notions", onClick: () => setView({ name: "notions" }) },
-    { key: "reader", label: "Lecteur", shortLabel: "Lecteur", icon: BookOpenText, active: view.name === "reader", onClick: () => setView({ name: "reader" }) },
-    { key: "progress", label: "Progression", shortLabel: "Progrès", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
-    { key: "calendar", label: "Calendrier", shortLabel: "Agenda", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
-    { key: "tutor", label: "Tuteur", shortLabel: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
+    { key: "notions", label: "Notions", icon: Layers, active: view.name === "notions", onClick: () => setView({ name: "notions" }) },
+    { key: "reader", label: "Lecteur", icon: BookOpenText, active: view.name === "reader", onClick: () => setView({ name: "reader" }) },
+    { key: "progress", label: "Progrès", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
+    { key: "calendar", label: "Agenda", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
+    { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
   ];
 
   const sidebarStreak = sidebarQuery.data?.streak ?? 0;

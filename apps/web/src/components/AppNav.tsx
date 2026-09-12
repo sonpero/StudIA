@@ -7,14 +7,19 @@ export interface AppNavItem {
   key: string;
   label: string;
   // Mobile-only visible text, hidden from assistive tech, at most 7
-  // characters (M10 Phase 1, shell pass) — measured, not estimated: four
-  // of the seven full labels didn't fit on one line inside a stacked
-  // 53px-wide button at 375px, and a forced mid-word break ("Aujourd"/
-  // "'hui") was confirmed illegible rather than assumed acceptable. `label`
-  // stays the accessible name (via aria-label, below) and the desktop
-  // visible text unconditionally — this is presentation data for the
-  // mobile bar alone, never a rename of the destination itself.
-  shortLabel: string;
+  // characters (M10 Phase 1, shell pass) — measured, not estimated: a
+  // forced mid-word break ("Aujourd"/"'hui") was confirmed illegible
+  // rather than assumed acceptable. Optional, falling back to `label`
+  // (below) when absent: a copy rename later shortened five of the seven
+  // full labels to 7 characters or fewer on its own (Notions, Lecteur,
+  // Progrès, Agenda, Tuteur), leaving only "Aujourd'hui" and "Mes cours"
+  // still needing a distinct short form — the other five repeating their
+  // own label as `shortLabel` would be redundant data, not a real
+  // exception. `label` stays the accessible name (via aria-label, below)
+  // and the desktop visible text unconditionally — this is presentation
+  // data for the mobile bar alone, never a rename of the destination
+  // itself.
+  shortLabel?: string;
   // A component reference, never a string name (docs/UI.md's Icons note):
   // App.tsx passes the icon itself (e.g. `icon: Home`), so there is no
   // name-to-component lookup for this file to own.
@@ -177,7 +182,7 @@ export function AppNav({
                 original content-sized label once side by side with the
                 icon again. */}
             <span aria-hidden="true" className="w-full min-w-0 break-words md:hidden">
-              {item.shortLabel}
+              {item.shortLabel ?? item.label}
             </span>
             <span aria-hidden="true" className="hidden md:inline">
               {item.label}

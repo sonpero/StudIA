@@ -65,7 +65,7 @@ describe("CalendarScreen", () => {
   it("loading state: shows the page title, the month heading and a skeleton grid, never a bare spinner", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    expect(screen.getByRole("heading", { name: "Calendrier" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Mars 2026" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
@@ -80,21 +80,21 @@ describe("CalendarScreen", () => {
   it("the gap between the heading row (or the title) and what follows it is the same --space-section token in every state (docs/UI.md's Grid and spacing note)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    const loadingMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
+    const loadingMain = screen.getByRole("heading", { name: "Agenda" }).closest("main");
     expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
     cleanup();
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
     renderScreen();
     await screen.findByText(/impossible de charger/i);
-    const errorMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
+    const errorMain = screen.getByRole("heading", { name: "Agenda" }).closest("main");
     expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
     cleanup();
 
     stubFetch({});
     renderScreen();
     await screen.findByTestId("calendar-grid");
-    const readyMain = screen.getByRole("heading", { name: "Calendrier" }).closest("main");
+    const readyMain = screen.getByRole("heading", { name: "Agenda" }).closest("main");
     expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
   });
 
@@ -377,7 +377,7 @@ describe("CalendarScreen", () => {
     expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
   });
 
-  it("day panel: 'Voir le cours' carries the light green tint (--primary-soft), the same secondary-with-tint idiom Progression's own button uses", async () => {
+  it("day panel: 'Voir le cours' carries the light green tint (--primary-soft), the same secondary-with-tint idiom Progrès' own button uses", async () => {
     stubFetch({
       calendar: (start, end) => ({
         start,

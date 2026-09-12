@@ -45,7 +45,7 @@ test.describe("calendar", () => {
     // Redesign (M9): the deadline just set also surfaces, unprompted, in
     // Calendrier's own "Prochaines échéances" sidebar — reusing the same
     // course-progress read as Progression, no separate endpoint.
-    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
+    await page.getByRole("button", { name: "Agenda", exact: true }).click();
     const upcoming = page.getByTestId("upcoming-deadlines");
     await expect(upcoming.getByText("Cours du calendrier")).toBeVisible({ timeout: 10_000 });
 
@@ -62,7 +62,7 @@ test.describe("calendar", () => {
     await page.getByRole("button", { name: "Ajouter", exact: true }).click();
     await expect(page.getByRole("checkbox", { name: "Réviser le chapitre 3" })).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
+    await page.getByRole("button", { name: "Agenda", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Mars 2026" })).toBeVisible();
 
     const deadlineDay = page.getByTestId("calendar-day-2026-03-20");
@@ -83,7 +83,7 @@ test.describe("calendar", () => {
 
     // The todo's day: read-only in the panel, no course link, since it
     // has no course.
-    await page.getByRole("button", { name: "Calendrier", exact: true }).click();
+    await page.getByRole("button", { name: "Agenda", exact: true }).click();
     await todoDay.click();
     await expect(panel.getByText("Réviser le chapitre 3")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Voir le cours" })).toHaveCount(0);

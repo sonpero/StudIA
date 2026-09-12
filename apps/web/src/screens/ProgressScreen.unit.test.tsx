@@ -104,7 +104,7 @@ describe("ProgressScreen", () => {
   it("loading state: shows a skeleton, never a bare spinner", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    expect(screen.getByRole("heading", { name: "Progression" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Progrès" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -125,21 +125,21 @@ describe("ProgressScreen", () => {
   it("the gap between the title and what follows it is the same --space-section token in every state — loading, error and ready alike (docs/UI.md's Grid and spacing note)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
     renderScreen();
-    const loadingMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    const loadingMain = screen.getByRole("heading", { name: "Progrès" }).closest("main");
     expect(loadingMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
     cleanup();
 
     stubFetch({ items: () => new Response(null, { status: 500 }) });
     renderScreen();
     await screen.findByText(/impossible de charger/i);
-    const errorMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    const errorMain = screen.getByRole("heading", { name: "Progrès" }).closest("main");
     expect(errorMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
     cleanup();
 
     stubFetch({ items: [] });
     renderScreen();
     await screen.findByText(/aucun cours/i);
-    const readyMain = screen.getByRole("heading", { name: "Progression" }).closest("main");
+    const readyMain = screen.getByRole("heading", { name: "Progrès" }).closest("main");
     expect(readyMain?.className).toMatch(/gap-\[var\(--space-section\)\]/);
   });
 

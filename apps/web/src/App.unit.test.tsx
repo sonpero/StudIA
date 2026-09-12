@@ -73,13 +73,13 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /se connecter/i })).not.toBeInTheDocument();
   });
 
-  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progression, Calendrier, Tuteur (docs/UI.md's Navigation note, M9)", async () => {
+  it("authenticated: the nav offers all seven real destinations, in order — Aujourd'hui, Mes cours, Notions, Lecteur, Progrès, Agenda, Tuteur (docs/UI.md's Navigation note, M9)", async () => {
     stubAuthenticatedFetch();
 
     render(<App />);
 
     await screen.findByText("Bonjour, alex.");
-    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progression", "Calendrier", "Tuteur"];
+    const names = ["Aujourd'hui", "Mes cours", "Notions", "Lecteur", "Progrès", "Agenda", "Tuteur"];
     for (const name of names) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
@@ -337,33 +337,33 @@ describe("App", () => {
     });
   });
 
-  it("Calendrier is reachable directly from the nav and opens a course from its day panel", async () => {
+  it("Agenda is reachable directly from the nav and opens a course from its day panel", async () => {
     stubAuthenticatedFetch();
     const user = userEvent.setup();
 
     render(<App />);
     await screen.findByText("Bonjour, alex.");
 
-    await user.click(screen.getByRole("button", { name: "Calendrier" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
     await screen.findByTestId("calendar-grid");
 
     // Empty month (stubAuthenticatedFetch returns no days): the nav is
-    // still reachable from here, proving Calendrier has no "Retour" of
+    // still reachable from here, proving Agenda has no "Retour" of
     // its own — same rule Aujourd'hui already follows.
     expect(screen.queryByText(/^retour$/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Mes cours" }));
     await screen.findByRole("heading", { name: "Mes cours" });
   });
 
-  it("Progression is reachable directly from the nav, and its own 'Retour' returns to Mes cours when there is no originating course", async () => {
+  it("Progrès is reachable directly from the nav, and its own 'Retour' returns to Mes cours when there is no originating course", async () => {
     stubAuthenticatedFetch();
     const user = userEvent.setup();
 
     render(<App />);
     await screen.findByText("Bonjour, alex.");
 
-    await user.click(screen.getByRole("button", { name: "Progression" }));
-    await screen.findByRole("heading", { name: "Progression" });
+    await user.click(screen.getByRole("button", { name: "Progrès" }));
+    await screen.findByRole("heading", { name: "Progrès" });
 
     await user.click(screen.getByRole("button", { name: "Retour" }));
     await screen.findByRole("heading", { name: "Mes cours" });
