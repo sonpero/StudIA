@@ -600,8 +600,86 @@ horizontal overflow.
 - [ ] Desktop rendering above 768px is unchanged by each pass: every
       existing Playwright scenario (all authored against the desktop
       viewport) still passes unmodified after that pass
-- [ ] Playwright, at a 375px viewport: navigating between all seven
-      screens
+- [x] Playwright, at a 375px viewport: navigating between all seven
+      screens — `e2e/mobile-shell.spec.ts` clicks each of the seven nav
+      destinations in turn, waits for that destination's own heading,
+      and measures the shell's own nav and header at exactly 375px
+      `clientWidth` after each click; written and passing since the
+      shell pass (commit `844e296`), left unticked until this
+      reconciliation pass actually checked it against this criterion's
+      own wording rather than assuming a shell-pass test couldn't also
+      satisfy a Phase-1-wide box
+
+**Reconciled against the acceptance text above, not assumed** (session
+closing the shell pass, before any per-screen pass started): the first
+two boxes and this last one hold; the two about per-screen overflow and
+about desktop staying unchanged across *every* pass do not yet, and stay
+unticked on purpose — desktop was verified unchanged for the one pass
+done so far (the shell), via a throwaway before/after screenshot
+comparison against commit `0d71df3` (pre-shell), but that box covers
+every remaining screen pass too, none of which have happened yet.
+
+**Remaining work — per-screen backlog**, from a source read of all seven
+screens against this phase's own three concerns (page padding, a fixed-
+width column that cannot stack, a touch target under 44px), not yet
+measured against a real 375px render the way the shell pass's own
+numbers were — each screen's own future pass still owns confirming these
+by measurement, not assuming this list is complete or exact:
+
+- **Aujourd'hui** (`TodayScreen.tsx`) — no page-level padding at any
+  breakpoint today (unlike every other screen's own unconditional
+  `p-8`), so mobile needs padding added without disturbing desktop's
+  current lack of it; a fixed `w-[300px] shrink-0` sidebar (Pomodoro,
+  Sons d'ambiance) that never stacks, confirmed overflowing 375px in all
+  four states (43px in loading/error, 158px once a due course card and
+  the todos card are present); several touch targets under 44px with no
+  responsive variant at all today — a todo's own checkbox and its
+  delete "×" (18×18 each), "Ajouter depuis une photo"/"Ajouter un todo"
+  (24×24 each), the ambiance player's previous/next (18×18) and play
+  (34×34) — enlarging any of these as they're written today would change
+  their desktop box too, since none has an `md:` override to hold it.
+- **Mes cours** (`DocumentsScreen.tsx`) — unconditional `p-8`; a fixed
+  `w-[320px] shrink-0` upload panel that never stacks, confirmed
+  overflowing 375px (the pre-existing bug the shell pass's own
+  `e2e/mobile-shell.spec.ts` already found and deliberately scoped
+  around, above); the per-document delete icon button is `h-8 w-8`
+  (32px), under 44px, no responsive variant.
+- **Notions** (`NotionsScreen.tsx`) — unconditional `p-8`; the toolbar
+  trio "Lire le cours" / "Voir tes progrès" / "Discuter du cours" is
+  still a plain small-hit-zone `<button>` each, deliberately left out of
+  the `Button` link-variant migration (commit `0d71df3`) because their
+  wrapped rows at 375px would overlap by about 8px — confirmed with the
+  user as slated for its own icon-based redesign in a later pass, not an
+  oversight; the notion-type filter's native `<input type="checkbox">`
+  carries no explicit sizing, well under 44px by default.
+- **Lecteur** (`ReaderScreen.tsx`) — unconditional `p-8`; no fixed-width
+  `shrink-0` column and no sub-44px button found in a source read, but
+  neither claim is measured yet the way the shell's own numbers were.
+- **Progrès** (`ProgressScreen.tsx`) — unconditional `p-8`; `RingSpacer`
+  (`sm:w-[140px]`) is hidden below the `sm` breakpoint (640px) so it is
+  not an overflow risk; "Supprimer l'échéance" is already `h-11 w-11`
+  (44px, compliant); `CoursePill` and the "Tous les cours" row size
+  themselves from padding rather than an explicit height — worth
+  confirming by measurement, not assumed compliant.
+- **Agenda** (`CalendarScreen.tsx`) — unconditional `p-8`; no fixed-width
+  `shrink-0` column; day cells are `min-h-14` (56px, a compliant
+  height), but their width comes from an unconstrained 7-column grid —
+  a real candidate for under 44px at 375px, not yet measured.
+- **Tuteur** (`TutorScreen.tsx`) — unconditional `p-8`; no fixed-width
+  `shrink-0` column and no sub-44px button found in a source read, same
+  caveat as Lecteur above.
+
+**Two open questions, not yet decided, carried here so neither needs
+digging out of the session history:**
+- Whether seven destinations belong in one bottom tab bar at all is
+  still unaddressed — noted as its own separate task, not this phase's
+  to resolve, in `docs/UI.md`'s own Navigation note.
+- The WCAG 2.5.3 "Label in Name" gap between the mobile label "Accueil"
+  and the accessible name "Aujourd'hui" is a deliberate, argued
+  departure, not an oversight — documented in full in `docs/UI.md`'s own
+  Navigation note (the other two gaps this shell pass opened,
+  Progression/Progrès and Calendrier/Agenda, were closed by a later copy
+  rename instead of being accepted).
 
 ### Phase 2 — Focus tools
 

@@ -58,9 +58,14 @@
      a small gap, one label line -- the short mobile-only forms all fit
      without wrapping, confirmed by measurement -- vertical padding) --
      measured via Playwright, not estimated (docs/MILESTONES.md's M10
-     Phase 1 note). env(safe-area-inset-bottom) is added on top, never
-     folded into the 56px itself, so a device with no notch (the value
-     resolves to 0) gets exactly 56px and nothing more. */
+     Phase 1 note), not picked off the spacing scale (Shape and depth,
+     above) or off Tailwind's own step below it: 56 is deliberately not
+     48, the same kind of scale exception 44px's own comment (this
+     file's min-h-11 call sites) already carries -- rounding it down to
+     the nearest sanctioned step would clip the label line this value
+     was measured to fit. env(safe-area-inset-bottom) is added on top,
+     never folded into the 56px itself, so a device with no notch (the
+     value resolves to 0) gets exactly 56px and nothing more. */
   --nav-bar-height-mobile: calc(56px + env(safe-area-inset-bottom));
 }
 
