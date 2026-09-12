@@ -935,10 +935,20 @@ flag**: the sanctioned scale (`Shape and depth`, above; enforced for
 carries this exact exception, unremarked until now, via `min-h-11` on
 every nav item.
 
-**A two-column layout stacks by default and becomes a row from 768px
-up.** A fixed-width side panel becomes full width below that point. The
-one shape to never write: a fixed pixel width combined with `shrink-0`
-and no responsive variant at all.
+**A two-column layout stacks by default; 768px is the default point to
+become a row, not a floor to uniformize every screen toward.** A screen
+whose content genuinely needs the extra width before splitting (a month
+grid, a full-width reading panel) may switch later instead — 1024px, say
+— provided its own Screen note below states why. Switching *earlier*
+than 768px is never allowed: a two-column split appearing before the
+mobile/tablet boundary is what's actually wrong today, not a later split
+that already has a reason — moving every screen's own breakpoint down to
+768px regardless of its own content would force a month grid or a
+full-width reading panel into two columns on an ~800px tablet, a
+regression dressed as consistency. A fixed-width side panel still becomes
+full width below whichever point the screen actually uses. The one shape
+to never write, regardless of which breakpoint: a fixed pixel width
+combined with `shrink-0` and no responsive variant at all.
 
 **One responsive tree per component, via `md:*` classes — never a
 separate mobile tree and a separate desktop tree for the same screen.**

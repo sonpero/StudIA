@@ -572,12 +572,18 @@ each of the seven screens is usable in all four of its states without
 horizontal overflow.
 
 **Acceptance**
-- [ ] `docs/UI.md` states, as binding convention: page padding under
+- [x] `docs/UI.md` states, as binding convention: page padding under
       768px, a 44px minimum touch target, the stacking rule for a
       two-column layout at narrow widths, the one-tree-not-two rule (no
       separate mobile/desktop component trees), and the chosen approach
       for testing mobile layouts in Playwright against a
-      Desktop-Chrome-only `playwright.config.ts`
+      Desktop-Chrome-only `playwright.config.ts` — commit `6375d44`, the
+      stacking rule's own wording corrected in a follow-up commit: 768px
+      is the default point to become a row, not a mandate to uniformize
+      every screen toward — a later breakpoint is allowed when the
+      screen's own note states why (Calendrier, Lecteur), an earlier one
+      never is (Progression's own pre-existing 640px split is the thing
+      actually wrong)
 - [ ] The shell is usable at 375px: all seven nav destinations reachable,
       the header bar renders without horizontal overflow, and the bottom
       tab bar (or whatever replaces it) respects iOS's own
