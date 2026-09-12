@@ -584,10 +584,16 @@ horizontal overflow.
       screen's own note states why (Calendrier, Lecteur), an earlier one
       never is (Progression's own pre-existing 640px split is the thing
       actually wrong)
-- [ ] The shell is usable at 375px: all seven nav destinations reachable,
+- [x] The shell is usable at 375px: all seven nav destinations reachable,
       the header bar renders without horizontal overflow, and the bottom
       tab bar (or whatever replaces it) respects iOS's own
-      safe-area-inset-bottom
+      safe-area-inset-bottom — `AppNav.tsx`'s bottom bar stacks
+      icon-over-label with short mobile-only labels (measured, not
+      estimated: the full labels didn't fit legibly), `App.tsx`'s own
+      header bar padding and the bottom bar's height (safe-area included)
+      both now read one shared `--nav-bar-height-mobile` token
+      (`tokens.css`); `e2e/mobile-shell.spec.ts`, at a 375×812 viewport
+      override
 - [ ] Each of the seven screens is usable at 375px without horizontal
       overflow, in each of its four required states (loading, empty,
       error, ready)

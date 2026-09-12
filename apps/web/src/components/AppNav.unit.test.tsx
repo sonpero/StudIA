@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BookOpen, Home, TrendingUp } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,9 +8,9 @@ import { AppNav, type AppNavItem } from "./AppNav.js";
 
 function items(overrides: Partial<Record<string, Partial<AppNavItem>>> = {}): AppNavItem[] {
   const base: AppNavItem[] = [
-    { key: "today", label: "Aujourd'hui", icon: Home, active: false, onClick: () => undefined },
-    { key: "documents", label: "Mes cours", icon: BookOpen, active: false, onClick: () => undefined },
-    { key: "progress", label: "Progression", icon: TrendingUp, active: false, onClick: () => undefined },
+    { key: "today", label: "Aujourd'hui", shortLabel: "Accueil", icon: Home, active: false, onClick: () => undefined },
+    { key: "documents", label: "Mes cours", shortLabel: "Cours", icon: BookOpen, active: false, onClick: () => undefined },
+    { key: "progress", label: "Progression", shortLabel: "Progrès", icon: TrendingUp, active: false, onClick: () => undefined },
   ];
   return base.map((item) => ({ ...item, ...overrides[item.key] }));
 }
@@ -122,5 +122,69 @@ describe("AppNav", () => {
 
     render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} username="alex" />);
     expect(screen.getByText("AL")).toBeInTheDocument();
+  });
+
+  // M10 Phase 1, shell pass: below the medium breakpoint, each destination
+  // stacks its icon above its label instead of side by side — px-3's own
+  // 24px was already a sixth of a 375px viewport's budget for seven
+  // destinations before even reaching the label. docs/UI.md's own
+  // Responsive conventions note admits class-name assertion as the
+  // exception here: jsdom renders no real layout to check the stacked
+  // result against instead.
+  it("stacks icon above label below 768px, side by side from it — the same button, not a second tree", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    const button = screen.getByRole("button", { name: "Aujourd'hui" });
+    expect(button.className).toMatch(/(?:^|\s)flex-col(?:\s|$)/);
+    expect(button.className).toMatch(/md:flex-row(?:\s|$)/);
+  });
+
+  it("keeps the 44px minimum touch target once stacked — the exception docs/UI.md's Responsive conventions note documents, not lost by the new layout", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    expect(screen.getByRole("button", { name: "Aujourd'hui" }).className).toMatch(/(?:^|\s)min-h-11(?:\s|$)/);
+  });
+
+  it("lets a destination's own button shrink below its label's natural width (min-w-0) so the label wraps instead of forcing the whole bar wider than the viewport", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    expect(screen.getByRole("button", { name: "Aujourd'hui" }).className).toMatch(/(?:^|\s)min-w-0(?:\s|$)/);
+  });
+
+  it("every destination keeps its exact accessible name once stacked, unaffected by the icon-above-label layout (docs/UI.md's Icons note)", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    for (const label of ["Aujourd'hui", "Mes cours", "Progression"]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  // Measured, not estimated (docs/MILESTONES.md's M10 Phase 1 note): four
+  // of the seven full labels didn't fit on one line inside a 53px-wide
+  // stacked button at 375px, and forcing a mid-word break ("Aujourd"/
+  // "'hui") was confirmed illegible rather than assumed acceptable. The
+  // user's own call: a ≤7-character short form is the only mobile-visible
+  // text, hidden from assistive tech (aria-hidden), while aria-label
+  // carries the real, full name — so the accessible name never changes,
+  // only what a sighted mobile user reads.
+  it("shows the short form as the visible mobile label, hidden from assistive tech — the accessible name is still the full label, via aria-label", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    const button = screen.getByRole("button", { name: "Aujourd'hui" });
+    expect(button).toHaveAttribute("aria-label", "Aujourd'hui");
+
+    const mobileSpan = screen.getByText("Accueil");
+    expect(mobileSpan).toHaveAttribute("aria-hidden", "true");
+    expect(mobileSpan.className).toMatch(/md:hidden(?:\s|$)/);
+  });
+
+  it("shows the full label for desktop, hidden on mobile — the same button, not a second one", () => {
+    render(<AppNav items={items()} {...DEFAULT_SIDEBAR_PROPS} />);
+
+    const button = screen.getByRole("button", { name: "Aujourd'hui" });
+    const desktopSpan = within(button).getByText("Aujourd'hui");
+    expect(desktopSpan).toHaveAttribute("aria-hidden", "true");
+    expect(desktopSpan.className).toMatch(/(?:^|\s)hidden(?:\s|$)/);
+    expect(desktopSpan.className).toMatch(/md:inline(?:\s|$)/);
   });
 });

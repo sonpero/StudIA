@@ -85,7 +85,21 @@ describe("App", () => {
     }
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     const buttons = within(nav).getAllByRole("button");
-    expect(buttons.map((b) => b.textContent)).toEqual(names);
+    // Not b.textContent any more (M10 Phase 1, shell pass): each button
+    // now renders both a short mobile-visible label and the full
+    // desktop-visible one, one hidden by a CSS breakpoint class the other
+    // isn't — both nodes exist in the DOM regardless, since the swap is
+    // CSS-only and jsdom applies no real layout/media query to hide
+    // either one, so textContent concatenates both ("AccueilAujourd'hui").
+    // toHaveAccessibleName checks the same "each destination, in order,
+    // by its real name" this test always meant, against the computed
+    // accessible name instead — true regardless of which mechanism
+    // supplies that name (aria-label today, or visually-hidden text
+    // tomorrow), which a mechanism-specific check (e.g. reading the
+    // aria-label attribute directly) would not be.
+    buttons.forEach((button, index) => {
+      expect(button).toHaveAccessibleName(names[index]!);
+    });
   });
 
   it("authenticated: lands on Aujourd'hui by default (the app's own home screen), greeting the real connected user", async () => {
@@ -265,6 +279,62 @@ describe("App", () => {
 
     await screen.findByText("Bonjour, alex.");
     expect(screen.getByTestId("app-content").className).toMatch(/md:ml-60/);
+  });
+
+  // M10 Phase 1, shell pass. Three fixes to the header bar, all class-name
+  // assertions (docs/UI.md's own admitted exception): jsdom applies no
+  // real CSS, so there is no rendered layout or media query to check
+  // instead.
+  describe("header bar (M10 Phase 1)", () => {
+    it("reserves space for the mobile bottom bar via the shared token, not a guessed pb-16 — one source, not two numbers to keep in sync by hand", async () => {
+      stubAuthenticatedFetch();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      const className = screen.getByTestId("app-content").className;
+      expect(className).toMatch(/pb-\[var\(--nav-bar-height-mobile\)\]/);
+      expect(className).not.toMatch(/(?:^|\s)pb-16(?:\s|$)/);
+      expect(className).toMatch(/md:pb-0/);
+    });
+
+    it("the header bar's own horizontal padding is 16px below 768px, 32px at or above it, per docs/UI.md's Responsive conventions note", async () => {
+      stubAuthenticatedFetch();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      const header = screen.getByTestId("app-header");
+      expect(header.className).toMatch(/(?:^|\s)px-4(?:\s|$)/);
+      expect(header.className).toMatch(/md:px-8(?:\s|$)/);
+    });
+
+    it("'Se déconnecter' is migrated to the shared link variant (the 44px hit-zone mechanism), not a bare unstyled <button>, its accessible name unchanged", async () => {
+      stubAuthenticatedFetch();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      const button = screen.getByRole("button", { name: "Se déconnecter" });
+      expect(button.className).toMatch(/before:absolute/);
+
+      await user.click(button);
+      expect(await screen.findByRole("button", { name: /se connecter/i })).toBeInTheDocument();
+    });
+
+    it("shows the app's own identity (logo + name) in the header, visible only below 768px — desktop already carries it in the sidebar", async () => {
+      stubAuthenticatedFetch();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      const identity = screen.getByTestId("mobile-app-identity");
+      expect(identity).toHaveTextContent("StudIA");
+      expect(identity.className).toMatch(/md:hidden(?:\s|$)/);
+      // Not a second, separately-authored identity block: the sidebar's own
+      // (AppNav.tsx) is the only other "StudIA" text in the tree, and it is
+      // desktop-only (hidden md:flex) — never both visible in the same
+      // rendered state, so getByText would still resolve to one match at
+      // any single breakpoint even though jsdom itself doesn't enforce it.
+      expect(screen.getAllByText("StudIA")).toHaveLength(2);
+    });
   });
 
   it("Calendrier is reachable directly from the nav and opens a course from its day panel", async () => {

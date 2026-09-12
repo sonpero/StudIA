@@ -48,6 +48,20 @@
   --space-related: 0.5rem;
   --space-block: 1rem;
   --space-section: 1.5rem;
+
+  /* docs/UI.md's Responsive conventions note: one source of truth for the
+     mobile bottom nav bar's own height, safe-area included — consumed by
+     AppNav.tsx (the bar's own h-*) and by App.tsx's content column (its
+     own bottom reserve), so the two can never drift the way a guessed
+     pb-16 once could once the bar grew from a single row to icon-over-
+     label. 56px is the bar's own real content height at 375px (an icon,
+     a small gap, one label line -- the short mobile-only forms all fit
+     without wrapping, confirmed by measurement -- vertical padding) --
+     measured via Playwright, not estimated (docs/MILESTONES.md's M10
+     Phase 1 note). env(safe-area-inset-bottom) is added on top, never
+     folded into the 56px itself, so a device with no notch (the value
+     resolves to 0) gets exactly 56px and nothing more. */
+  --nav-bar-height-mobile: calc(56px + env(safe-area-inset-bottom));
 }
 
 body {

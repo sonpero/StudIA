@@ -907,6 +907,22 @@ Tuteur's own "Retour" targets) and shows "Retour à mes cours"; its absence
 all, matching Aujourd'hui/Mes cours' own top-level pages — never a second
 screen to return to.
 
+**M10 Phase 1 (shell pass): the mobile bottom bar shows a short form of
+each destination's name (`AppNavItem`'s own `shortLabel`), never the full
+one — measured, not assumed, that four of the seven didn't fit legibly
+on one line at 375px once stacked icon-over-label. The accessible name
+is unaffected either way: it stays the full label, via `aria-label`, on
+both breakpoints.** Desktop is untouched — the sidebar still shows the
+full name it always has.
+
+**Seven destinations in one tab bar is itself still worth revisiting,
+noted here rather than addressed now — a separate task, not this
+one.** This pass fits seven destinations into 375px by shrinking every
+lever available (padding, stacked layout, short labels) without
+reducing the count or restructuring the bar itself; whether seven is
+the right number for a bottom tab bar at all is a different, larger
+question this pass deliberately didn't take on.
+
 ### Responsive conventions
 
 Written before any per-screen mobile-adaptation pass touches a screen

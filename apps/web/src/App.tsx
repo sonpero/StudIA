@@ -1,10 +1,13 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { BookOpen, BookOpenText, Calendar, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
+import { BookOpen, BookOpenText, Calendar, GraduationCap, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { APP_NAME } from "./app-info.js";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
+import { Button } from "./components/ui/button.js";
 import { LoginScreen } from "./components/LoginScreen.js";
 import { PomodoroHeaderWidget } from "./components/PomodoroHeaderWidget.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
+import { ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "./lib/icons.js";
 import { getToday } from "./lib/today-api.js";
 import { CalendarScreen } from "./screens/CalendarScreen.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
@@ -107,14 +110,19 @@ function AppShell() {
   // "Mes cours" no longer stays active for those two views: each has its
   // own nav item now, so the old fallback (active for notions/reader too)
   // would light up two items at once.
+  // shortLabel: mobile-only visible text, ≤7 characters, hidden from
+  // assistive tech (AppNav.tsx's own comment on the field has the full
+  // reasoning) — a presentation choice for the stacked mobile bar alone,
+  // never a rename: label stays "Aujourd'hui"/"Progression"/etc.
+  // everywhere else (screen titles, desktop nav, the accessible name).
   const navItems: AppNavItem[] = [
-    { key: "today", label: "Aujourd'hui", icon: Home, active: view.name === "today", onClick: () => setView({ name: "today" }) },
-    { key: "documents", label: "Mes cours", icon: BookOpen, active: view.name === "documents", onClick: () => setView({ name: "documents" }) },
-    { key: "notions", label: "Notions", icon: Layers, active: view.name === "notions", onClick: () => setView({ name: "notions" }) },
-    { key: "reader", label: "Lecteur", icon: BookOpenText, active: view.name === "reader", onClick: () => setView({ name: "reader" }) },
-    { key: "progress", label: "Progression", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
-    { key: "calendar", label: "Calendrier", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
-    { key: "tutor", label: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
+    { key: "today", label: "Aujourd'hui", shortLabel: "Accueil", icon: Home, active: view.name === "today", onClick: () => setView({ name: "today" }) },
+    { key: "documents", label: "Mes cours", shortLabel: "Cours", icon: BookOpen, active: view.name === "documents", onClick: () => setView({ name: "documents" }) },
+    { key: "notions", label: "Notions", shortLabel: "Notions", icon: Layers, active: view.name === "notions", onClick: () => setView({ name: "notions" }) },
+    { key: "reader", label: "Lecteur", shortLabel: "Lecteur", icon: BookOpenText, active: view.name === "reader", onClick: () => setView({ name: "reader" }) },
+    { key: "progress", label: "Progression", shortLabel: "Progrès", icon: TrendingUp, active: view.name === "progress", onClick: () => setView({ name: "progress" }) },
+    { key: "calendar", label: "Calendrier", shortLabel: "Agenda", icon: Calendar, active: view.name === "calendar", onClick: () => setView({ name: "calendar" }) },
+    { key: "tutor", label: "Tuteur", shortLabel: "Tuteur", icon: MessageCircle, active: view.name === "tutor", onClick: () => setView({ name: "tutor" }) },
   ];
 
   const sidebarStreak = sidebarQuery.data?.streak ?? 0;
@@ -125,14 +133,32 @@ function AppShell() {
       <AppNav items={navItems} dimmed={view.name === "review"} streak={sidebarStreak} dueCount={sidebarDueCount} username={auth.user?.username ?? ""} />
       {/* md:ml-60 reserves the space the now-fixed sidebar (AppNav) takes
           out of normal flow on desktop — without it, content would render
-          underneath it instead of beside it. */}
-      <div data-testid="app-content" className="flex-1 pb-16 md:ml-60 md:pb-0">
-        <div className="flex items-center justify-end gap-3 border-b border-border bg-surface px-8 py-3 text-sm">
-          <PomodoroHeaderWidget hideOnCurrentView={view.name === "today"} />
-          <p>Bonjour, {auth.user?.username}.</p>
-          <button type="button" onClick={() => void auth.logout()}>
-            Se déconnecter
-          </button>
+          underneath it instead of beside it. pb-[var(--nav-bar-height-
+          mobile)] does the same for the fixed mobile bottom bar (tokens.css)
+          — the same token AppNav.tsx's own h-* reads, not a second,
+          independently guessed number. */}
+      <div data-testid="app-content" className="flex-1 pb-[var(--nav-bar-height-mobile)] md:ml-60 md:pb-0">
+        <div data-testid="app-header" className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 text-sm md:justify-end md:px-8">
+          {/* Mobile only: AppNav.tsx's own sidebar already carries the app's
+              identity (logo + name) on desktop, but that block is itself
+              hidden below 768px (docs/UI.md's Navigation note) — without
+              this, no screen would name the app at all on a phone. Same
+              visual treatment as the sidebar's own mark, not a redrawn
+              variant: same icon, same circle, same display font, just
+              without the tagline this compact bar has no room for. */}
+          <div className="flex items-center gap-2 md:hidden" data-testid="mobile-app-identity">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary">
+              <GraduationCap aria-hidden="true" focusable="false" size={ICON_SIZE_NAV} strokeWidth={ICON_STROKE_WIDTH} color="#fff" />
+            </span>
+            <span className="font-[family-name:var(--font-display)] text-base font-extrabold leading-tight">{APP_NAME}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <PomodoroHeaderWidget hideOnCurrentView={view.name === "today"} />
+            <p>Bonjour, {auth.user?.username}.</p>
+            <Button type="button" variant="link" onClick={() => void auth.logout()}>
+              Se déconnecter
+            </Button>
+          </div>
         </div>
         <div className="mx-auto max-w-6xl">
           {view.name === "documents" && (
