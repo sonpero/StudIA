@@ -23,6 +23,12 @@ function stubAuthenticatedFetch() {
           new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
         );
       }
+      // A real 404, not the bare []/200 every other route gets: PomodoroCard
+      // and the persistent header widget (useActivePomodoro) both treat any
+      // truthy body as an active session, and [] is truthy — this endpoint
+      // needs its own real "no session" shape or every screen would render
+      // a bogus countdown.
+      if (typeof url === "string" && url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
       return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
     }),
   );
@@ -349,5 +355,112 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(screen.getByRole("button", { name: /se connecter/i })).toBeInTheDocument());
+  });
+
+  // Persistent pomodoro, lot 1 of 3 (see CLAUDE.md's session history): a
+  // running session stays visible everywhere via a small header widget,
+  // hidden only on Aujourd'hui itself, where PomodoroCard already shows the
+  // same countdown — showing both at once would give two elements
+  // reachable by the same accessible name, exactly the ambiguity
+  // AppNav.tsx's own header comment already warns against.
+  describe("persistent pomodoro header widget and tab title (lot 1)", () => {
+    function stubWithPomodoroStart() {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (typeof url === "string" && url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+          if (typeof url === "string" && url.startsWith("/api/today")) {
+            return Promise.resolve(
+              new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+            );
+          }
+          if (typeof url === "string" && url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+          if (typeof url === "string" && url === "/api/pomodoro" && init?.method === "POST") {
+            return Promise.resolve(
+              new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+            );
+          }
+          if (typeof url === "string" && url === "/api/pomodoro/s1/end" && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        }),
+      );
+    }
+
+    afterEach(() => {
+      document.title = "";
+    });
+
+    it("no active session: the widget renders nothing on any screen", async () => {
+      stubAuthenticatedFetch();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      await user.click(screen.getByRole("button", { name: "Mes cours" }));
+      await screen.findByRole("heading", { name: "Mes cours" });
+
+      expect(screen.queryByTestId("pomodoro-header-widget")).not.toBeInTheDocument();
+    });
+
+    it("an active session shows the live countdown in the header on another screen, but is hidden on Aujourd'hui itself where PomodoroCard already shows it", async () => {
+      stubWithPomodoroStart();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+
+      // Still on Aujourd'hui: PomodoroCard shows the countdown, the header
+      // widget must not — otherwise two elements would carry the same
+      // countdown text at once.
+      expect(screen.queryByTestId("pomodoro-header-widget")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Mes cours" }));
+      await screen.findByRole("heading", { name: "Mes cours" });
+
+      expect(await screen.findByTestId("pomodoro-header-widget")).toHaveTextContent(/^\d{2}:\d{2}$/);
+
+      // Back to Aujourd'hui: the widget hides again, PomodoroCard resumes
+      // showing the still-live session (not reset — this is ÉTAPE 0's own
+      // fix, exercised end to end here through real navigation).
+      await user.click(screen.getByRole("button", { name: "Aujourd'hui" }));
+      await screen.findByRole("button", { name: "Terminer" });
+      expect(screen.queryByTestId("pomodoro-header-widget")).not.toBeInTheDocument();
+    });
+
+    it("the document title shows the live countdown while a session is active, and restores the original title once it ends", async () => {
+      document.title = "StudIA";
+      stubWithPomodoroStart();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+      expect(document.title).toBe("StudIA");
+
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+
+      await waitFor(() => expect(document.title).toMatch(/^\d{2}:\d{2} · StudIA$/));
+
+      await user.click(screen.getByRole("button", { name: "Terminer" }));
+      await screen.findByRole("button", { name: "Démarrer" });
+
+      await waitFor(() => expect(document.title).toBe("StudIA"));
+    });
+
+    it("restores the original title on unmount, even mid-session", async () => {
+      document.title = "StudIA";
+      stubWithPomodoroStart();
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+      await waitFor(() => expect(document.title).toMatch(/^\d{2}:\d{2} · StudIA$/));
+
+      unmount();
+
+      expect(document.title).toBe("StudIA");
+    });
   });
 });

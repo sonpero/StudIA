@@ -3,6 +3,7 @@ import { BookOpen, BookOpenText, Calendar, Home, Layers, MessageCircle, Trending
 import { useState } from "react";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { LoginScreen } from "./components/LoginScreen.js";
+import { PomodoroHeaderWidget } from "./components/PomodoroHeaderWidget.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
 import { getToday } from "./lib/today-api.js";
 import { CalendarScreen } from "./screens/CalendarScreen.js";
@@ -127,6 +128,7 @@ function AppShell() {
           underneath it instead of beside it. */}
       <div data-testid="app-content" className="flex-1 pb-16 md:ml-60 md:pb-0">
         <div className="flex items-center justify-end gap-3 border-b border-border bg-surface px-8 py-3 text-sm">
+          <PomodoroHeaderWidget hideOnCurrentView={view.name === "today"} />
           <p>Bonjour, {auth.user?.username}.</p>
           <button type="button" onClick={() => void auth.logout()}>
             Se déconnecter

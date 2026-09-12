@@ -24,13 +24,12 @@ import { Card } from "../components/ui/card.js";
 import { FIELD_CLASS, SELECT_CHEVRON } from "../components/ui/field-styles.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
-import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession } from "../lib/pomodoro-api.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView, type Todo } from "../lib/today-api.js";
+import { formatCountdown, useActivePomodoro } from "../lib/use-active-pomodoro.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
-const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
 // The backend's own pomodoro duration is fixed (packages/core/src/workspace),
 // never selectable — hardcoded here rather than discovered, since there is
 // no session yet to read a real durationSeconds from before one starts.
@@ -125,19 +124,6 @@ function buildCourseCards(view: TodayView): CourseCardData[] {
   // all" ties — in the order this Map already produced, with no separate
   // tie-break key needed.
   return [...byId.values()].sort((a, b) => (a.deadline?.daysAway ?? Infinity) - (b.deadline?.daysAway ?? Infinity));
-}
-
-function remainingSeconds(session: PomodoroSession): number {
-  const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
-  return Math.max(0, session.durationSeconds - elapsed);
-}
-
-function formatCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
 }
 
 // Reused in both the empty and ready states: the only way in this screen to
@@ -494,66 +480,36 @@ function TodosCard({
 
 // The redesign's own ring-and-tabs visual, wired to the real session
 // lifecycle (packages/core/src/workspace's fixed-duration pomodoro,
-// apps/web/src/lib/pomodoro-api.ts) instead of a static "25:00" and an
-// inert "Démarrer". "Pause courte"/"Pause longue" stay decorative: the
+// apps/web/src/lib/use-active-pomodoro.ts) instead of a static "25:00" and
+// an inert "Démarrer". "Pause courte"/"Pause longue" stay decorative: the
 // backend has exactly one fixed duration, no break lengths to select, so
 // wiring them would mean inventing a capability that doesn't exist
 // server-side. The "N séances de concentration" line counts sessions
 // completed since this page was opened (no such count is exposed by the
 // API) — it resets on reload by construction, which reads as "since you got
-// here" rather than a persisted daily total. "Réinitialiser" clears that
-// count back to zero; it is disabled while a session is running (so it can
-// never silently diverge from the real, still-live server session) and once
-// the count is already zero.
+// here" rather than a persisted daily total, and stays local to this card
+// (never lifted into the shared hook): it is client-only bookkeeping, not
+// part of the session the server or the header widget need to agree on.
+// "Réinitialiser" clears that count back to zero; it is disabled while a
+// session is running (so it can never silently diverge from the real,
+// still-live server session) and once the count is already zero.
 function PomodoroCard() {
-  const activeQuery = useQuery({ queryKey: POMODORO_ACTIVE_QUERY_KEY, queryFn: getActivePomodoro, staleTime: Infinity, refetchOnWindowFocus: false });
-
-  const [phase, setPhase] = useState<"idle" | "running">("idle");
-  const [session, setSession] = useState<PomodoroSession | null>(null);
+  const { phase, remainingSeconds: remaining, start, end, starting, ending } = useActivePomodoro();
   const [resyncNotice, setResyncNotice] = useState(false);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const [, forceTick] = useState(0);
 
-  // Runs once, off the mount fetch only, so a later background refetch can
-  // never downgrade a running countdown back to idle just because the
-  // session's own window has since elapsed.
-  const initializedRef = useRef(false);
-  useEffect(() => {
-    if (initializedRef.current) return;
-    if (activeQuery.status !== "success") return;
-    initializedRef.current = true;
-    if (activeQuery.data) {
-      setSession(activeQuery.data);
-      setPhase("running");
-    }
-  }, [activeQuery.status, activeQuery.data]);
+  async function handleStart() {
+    const result = await start();
+    setResyncNotice(result.status === "already-active");
+  }
 
-  useEffect(() => {
-    if (phase !== "running") return;
-    const interval = setInterval(() => forceTick((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, [phase]);
+  async function handleEnd() {
+    await end();
+    setResyncNotice(false);
+    setSessionsCompleted((n) => n + 1);
+  }
 
-  const startMutation = useMutation({
-    mutationFn: () => startPomodoro(null),
-    onSuccess: (result) => {
-      setSession(result.session);
-      setPhase("running");
-      setResyncNotice(result.status === "already-active");
-    },
-  });
-
-  const endMutation = useMutation({
-    mutationFn: () => endPomodoro(session!.id),
-    onSuccess: () => {
-      setPhase("idle");
-      setSession(null);
-      setResyncNotice(false);
-      setSessionsCompleted((n) => n + 1);
-    },
-  });
-
-  const countdownDisplay = phase === "running" && session ? formatCountdown(remainingSeconds(session)) : IDLE_DISPLAY;
+  const countdownDisplay = phase === "running" ? formatCountdown(remaining) : IDLE_DISPLAY;
 
   return (
     <Card className="flex flex-col items-center gap-[var(--space-block)]" data-testid="pomodoro-card">
@@ -589,13 +545,13 @@ function PomodoroCard() {
           <RotateCcw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
         {phase === "idle" ? (
-          <Button variant="accent" disabled={startMutation.isPending} onClick={() => startMutation.mutate()} className="flex-1 justify-center rounded-2xl">
+          <Button variant="accent" disabled={starting} onClick={() => void handleStart()} className="flex-1 justify-center rounded-2xl">
             <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
-            {startMutation.isPending ? "Démarrage…" : "Démarrer"}
+            {starting ? "Démarrage…" : "Démarrer"}
           </Button>
         ) : (
-          <Button variant="accent" disabled={endMutation.isPending} onClick={() => endMutation.mutate()} className="flex-1 justify-center rounded-2xl">
-            {endMutation.isPending ? "…" : "Terminer"}
+          <Button variant="accent" disabled={ending} onClick={() => void handleEnd()} className="flex-1 justify-center rounded-2xl">
+            {ending ? "…" : "Terminer"}
           </Button>
         )}
       </div>

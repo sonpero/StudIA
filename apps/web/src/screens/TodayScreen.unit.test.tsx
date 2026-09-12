@@ -346,6 +346,61 @@ describe("TodayScreen (Aujourd'hui)", () => {
     expect(onOpenProposals).toHaveBeenCalledWith("job-1");
   });
 
+  // ÉTAPE 0 (lot 1 du pomodoro persistant): régression suspectée avant toute
+  // correction. PomodoroCard garde phase/session en useState local ;
+  // startMutation.onSuccess ne réécrit jamais POMODORO_ACTIVE_QUERY_KEY dans
+  // le cache React Query, qui reste donc sur le null (404) capturé au tout
+  // premier montage. staleTime: Infinity + refetchOnWindowFocus: false
+  // empêchent tout refetch qui aurait pu corriger ça. Au démontage de
+  // TodayScreen (changement d'écran) puis remontage, le useState repart de
+  // zéro et activeQuery.data reste ce null en cache : la séance retombe à
+  // l'affichage de repos alors qu'elle tourne toujours côté serveur. Un seul
+  // QueryClient partagé entre les deux rendus, comme App.tsx le fait
+  // réellement (le QueryClient vit dans App(), pas dans l'écran qui change).
+  it("regression (ÉTAPE 0): a live session must stay visible across a screen remount, not revert to the at-rest display", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const startedAt = new Date().toISOString();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 1500 }), { status: 201 }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+
+    const { unmount } = render(
+      <QueryClientProvider client={queryClient}>
+        <TodayScreen username="alex" onOpenProposals={() => undefined} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText(/rien à réviser pour l'instant/i);
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+    await screen.findByRole("button", { name: "Terminer" });
+
+    // Simule un changement d'écran : TodayScreen (et PomodoroCard) se
+    // démonte, mais pas le QueryClient — celui-ci vit dans App(), au-dessus
+    // de la machine à états qui monte/démonte les écrans.
+    unmount();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TodayScreen username="alex" onOpenProposals={() => undefined} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    // La séance tourne toujours côté serveur (aucun appel à /end n'a eu
+    // lieu) : le décompte doit reprendre en direct, pas retomber à "25:00".
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+  });
+
   it("renders the pomodoro card with its segmented tabs, a start action, and a centered, real (initially zero) session count", async () => {
     stubFetch(emptyView);
     renderScreen();
@@ -402,6 +457,30 @@ describe("TodayScreen (Aujourd'hui)", () => {
 
     expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
     expect(calls).toEqual([{ url: "/api/pomodoro", method: "POST" }]);
+  });
+
+  it("clicking 'Démarrer' against an already-active server session (409) shows the resync notice and still displays a live countdown", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+        if (url === "/api/pomodoro" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500 }), { status: 409 }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    await user.click(screen.getByRole("button", { name: "Démarrer" }));
+
+    expect(await screen.findByRole("button", { name: "Terminer" })).toBeInTheDocument();
+    expect(screen.getByText("Une séance est déjà en cours.")).toBeInTheDocument();
   });
 
   it("clicking 'Terminer' ends the session (POST /api/pomodoro/:id/end), increments the real session count, and returns to idle", async () => {
