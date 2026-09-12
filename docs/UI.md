@@ -1125,6 +1125,42 @@ no-escalation countdown itself, and `POST /api/pomodoro`'s 409-as-resync
 handling ("Une séance est déjà en cours.", no `--warning`, no retry
 button), are both unchanged.
 
+**A running session is now visible everywhere, not just on Aujourd'hui
+(lot 1 of a 3-lot persistent-pomodoro pass, CLAUDE.md's own session
+history).** Two pieces, both driven by one shared `useActivePomodoro`
+hook (`apps/web/src/lib/use-active-pomodoro.ts`) rather than PomodoroCard's
+own local state — the server's `startedAt`/`durationSeconds` stay the only
+source of truth, so every consumer reads the exact same derived value and
+none can drift from another:
+
+- **A small header widget**, in the same bar that already carries the
+  greeting and "Se déconnecter" (`App.tsx`) — no new layout region, no
+  `fixed` element. Content is deliberately minimal: the remaining time
+  alone, `--primary`-coloured text, no icon, no button. Shown only while a
+  session is running, nothing at all otherwise. **Hidden specifically on
+  Aujourd'hui** — not just styled invisible, not rendered there at all —
+  because PomodoroCard already shows the identical countdown on that one
+  screen; showing both at once would put two elements on screen reachable
+  by the same accessible name, exactly the `getByRole` ambiguity
+  `AppNav.tsx`'s own header comment already warns a duplicated nav tree
+  would cause.
+- **The browser tab title.** While a session runs, it becomes the
+  remaining time followed by the app's own name ("08:42 · StudIA" ) —
+  read from whatever `apps/web/index.html`'s own `<title>` had already set
+  before React mounted, captured once, never a hardcoded "StudIA" string
+  in the component. Restored to that exact original the instant the
+  session ends, and again on unmount as a second guarantee (logout, or the
+  app tearing down mid-session). This one is not scoped to a screen: unlike
+  the header widget, it keeps updating even while Aujourd'hui itself is
+  showing, since a browser tab has no "current screen" of its own to hide
+  it from.
+
+Lot 1 deliberately stops here: no ring/arc progress visual (still the
+plain bordered circle above), no colour or escalation on a session
+reaching zero, no short/long break behaviour behind "Pause courte"/"Pause
+longue" (still purely decorative, per the note above) — all reserved for
+the two lots after this one.
+
 **Aujourd'hui — Spotify (M7) has been removed entirely, not merely
 restyled.** Confirmed with the user (2026-09-06) as an intentional cut,
 not a bug: no card, no "Écouter" trigger,

@@ -26,13 +26,27 @@ countdown bans) and adds two more scoped exceptions along the way
 graded-MCQ one) — read `docs/UI.md`'s own notes on each before assuming
 this file is stale.
 
-**No milestone is currently open.** A mockup screenshot for one of the
-seven M9 screens is still fair game as more polish (the user returned to
-Calendrier three times and to no screen more than that) — treat it as
-such rather than as new-milestone work. Anything else (a new capability,
-a new screen, a new data model) needs a milestone defined first: ask the
-user rather than inventing scope, per the `no work outside a milestone`
-rule below.
+A mockup screenshot for one of the seven M9 screens is still fair game as
+more polish (the user returned to Calendrier three times and to no screen
+more than that) — treat it as such rather than as new-milestone work.
+
+**M10 — Persistent pomodoro is open, Lot 1 done.** A running pomodoro
+session was only ever visible on Aujourd'hui; it now stays visible
+everywhere (a header widget, the browser tab title), scoped by the user
+directly into three lots rather than derived from a mockup. Lot 1
+(cross-screen visibility, plus a pre-existing bug fixed first — a session
+falling back to its at-rest display on screen remount even while still
+running server-side) is done; `docs/MILESTONES.md`'s own M10 section has
+the full detail. **Lots 2 and 3 are not yet scoped** — the countdown
+reaching zero, the ring/arc progress visual, and short/long breaks are
+all deliberately excluded from Lot 1, reserved for later, not implemented
+even partially. Ask the user for each lot's own scope before starting it,
+the same discipline M9's per-screen passes followed for a mockup.
+
+Anything outside these two (a new capability, a new screen, a new data
+model unrelated to the pomodoro) still needs a milestone defined first:
+ask the user rather than inventing scope, per the `no work outside a
+milestone` rule below.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,

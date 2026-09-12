@@ -534,6 +534,77 @@ counting as done.
 
 ---
 
+## M10 — Persistent pomodoro
+
+Not a new backend capability — `packages/core/src/workspace`'s pomodoro
+(M7) is untouched, no schema/route/contract change anywhere under
+`packages/` or `apps/api/`. Purely a front-end visibility fix: a running
+session was only ever visible on Aujourd'hui; it now stays visible
+everywhere, across three lots the user scoped directly (not derived from a
+reference screenshot, unlike M9). `docs/UI.md`'s Aujourd'hui — pomodoro
+note is the authoritative detail source; this section only tracks status
+and acceptance, the same division of labour M9 used.
+
+### Lot 1 — cross-screen visibility (this pass)
+
+**Scope**
+- Fixed a pre-existing bug, found and reproduced before any other work
+  (ÉTAPE 0): `PomodoroCard` kept `phase`/`session` in local `useState`,
+  and `startPomodoro`'s own mutation never wrote through to the
+  `pomodoro-active` React Query cache (`staleTime: Infinity` +
+  `refetchOnWindowFocus: false` meant nothing ever refetched it either) —
+  navigating away and back showed the at-rest display even though the
+  session was still running server-side.
+- A shared `useActivePomodoro` hook (`apps/web/src/lib/
+  use-active-pomodoro.ts`) deriving `phase`/`remainingSeconds` straight
+  from the cached session (never a parallel `useState`) and writing both
+  mutations' results back into that same cache key — any number of
+  simultaneous consumers now read one value and cannot diverge.
+- A small header widget (`PomodoroHeaderWidget`, in `App.tsx`'s existing
+  header row — no new layout region): the remaining time alone, shown only
+  while a session runs, hidden specifically on Aujourd'hui (PomodoroCard
+  already shows the same countdown there — showing both would collide on
+  accessible name).
+- The browser tab title becomes the remaining time plus the app's own
+  name while a session runs, restored to the original — read from
+  `apps/web/index.html`, never hardcoded — the instant it ends or the
+  component unmounts.
+
+**Out of scope, explicitly, for lots 2 and 3 to pick up:** the countdown
+reaching zero (a distinct visual state), the ring/arc progress visual
+(still the plain bordered circle), short/long breaks behind "Pause
+courte"/"Pause longue" (still purely decorative — one fixed duration
+server-side, unchanged).
+
+**Acceptance**
+- [x] ÉTAPE 0 regression test written first, observed failing against the
+      pre-refactor implementation, before any fix
+- [x] `useActivePomodoro` unit-tested directly (`renderHook`): idle
+      default, resuming an already-active server session, `start`/`end`
+      writing through the shared cache, the 409-as-resync case, and two
+      simultaneous hook instances sharing one `QueryClient` never
+      diverging
+- [x] `PomodoroCard` unit tests unchanged and green after the refactor,
+      plus one new case (the 409 resync notice) that had no prior coverage
+- [x] `App.unit.test.tsx`: the widget absent with no session, visible with
+      the live countdown on a non-Aujourd'hui screen, absent again on
+      Aujourd'hui itself; the tab title changing and restoring (including
+      on unmount)
+- [x] Playwright (`e2e/pomodoro-persistent.spec.ts`): start a session on
+      Aujourd'hui, navigate to Mes cours, see the header widget and the
+      tab title both reflect it, navigate back and confirm the session is
+      still live (not reset) and the widget hides again
+- [x] No existing test modified or deleted; `pnpm test` (1134 tests),
+      `typecheck`, `lint` all green; full `pnpm test:e2e` green (17
+      passed, 1 pre-existing unrelated skip)
+
+### Lots 2 and 3 — not yet scoped
+
+Deliberately not anticipated, even partially, per the user's own
+instruction starting lot 1. Scope each when the user asks.
+
+---
+
 ## Parallelisation
 
 M4 to M8 each get their own git worktree and their own agent. Rules:
