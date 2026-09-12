@@ -22,13 +22,16 @@ M9 has two phases. Phase 1 (merged colour, streak, countdown, nav to
 seven) is done. Phase 2 is an ongoing, per-screen redesign from
 user-supplied mockups, ignoring `docs/UI.md` where a mockup calls for
 it and reconciling `docs/UI.md`'s own Screen notes back into sync once
-each pass lands — Aujourd'hui, Mes cours, Notions, Lecteur and Progression
-are done this way; **Calendrier and Tuteur are next, in that order.**
-Before starting either: ask the user for that screen's own mockup
-screenshot if one hasn't been supplied yet — do not invent a redesign
-without one, the same discipline the first five followed.
-`docs/MILESTONES.md`'s own M9 section and `docs/UI.md`'s matching Screen
-notes both need updating as each screen lands, not deferred.
+each pass lands — **all seven screens (Aujourd'hui, Mes cours, Notions,
+Lecteur, Progression, Calendrier, Tuteur) are done this way**, several
+with follow-up polish passes after the first. Phase 2 stays open-ended
+rather than formally closed: the user has kept sending follow-up mockup
+crops for already-redesigned screens (Calendrier three times so far), so
+treat a new screenshot for any of the seven as more polish, not a scope
+violation — only a screen with no mockup at all yet would need one asked
+for first, and none remain. `docs/MILESTONES.md`'s own M9 section and
+`docs/UI.md`'s matching Screen notes both need updating as each pass
+lands, not deferred.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,

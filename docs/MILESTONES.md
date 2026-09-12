@@ -386,12 +386,14 @@ screen behind either).
 Also not a new capability: each screen rebuilt from a user-supplied mockup
 screenshot, one at a time, ignoring `docs/UI.md` where the mockup calls for
 it — a deliberate departure each time, not a silent drift, and reconciled
-back into `docs/UI.md`'s own Screen notes as each pass lands (all five
-below are reconciled as of commit `1f8e299`; that file is the authoritative
-detail source, this entry only tracks status). No acceptance criteria are
-written ahead of a mockup existing — each screen's own scope is only known
-once its mockup is in hand, the same way every one of the five done so far
-was scoped.
+back into `docs/UI.md`'s own Screen notes as each pass lands; that file is
+the authoritative detail source, this entry only tracks status. No
+acceptance criteria are written ahead of a mockup existing — each screen's
+own scope is only known once its mockup is in hand, the same way every one
+of the seven below was scoped. **All seven screens are done** — Calendrier
+and Tuteur both then received follow-up polish passes from more mockup
+crops, and Phase 2 stays open to more of that rather than formally
+closing, per `CLAUDE.md`'s own Current milestone note.
 
 **Done:**
 - **Aujourd'hui** — rebuilt wholesale from mockup (greeting header, a
@@ -467,6 +469,24 @@ was scoped.
   `docs/UI.md`'s own icon-accompanies-label rule, confirmed with the
   user); full `pnpm test:e2e` green again, visually checked live the same
   way.
+- **Tuteur** — unified its old picker-plus-chat into one pill-selector
+  page, the same pattern Notions/Lecteur/Progression already used (its
+  own `CoursePickerScreen` deleted along with the rewrite, since Tuteur
+  was its last runtime consumer). A canned per-course greeting bubble
+  ("Salut ! Je suis ton tuteur pour « {cours} »…") replaces the old
+  Idle-mascot empty state — a deliberate reversal of the mascot-in-every-
+  empty-state rule, confirmed with the user rather than assumed — and a
+  row of suggested-question chips, grounded in that course's own real
+  notion titles (`Explique « X »` / `Fais-moi un quiz sur « X »` /
+  `Qu'est-ce que « X » ?`, cycled across up to 3 notions, never invented
+  subject knowledge), prefills the composer on click without auto-sending
+  it (`docs/UI.md`'s own "the app proposes, the person decides"). The
+  composer itself moved from a `textarea` to a rounded pill `input`, and
+  its send button gained a `Send` icon alongside "Envoyer" — an icon
+  beside its label, not replacing it, so no rule exception was needed
+  there. Commit `e87816a`; full `pnpm test:e2e` green (16 passed, 1
+  pre-existing unrelated skip); visually checked live via a throwaway
+  Playwright screenshot, same discipline as every pass above.
 
 **Confirmed intentional cuts along the way, not bugs** (`docs/UI.md`'s own
 notes for each screen carry the full reasoning):

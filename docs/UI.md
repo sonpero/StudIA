@@ -1874,23 +1874,32 @@ skips the check must still land somewhere defined:
   colour dot, then the rendered markdown) plus the study panel beside it
 
 **Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
-own note above). Reachable two ways, the same two-source shape Progression
-also has (`Navigation`'s own note above; each source distinguished by
-whether a `documentId` arrived, not two different pages): directly from the
-nav, with no course chosen yet, and from within a course, via a toolbar
-entry on `NotionsScreen` ("Discuter du cours", next to "Lire le
-cours"/"Voir la progression"/"Réviser") that arrives with a course already
-set.
+own note above). Redesigned from a user-supplied mockup in a later M9
+pass, ignoring this file's own former picker-plus-chat description in
+full, the same unification Notions/Lecteur/Progression already went
+through.
 
-**Entered without a course**: a picker reusing `Mes cours`' own list and its
-own four states, unmodified, each row now routing into Tuteur instead of
-Notions — the one screen left that still lands on a separate picker page
-rather than a pill selector plus content shown directly (`Screen notes`'
-own Lecteur note, above, is the most recent of the others to drop it).
-Unlike Progression, entered the same way, a conversation is scoped to
-exactly one document (`docs/modules/tutor.md`), so picking one first is
-unavoidable here, not merely a default the way Progression's own first-pill
-selection is.
+**One page: a pill row of every course, then that course's own chat — no
+separate picker to leave.** Reached the same two ways as before this pass
+— directly from the nav, and from within a course via a toolbar entry on
+`NotionsScreen` ("Discuter du cours", next to "Lire le cours"/"Voir la
+progression"/"Réviser") — but both now land on this one page rather than
+the nav's own entry alone skipping a separate picker page. Each pill
+reuses the same `BookOpen`-plus-course-colour `CoursePill` idiom
+Notions'/Lecteur's own pills use (kept as its own local copy here too,
+same precedent as those two: small enough that sharing it across screens
+would cost more than it saves). `documentId` (still optional, from
+`App.tsx`'s own `View`) keeps every existing deep link working
+(`NotionsScreen`'s own "Discuter du cours") — when set, that course is
+pre-selected and "Retour" appears; when absent (the nav's own direct
+entry), no back link at all, and the first course is selected by default,
+playing the same role a picker's first row used to now that a conversation
+is still scoped to exactly one document (`docs/modules/tutor.md`) and
+picking one is still unavoidable, just no longer a separate page.
+Switching pills is a local selection, not a view transition —
+`onSelectDocument` is gone, the same way it left Notions'/Lecteur's own
+props. `CoursePickerScreen` is deleted entirely: Tuteur was its last
+runtime consumer.
 
 **No conversation-list route exists** — `docs/modules/tutor.md`'s API has
 Start, History, Ask and Delete, never "list this document's conversations" —
@@ -1924,7 +1933,22 @@ student to send a question just to learn the course was never readable.
   no mascot (a plain data fetch, the same call `Lecteur`'s own loading state
   already makes).
 - **Empty** — no messages yet, whether freshly started or an existing empty
-  conversation: `idle`, "Pose ta première question sur ce cours." The
+  conversation. Redesigned in the same later M9 pass as the pill selector
+  above, a deliberate departure from every other screen's mascot-based
+  empty state (`CLAUDE.md`'s own rule), confirmed with the user for this
+  screen specifically: no `idle` mascot, instead a canned greeting bubble
+  naming the course ("Salut ! Je suis ton tuteur pour « {titre} »…", the
+  course's real title, not invented) styled exactly like a real assistant
+  bubble but never sent to the model, never part of `messages`, gone the
+  moment a real question is asked — plus, beneath it, up to three
+  suggested-question chips built from that course's own real notion
+  titles (`listNotions`, the same read `NotionsScreen` already makes),
+  cycling three templates ("Explique « X »" / "Fais-moi un quiz sur « X »"
+  / "Qu'est-ce que « X » ?") rather than inventing subject knowledge the
+  app doesn't have. Clicking a chip only prefills the composer — never an
+  auto-send, per `Who this is for`'s "the interface proposes; the person
+  decides" — so the student still chooses to send it. Absent entirely when
+  the course has no notions yet, no error, no placeholder chip. The
   action is the composer itself, already on screen, satisfying `Required
   states`'s "the action right there" without a separate button.
 - **Error** — fetching the conversation failed: `confused`, retry, the same
@@ -1932,7 +1956,14 @@ student to send a question just to learn the course was never readable.
   above, which is not an error and never renders `confused` for a course
   that is simply still being read.
 - **Ready** — the conversation, oldest message first, composer pinned at
-  the foot of the screen.
+  the foot of the screen. The composer itself moved, in the same later M9
+  pass, from a `textarea` to a rounded pill `input` (`rounded-full`,
+  matching the mockup and the "boutons arrondis" the user asked for
+  alongside it) with a per-course placeholder ("Pose ta question sur
+  {titre}…"), and its send button gained a `Send` icon beside "Envoyer" —
+  an icon accompanying its label, not replacing it, so no `Icons` rule
+  exception was needed the way Calendrier's month nav (below) required
+  one.
 
 **Streaming.** Sending a question appends it to the list immediately (not
 the optimistic UI `Asynchronous work` forbids for generated content — the
