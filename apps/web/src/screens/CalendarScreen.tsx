@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { BookOpen, Calendar as CalendarIcon, CalendarClock } from "lucide-react";
+import { BookOpen, Calendar as CalendarIcon, CalendarClock, ChevronLeft, ChevronRight, ListTodo } from "lucide-react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
@@ -82,7 +82,10 @@ function DeadlineBadge({ entry, titleById }: { entry: CalendarEntry; titleById: 
   const label = entry.documentId ? (titleById.get(entry.documentId) ?? entry.title) : entry.title;
   return (
     <span
-      className={cn("flex max-w-full items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", !entry.colour && "bg-canvas text-text-muted")}
+      className={cn(
+        "flex w-full items-center justify-center gap-1 self-stretch rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+        !entry.colour && "bg-canvas text-text-muted",
+      )}
       style={entry.colour ? { backgroundColor: `${entry.colour}26`, color: entry.colour } : undefined}
     >
       <BookOpen aria-hidden="true" focusable="false" size={10} strokeWidth={ICON_STROKE_WIDTH} className="shrink-0" />
@@ -127,16 +130,31 @@ function DayCell({
 }
 
 function DayPanelEntry({ entry, onOpenCourse }: { entry: CalendarEntry; onOpenCourse: (documentId: string) => void }) {
+  const EntryIcon = entry.kind === "deadline" ? BookOpen : ListTodo;
   return (
-    <Card className="flex items-center gap-2 rounded-2xl" data-testid="calendar-entry-row">
+    <Card className="flex items-center gap-3 rounded-2xl" data-testid="calendar-entry-row">
       <span
         aria-hidden="true"
-        className={cn("h-2 w-2 shrink-0 rounded-full", !entry.colour && "bg-text-muted")}
-        style={entry.colour ? { backgroundColor: entry.colour } : undefined}
-      />
+        data-testid="calendar-entry-icon"
+        className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", !entry.colour && "bg-canvas")}
+        style={entry.colour ? { backgroundColor: `${entry.colour}26` } : undefined}
+      >
+        <EntryIcon
+          aria-hidden="true"
+          focusable="false"
+          size={ICON_SIZE_INLINE}
+          strokeWidth={ICON_STROKE_WIDTH}
+          color={entry.colour ?? undefined}
+          className={!entry.colour ? "text-text-muted" : undefined}
+        />
+      </span>
       <span className={entry.done ? "flex-1 line-through text-text-muted" : "flex-1 text-text"}>{entry.title}</span>
       {entry.kind === "deadline" && entry.documentId && (
-        <Button variant="secondary" className="rounded-2xl" onClick={() => onOpenCourse(entry.documentId!)}>
+        <Button
+          variant="secondary"
+          className="rounded-2xl border-transparent bg-primary-soft text-primary hover:bg-primary-soft"
+          onClick={() => onOpenCourse(entry.documentId!)}
+        >
           <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Voir le cours
         </Button>
@@ -145,7 +163,7 @@ function DayPanelEntry({ entry, onOpenCourse }: { entry: CalendarEntry; onOpenCo
   );
 }
 
-function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; todayKey: string }) {
+function UpcomingDeadlines({ items, todayKey, onOpenCourse }: { items: ProgressListItem[]; todayKey: string; onOpenCourse: (documentId: string) => void }) {
   const upcoming = items
     .filter((item) => item.deadlineDate !== null && item.deadlineDate >= todayKey)
     .sort((a, b) => a.deadlineDate!.localeCompare(b.deadlineDate!))
@@ -162,7 +180,13 @@ function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; tod
       ) : (
         <div className="flex flex-col gap-2">
           {upcoming.map((item) => (
-            <Card key={item.documentId} className="flex items-center gap-3 rounded-2xl" data-testid="upcoming-deadline-row">
+            <button
+              key={item.documentId}
+              type="button"
+              data-testid="upcoming-deadline-row"
+              onClick={() => onOpenCourse(item.documentId)}
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 text-left shadow-[0_1px_2px_rgba(16,24,40,.05)] transition-colors hover:bg-canvas"
+            >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${item.colour}26` }}>
                 <CalendarClock aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={item.colour} />
               </span>
@@ -173,7 +197,7 @@ function UpcomingDeadlines({ items, todayKey }: { items: ProgressListItem[]; tod
               <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[length:var(--text-label)] font-semibold whitespace-nowrap text-primary">
                 {countdownLabel(daysUntil(item.deadlineDate!, todayKey))}
               </span>
-            </Card>
+            </button>
           ))}
         </div>
       )}
@@ -216,14 +240,19 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
     </header>
   );
 
+  // Icon-only nav buttons: a deliberate reversal of docs/UI.md's own "an
+  // icon accompanies its label, never replaces it" rule, the same kind of
+  // knowing departure M9's streak/countdown badge already made — confirmed
+  // with the user rather than assumed. The accessible name lives entirely
+  // in aria-label, since there is no visible text left to carry it.
   const monthNav = (
     <div className="flex items-center justify-between">
-      <Button variant="secondary" className="rounded-2xl" onClick={goToPreviousMonth}>
-        ‹ Mois précédent
+      <Button variant="secondary" aria-label="Mois précédent" className="rounded-2xl px-3" onClick={goToPreviousMonth}>
+        <ChevronLeft aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
       </Button>
       <h2 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">{monthLabel(viewed.year, viewed.month)}</h2>
-      <Button variant="secondary" className="rounded-2xl" onClick={goToNextMonth}>
-        Mois suivant ›
+      <Button variant="secondary" aria-label="Mois suivant" className="rounded-2xl px-3" onClick={goToNextMonth}>
+        <ChevronRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
       </Button>
     </div>
   );
@@ -316,7 +345,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
           <Button className="w-full justify-center rounded-2xl" onClick={goToToday}>
             Aller à aujourd'hui
           </Button>
-          <UpcomingDeadlines items={progressItems} todayKey={todayKey} />
+          <UpcomingDeadlines items={progressItems} todayKey={todayKey} onOpenCourse={onOpenCourse} />
         </div>
       </div>
     </main>

@@ -147,6 +147,22 @@ describe("CalendarScreen", () => {
     expect(within(cell).queryAllByRole("img")).toHaveLength(0);
   });
 
+  it("the deadline badge spans the full width of its day cell, not just its own text width", async () => {
+    stubFetch({
+      calendar: (start, end) => ({
+        start,
+        end,
+        days: [{ date: "2026-03-10", entries: [{ kind: "deadline", id: "d1", title: "Maths", documentId: "doc-1", colour: "#F87171", done: null }] }],
+      }),
+    });
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    const cell = screen.getByTestId("calendar-day-2026-03-10");
+    const badge = within(cell).getByText("Maths").closest("span[class*='rounded-full']");
+    expect(badge?.className).toContain("self-stretch");
+  });
+
   it("the deadline badge's course name is resolved from the course-progress list, same as a dot's accessible name", async () => {
     stubFetch({
       calendar: (start, end) => ({
@@ -262,6 +278,21 @@ describe("CalendarScreen", () => {
     expect(fillers[0]).toHaveTextContent("23");
   });
 
+  it("month navigation buttons are icon-only (a deliberate reversal of docs/UI.md's own rule, like the streak/countdown ones): no visible text, an svg icon, the label carried by aria-label alone", async () => {
+    stubFetch({});
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    const previous = screen.getByRole("button", { name: "Mois précédent" });
+    const next = screen.getByRole("button", { name: "Mois suivant" });
+    expect(previous).toHaveAttribute("aria-label", "Mois précédent");
+    expect(previous.textContent).toBe("");
+    expect(previous.querySelector("svg")).toBeInTheDocument();
+    expect(next).toHaveAttribute("aria-label", "Mois suivant");
+    expect(next.textContent).toBe("");
+    expect(next.querySelector("svg")).toBeInTheDocument();
+  });
+
   it("month navigation: 'Mois suivant' fetches the displayed month's own bounds, not the real current month's", async () => {
     const calls = stubFetch({});
     const user = userEvent.setup();
@@ -346,6 +377,43 @@ describe("CalendarScreen", () => {
     expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
   });
 
+  it("day panel: 'Voir le cours' carries the light green tint (--primary-soft), the same secondary-with-tint idiom Progression's own button uses", async () => {
+    stubFetch({
+      calendar: (start, end) => ({
+        start,
+        end,
+        days: [{ date: "2026-03-10", entries: [{ kind: "deadline", id: "d1", title: "Maths", documentId: "doc-1", colour: "#F87171", done: null }] }],
+      }),
+    });
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    await user.click(screen.getByTestId("calendar-day-2026-03-10"));
+
+    const button = within(screen.getByTestId("day-panel")).getByRole("button", { name: "Voir le cours" });
+    expect(button.className).toContain("bg-primary-soft");
+  });
+
+  it("day panel: each entry's leading marker is an icon in a tinted circle (the entry's own colour), not a bare dot", async () => {
+    stubFetch({
+      calendar: (start, end) => ({
+        start,
+        end,
+        days: [{ date: "2026-03-10", entries: [{ kind: "deadline", id: "d1", title: "Maths", documentId: "doc-1", colour: "#F87171", done: null }] }],
+      }),
+    });
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    await user.click(screen.getByTestId("calendar-day-2026-03-10"));
+
+    const icon = within(screen.getByTestId("day-panel")).getByTestId("calendar-entry-icon");
+    expect(icon).toHaveStyle({ backgroundColor: "#F8717126" });
+    expect(icon.querySelector("svg")).toBeInTheDocument();
+  });
+
   it("a done todo in the day panel appears struck through, matching Aujourd'hui's own treatment", async () => {
     stubFetch({
       calendar: (start, end) => ({ start, end, days: [{ date: "2026-03-10", entries: [{ kind: "todo", id: "t1", title: "Fait", documentId: null, colour: null, done: true }] }] }),
@@ -423,6 +491,18 @@ describe("CalendarScreen", () => {
       await screen.findByTestId("calendar-grid");
 
       expect(within(screen.getByTestId("upcoming-deadlines")).getByText("Examen aujourd'hui")).toBeInTheDocument();
+    });
+
+    it("clicking a row navigates to that course, same as the day panel's own 'Voir le cours'", async () => {
+      const onOpenCourse = vi.fn();
+      stubFetch({ progress: [progressItem({ documentId: "doc-1", title: "Maths", deadlineDate: "2026-03-18" })] });
+      const user = userEvent.setup();
+      renderScreen({ onOpenCourse });
+      await screen.findByTestId("calendar-grid");
+
+      await user.click(within(screen.getByTestId("upcoming-deadlines")).getByTestId("upcoming-deadline-row"));
+
+      expect(onOpenCourse).toHaveBeenCalledWith("doc-1");
     });
   });
 
