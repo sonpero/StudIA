@@ -287,7 +287,8 @@ redesign pass rather than a new milestone — still M9, since none of it is a
 new capability either. Phase 2 (below) tracks that ongoing, per-screen work.
 `docs/UI.md` is the authoritative detail source for every screen this
 milestone touches, reconciled with what actually shipped as of commit
-`17bc9b0` (Lecteur); this file only tracks status and acceptance.
+`ff982ae` (Tuteur, the last of Phase 2's seven screens); this file only
+tracks status and acceptance.
 
 ### Phase 1 — merged colour, streak, countdown, nav to seven
 
@@ -343,14 +344,15 @@ was ever run for real).
 - [x] `tokens.colour-collision.unit.test.ts` passes against the merged
       token set (one semantic token fewer than before), still checking
       every remaining pair, not weakened to fewer checks than it ran before
-- [ ] Every existing screen that used `--accent` or the old `--primary`
-      renders with the merged green — checked live, not just by grep, on at
-      least: Notions, Révision, Progression, Calendrier, Tuteur. **Partial**:
-      Notions was checked live with seeded data during Phase 2's own
-      Notions redesign (merged green renders correctly there); Révision,
-      Progression, Calendrier and Tuteur have not been specifically
-      re-checked for this box since the merge — due when each is
-      redesigned in Phase 2, or sooner if asked for directly
+- [x] Every existing screen that used `--accent` or the old `--primary`
+      renders with the merged green — checked live, not just by grep, on
+      Notions (during Phase 2's own Notions redesign), Progression,
+      Calendrier and Tuteur (each during its own later Phase 2 redesign,
+      via a throwaway Playwright screenshot every time), and finally
+      Révision — the one screen Phase 2 never touched directly, checked
+      live for this box specifically once all seven Phase 2 screens
+      landed: a graded MCQ's "Continuer" button and the correct-answer
+      ring both render the merged green, screenshot taken, not kept
 - [x] `ReviewScreen`'s graded-MCQ view still tells a correct pick from a
       wrong one without relying on hue alone (`docs/UI.md`'s own icon-based
       fix, predating this milestone, was not undone by the merge)
@@ -513,12 +515,6 @@ wrong default. Clicking a row in "Tous les cours" selects that course
 Notions du cours. Both worth confirming; neither blocks the redesign from
 counting as done.
 
-**Remaining — next step:** **Tuteur**, same pattern. Needs its own mockup
-from the user before scoping starts — do not invent a redesign without
-one. `docs/MILESTONES.md` (this file) and `docs/UI.md`'s own per-screen
-notes both need updating once it lands, the same way all six done
-screens were.
-
 **Acceptance**
 - [x] Aujourd'hui redesigned from mockup, `docs/UI.md` reconciled
 - [x] Mes cours redesigned from mockup, `docs/UI.md` reconciled
@@ -530,10 +526,11 @@ screens were.
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
 - [x] Calendrier redesigned from mockup, `docs/UI.md` reconciled, full
       `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
-- [ ] Tuteur redesigned from mockup, `docs/UI.md` reconciled
-- [ ] This file's own M9 section fully reconciled once all seven screens
-      are done — until then, treat both boxes above and this file's own
-      Phase 1 acceptance list as the current, partial state, not "M9 done"
+- [x] Tuteur redesigned from mockup, `docs/UI.md` reconciled, full
+      `pnpm test:e2e` green (16 passed, 1 pre-existing unrelated skip)
+- [x] This file's own M9 section fully reconciled once all seven screens
+      are done — done in this same pass, alongside closing Phase 1's own
+      last open box (below)
 
 ---
 

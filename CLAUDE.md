@@ -13,25 +13,26 @@ Small, private deployment: a handful of users, no self-signup, accounts created 
 
 ## Current milestone
 
-**M9 — Redesign.** See `docs/MILESTONES.md` for the full plan and
-acceptance criteria. M8 is accepted; M9 deliberately reverses two of
-`docs/UI.md`'s own rules (the streak and countdown bans below) — read
-`docs/UI.md`'s own note on the reversal before assuming this file is stale.
+**M9 — Redesign is accepted.** All acceptance boxes in `docs/MILESTONES.md`
+are ticked: Phase 1 (merged colour, streak, countdown, nav to seven) and
+Phase 2 (all seven screens — Aujourd'hui, Mes cours, Notions, Lecteur,
+Progression, Calendrier, Tuteur — redesigned from user-supplied mockups,
+several with follow-up polish passes), including the one box that stayed
+open longest: the merged `--primary` green checked live on every screen
+that used to carry `--accent` or the old `--primary`, Révision included.
+M9 deliberately reverses two of `docs/UI.md`'s own rules (the streak and
+countdown bans) and adds two more scoped exceptions along the way
+(Calendrier's icon-only month nav, alongside `ReviewScreen`'s pre-existing
+graded-MCQ one) — read `docs/UI.md`'s own notes on each before assuming
+this file is stale.
 
-M9 has two phases. Phase 1 (merged colour, streak, countdown, nav to
-seven) is done. Phase 2 is an ongoing, per-screen redesign from
-user-supplied mockups, ignoring `docs/UI.md` where a mockup calls for
-it and reconciling `docs/UI.md`'s own Screen notes back into sync once
-each pass lands — **all seven screens (Aujourd'hui, Mes cours, Notions,
-Lecteur, Progression, Calendrier, Tuteur) are done this way**, several
-with follow-up polish passes after the first. Phase 2 stays open-ended
-rather than formally closed: the user has kept sending follow-up mockup
-crops for already-redesigned screens (Calendrier three times so far), so
-treat a new screenshot for any of the seven as more polish, not a scope
-violation — only a screen with no mockup at all yet would need one asked
-for first, and none remain. `docs/MILESTONES.md`'s own M9 section and
-`docs/UI.md`'s matching Screen notes both need updating as each pass
-lands, not deferred.
+**No milestone is currently open.** A mockup screenshot for one of the
+seven M9 screens is still fair game as more polish (the user returned to
+Calendrier three times and to no screen more than that) — treat it as
+such rather than as new-milestone work. Anything else (a new capability,
+a new screen, a new data model) needs a milestone defined first: ask the
+user rather than inventing scope, per the `no work outside a milestone`
+rule below.
 
 Read the current milestone before starting any work. **Build only what the
 current milestone requires.** Do not implement features from later milestones,
