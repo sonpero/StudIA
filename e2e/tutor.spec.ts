@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 // docs/MILESTONES.md's M8 acceptance criterion: "ask a question, receive a
-// streamed answer with a citation." Reached via the nav's picker
-// (docs/UI.md's Tuteur note), not via NotionsScreen's own "Discuter du
-// cours": that entry point additionally depends on content's split job
-// having finished, which this scenario has no reason to wait on -- the
-// picker only needs the document itself done, independent of notions.
+// streamed answer with a citation." Reached via the nav's own pill selector
+// (docs/UI.md's Tuteur note, redesigned in a later M9 pass), not via
+// NotionsScreen's own "Discuter du cours": that entry point additionally
+// depends on content's split job having finished, which this scenario has
+// no reason to wait on -- the nav entry only needs the document itself
+// done, independent of notions.
 test.describe("tutor", () => {
   // FIXME (pre-existing, not M9): fails on the last two assertions since
   // citations were made collapsed by default, per message (commit
@@ -36,14 +37,13 @@ test.describe("tutor", () => {
     // Every spec in a full local run shares one e2e account and its
     // "Mes cours" (docs/TESTING.md's "one database per run"), so by the
     // time this spec runs, other specs' own courses are already in the
-    // picker's list too — scoped by title, not a bare role query, the same
-    // way upload-document.spec.ts already scopes its own document-card.
-    const pickerRow = page.getByTestId("course-picker-row").filter({ hasText: "Cours pour le tuteur" });
-    await pickerRow.getByRole("button", { name: "Discuter" }).click();
+    // pill row too — scoped by exact name, not a bare role query, the same
+    // way nav-pickers.spec.ts already scopes its own pill clicks.
+    await page.getByRole("button", { name: "Cours pour le tuteur", exact: true }).click();
 
-    await expect(page.getByText("Pose ta première question sur ce cours.")).toBeVisible();
+    await expect(page.getByTestId("tutor-greeting")).toBeVisible();
 
-    await page.getByPlaceholder("Pose ta question…").fill("Qu'est-ce que la photosynthèse ?");
+    await page.getByRole("textbox").fill("Qu'est-ce que la photosynthèse ?");
     await page.getByRole("button", { name: "Envoyer" }).click();
 
     // The question itself, streamed immediately (not optimistic UI on

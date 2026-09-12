@@ -1,6 +1,6 @@
-import type { ExtractionStatus } from "@studia/contracts";
+import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle } from "lucide-react";
+import { BookOpen, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
@@ -8,10 +8,12 @@ import { Idle } from "../components/mascot/Idle.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Thinking } from "../components/mascot/Thinking.js";
 import { Button } from "../components/ui/button.js";
-import { getDocument } from "../lib/documents-api.js";
+import { Card } from "../components/ui/card.js";
+import { getDocument, listDocuments } from "../lib/documents-api.js";
+import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
+import { listNotions } from "../lib/notions-api.js";
 import { askStream, createConversation, getConversation, type Citation, type TutorMessage } from "../lib/tutor-api.js";
 import { getCachedConversationId, setCachedConversationId } from "../lib/tutor-storage.js";
-import { CoursePickerScreen } from "./CoursePickerScreen.js";
 
 function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
@@ -51,9 +53,32 @@ const TUTOR_MARKDOWN_COMPONENTS: Components = {
   img: ({ alt }) => <>{alt}</>,
 };
 
+// Same idiom as NotionsScreen's/ReaderScreen's own CoursePill (docs/UI.md's
+// Notions/Lecteur notes), kept local rather than shared — small enough that
+// importing it across screens would cost more than it saves.
+function CoursePill({ document, active, onSelect }: { document: DocumentSummary; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      onClick={onSelect}
+      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+        active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
+      }`}
+    >
+      <BookOpen aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} color={active ? "#fff" : document.colour} />
+      {document.title}
+    </button>
+  );
+}
+
+// Deliberately destination-agnostic (same idiom as ReaderScreen's/
+// ProgressScreen's own plain "Retour"): this screen is reachable from the
+// nav directly or from NotionsScreen's "Discuter du cours", and onBack
+// (App.tsx) returns to whichever one it was.
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
-    <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+    <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
       Retour
     </button>
   );
@@ -69,7 +94,7 @@ function MessageBubble({ message }: { message: TutorMessage }) {
   const hasCitations = !isUser && !!message.citations && message.citations.length > 0;
 
   return (
-    <div className={`flex flex-col gap-2 rounded-[var(--radius-card)] border border-border p-4 ${isUser ? "self-end bg-primary-soft" : "self-start bg-surface"}`}>
+    <div className={`flex flex-col gap-2 rounded-2xl border border-border p-4 ${isUser ? "self-end bg-primary-soft" : "self-start bg-surface"}`}>
       <Markdown components={TUTOR_MARKDOWN_COMPONENTS}>{message.content}</Markdown>
       {hasCitations && (
         <div className="border-t border-border pt-2">
@@ -92,7 +117,48 @@ function MessageBubble({ message }: { message: TutorMessage }) {
   );
 }
 
-function TutorConversation({ documentId, onBack }: { documentId: string; onBack: () => void }) {
+// A canned first line, not a real assistant message: never sent to the
+// model, never part of `messages`, gone the moment a real question is
+// asked. A deliberate departure from every other screen's mascot-based
+// empty state (CLAUDE.md's own rule), confirmed with the user for this
+// screen specifically, matching the mockup's own greeting bubble.
+function GreetingBubble({ documentTitle }: { documentTitle: string }) {
+  return (
+    <div className="flex flex-col gap-2 self-start rounded-2xl border border-border bg-surface p-4" data-testid="tutor-greeting">
+      <p className="text-sm">
+        Salut ! Je suis ton tuteur pour « {documentTitle} ». Pose-moi n'importe quelle question à partir de tes notes : je citerai toujours le passage exact. Par quoi veut-on commencer ?
+      </p>
+    </div>
+  );
+}
+
+// Templates cycle across a course's own first few notions (real titles, not
+// invented subject knowledge) — a bit of the mockup's own phrasing variety
+// ("What is X?" / "Explain X vs Y" / "Quiz me on X") without pretending to
+// know anything about the course beyond notion titles this app already has.
+const SUGGESTED_CHIP_TEMPLATES = [(title: string) => `Explique « ${title} »`, (title: string) => `Fais-moi un quiz sur « ${title} »`, (title: string) => `Qu'est-ce que « ${title} » ?`];
+const SUGGESTED_CHIP_COUNT = 3;
+
+function SuggestedChips({ documentId, onPick }: { documentId: string; onPick: (question: string) => void }) {
+  const notionsQuery = useQuery({ queryKey: ["notions", documentId], queryFn: () => listNotions(documentId) });
+  const notions = notionsQuery.data ?? [];
+  if (notions.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2" data-testid="tutor-suggested-chips">
+      {notions.slice(0, SUGGESTED_CHIP_COUNT).map((notion, index) => {
+        const question = SUGGESTED_CHIP_TEMPLATES[index % SUGGESTED_CHIP_TEMPLATES.length]!(notion.title);
+        return (
+          <Button key={notion.id} type="button" variant="secondary" className="rounded-full text-xs" onClick={() => onPick(question)}>
+            {question}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TutorConversation({ documentId, documentTitle }: { documentId: string; documentTitle: string }) {
   // Captured once, at mount, not read again on every render: writing a
   // freshly created conversation's id to localStorage inside handleSend
   // below must not flip this on mid-conversation and re-enable
@@ -125,34 +191,27 @@ function TutorConversation({ documentId, onBack }: { documentId: string; onBack:
 
   if (cachedId !== null && historyQuery.status === "pending") {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
-        <div className="flex items-center justify-between">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-          <BackButton onBack={onBack} />
-        </div>
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
-          ))}
-        </div>
-      </main>
+      <Card className="flex flex-col gap-3 rounded-2xl">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-16 animate-pulse rounded-2xl bg-border" />
+        ))}
+      </Card>
     );
   }
 
   if (cachedId !== null && historyQuery.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <Card className="flex flex-col items-center gap-[var(--space-section)] rounded-2xl p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
         <p>Impossible de charger cette conversation. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void historyQuery.refetch()}>Réessayer</Button>
-        <BackButton onBack={onBack} />
-      </main>
+        <Button className="rounded-2xl" onClick={() => void historyQuery.refetch()}>
+          Réessayer
+        </Button>
+      </Card>
     );
   }
 
-  async function handleSend() {
-    const question = composerValue.trim();
+  async function handleSend(question: string) {
     if (!question || sending) return;
 
     setSending(true);
@@ -224,59 +283,56 @@ function TutorConversation({ documentId, onBack }: { documentId: string; onBack:
   const isEmpty = messages.length === 0 && streamingText === null;
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-        <BackButton onBack={onBack} />
-      </div>
-
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-[var(--space-block)]">
+    <Card className="flex flex-1 flex-col gap-[var(--space-block)] rounded-2xl">
+      <div className="flex flex-1 flex-col gap-3">
         {isEmpty ? (
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <Idle />
-            <p>Pose ta première question sur ce cours.</p>
-          </div>
+          <GreetingBubble documentTitle={documentTitle} />
         ) : (
-          <div className="flex flex-col gap-3">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            {streamingText !== null &&
-              (streamingText === "" ? (
-                <div className="flex flex-col items-center gap-2 self-start">
-                  <Thinking />
-                </div>
-              ) : (
-                <MessageBubble message={{ id: "streaming", conversationId: conversationId ?? "", role: "assistant", content: streamingText, citations: null, partial: false, createdAt: "" }} />
-              ))}
-          </div>
+          messages.map((message) => <MessageBubble key={message.id} message={message} />)
         )}
-
-        {sendError && <p className="text-sm text-text-muted">{sendError}</p>}
-
-        <form
-          className="flex items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSend();
-          }}
-        >
-          <textarea
-            className="min-h-11 flex-1 rounded-[var(--radius-button)] border border-border bg-surface p-2 text-sm"
-            value={composerValue}
-            onChange={(event) => setComposerValue(event.target.value)}
-            placeholder="Pose ta question…"
-          />
-          <Button type="submit" disabled={sending || composerValue.trim() === ""}>
-            Envoyer
-          </Button>
-        </form>
+        {streamingText !== null &&
+          (streamingText === "" ? (
+            <div className="flex flex-col items-center gap-2 self-start">
+              <Thinking />
+            </div>
+          ) : (
+            <MessageBubble message={{ id: "streaming", conversationId: conversationId ?? "", role: "assistant", content: streamingText, citations: null, partial: false, createdAt: "" }} />
+          ))}
       </div>
-    </main>
+
+      {sendError && <p className="text-sm text-text-muted">{sendError}</p>}
+
+      {isEmpty && <SuggestedChips documentId={documentId} onPick={(question) => setComposerValue(question)} />}
+
+      <form
+        className="flex items-end gap-2 border-t border-border pt-[var(--space-block)]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSend(composerValue.trim());
+        }}
+      >
+        <input
+          type="text"
+          className="min-h-11 flex-1 rounded-full border border-border bg-surface px-4 py-2 text-sm"
+          value={composerValue}
+          onChange={(event) => setComposerValue(event.target.value)}
+          placeholder={`Pose ta question sur ${documentTitle}…`}
+        />
+        <Button type="submit" className="rounded-full" disabled={sending || composerValue.trim() === ""}>
+          <Send aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Envoyer
+        </Button>
+      </form>
+    </Card>
   );
 }
 
-function TutorChatScreen({ documentId, onBack }: { documentId: string; onBack: () => void }) {
+// One course's own chat — kept as its own component (not inlined into
+// TutorScreen below) so switching the pill selection can key-remount it,
+// resetting per-course conversation state instead of leaking it from the
+// previously-selected course (same reasoning as NotionsScreen's own
+// NotionsCourseScreen/ReaderScreen's own ReaderCourseContent split).
+function TutorCourseContent({ documentId }: { documentId: string }) {
   const pollStartedAt = useRef<number | null>(null);
 
   const query = useQuery({
@@ -296,26 +352,23 @@ function TutorChatScreen({ documentId, onBack }: { documentId: string; onBack: (
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-4 animate-pulse rounded-[var(--radius-button)] bg-border" />
-          ))}
-        </div>
-      </main>
+      <div className="flex w-full flex-col gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-4 animate-pulse rounded-[var(--radius-button)] bg-border" />
+        ))}
+      </div>
     );
   }
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
         <p>Impossible de charger ce cours. Vérifie ta connexion et réessaie.</p>
-        <Button onClick={() => void query.refetch()}>Réessayer</Button>
-        <BackButton onBack={onBack} />
-      </main>
+        <Button className="rounded-2xl" onClick={() => void query.refetch()}>
+          Réessayer
+        </Button>
+      </div>
     );
   }
 
@@ -326,61 +379,109 @@ function TutorChatScreen({ documentId, onBack }: { documentId: string; onBack: (
   // question can even be sent, rather than surfacing a 409 after the fact.
   if (isActive(document.status)) {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Reading />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
         <p>Ce cours est encore en cours de lecture. Reviens dans un instant.</p>
-        <BackButton onBack={onBack} />
-      </main>
+      </div>
     );
   }
 
   if (document.status === "failed") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Confused />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
         <p>La lecture de ce cours a échoué. Mets-la à jour depuis Mes cours.</p>
-        <BackButton onBack={onBack} />
-      </main>
+      </div>
     );
   }
 
   const markdown = document.markdown?.trim() ?? "";
   if (markdown === "") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
         <Idle />
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
         <p>Ce cours ne contient pas encore de texte lisible.</p>
-        <BackButton onBack={onBack} />
+      </div>
+    );
+  }
+
+  return <TutorConversation documentId={documentId} documentTitle={document.title} />;
+}
+
+// Redesigned per a "Tuteur" mockup, ignoring docs/UI.md per the user: one
+// unified page (a course-picker row of pills, then that course's own chat),
+// the same unification Notions/Lecteur already went through, not a separate
+// picker page you leave to reach a course's conversation. documentId (still
+// optional, from App.tsx's own View) keeps every existing deep link working
+// (NotionsScreen's own "Discuter du cours") — when set, that course is
+// pre-selected and "Retour" appears; when absent (the nav's own direct
+// entry), no back link at all, matching Notions'/Lecteur's own top-level
+// entry, and the first course is selected by default. Switching pills is a
+// local selection, not a view transition — onSelectDocument is gone, there
+// is no separate picker view left to transition into.
+export function TutorScreen({ documentId, onBack }: { documentId?: string; onBack: () => void }) {
+  const documentsQuery = useQuery({ queryKey: ["documents"], queryFn: listDocuments });
+  const [manualSelection, setManualSelection] = useState<string | undefined>(undefined);
+
+  if (documentsQuery.status === "pending") {
+    return (
+      <main className="p-8">
+        <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-[var(--radius-card)] bg-border" />
+          ))}
+        </div>
       </main>
     );
   }
 
-  return <TutorConversation documentId={documentId} onBack={onBack} />;
-}
-
-export function TutorScreen({
-  documentId,
-  onSelectDocument,
-  onBack,
-}: {
-  documentId?: string;
-  onSelectDocument: (documentId: string) => void;
-  onBack: () => void;
-}) {
-  if (!documentId) {
+  if (documentsQuery.status === "error") {
     return (
-      <CoursePickerScreen
-        heading="Tuteur"
-        description="Choisis un cours pour commencer à discuter."
-        emptyMessage="Ajoute un cours dans Mes cours pour pouvoir en discuter avec le tuteur."
-        ctaLabel="Discuter"
-        ctaIcon={MessageCircle}
-        onSelectDocument={onSelectDocument}
-      />
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+        <Confused />
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
+        <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
+        <Button className="rounded-2xl" onClick={() => void documentsQuery.refetch()}>
+          Réessayer
+        </Button>
+      </main>
     );
   }
-  return <TutorChatScreen documentId={documentId} onBack={onBack} />;
+
+  const documents = documentsQuery.data;
+
+  if (documents.length === 0) {
+    return (
+      <main className="flex flex-col items-center gap-4 p-8 text-center">
+        <Idle />
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
+        <p>Ajoute un cours dans Mes cours pour pouvoir en discuter avec le tuteur.</p>
+      </main>
+    );
+  }
+
+  const selectedId = documentId ?? manualSelection ?? documents[0]!.id;
+  const selectedDocument = documents.find((d) => d.id === selectedId) ?? documents[0]!;
+
+  return (
+    <main className="flex flex-col p-8">
+      <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Tuteur</h1>
+      <p className="mb-[var(--space-section)] text-sm text-text-muted">Une discussion ciblée sur un cours. Les réponses s'appuient sur ton cours, sources à l'appui.</p>
+
+      <div className="mb-[var(--space-section)] flex flex-wrap gap-2">
+        {documents.map((document) => (
+          <CoursePill key={document.id} document={document} active={document.id === selectedDocument.id} onSelect={() => setManualSelection(document.id)} />
+        ))}
+      </div>
+
+      {documentId !== undefined && (
+        <div className="mb-[var(--space-related)]">
+          <BackButton onBack={onBack} />
+        </div>
+      )}
+
+      <TutorCourseContent key={selectedDocument.id} documentId={selectedDocument.id} />
+    </main>
+  );
 }

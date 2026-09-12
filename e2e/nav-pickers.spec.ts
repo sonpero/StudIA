@@ -2,18 +2,18 @@ import { expect, test } from "@playwright/test";
 
 // docs/MILESTONES.md's M9 acceptance: "Notions and Lecteur are each
 // reachable from the nav via their own picker." (docs/UI.md's Navigation
-// note — the same dual-entry shape Tuteur already has, e2e/tutor.spec.ts.)
-// Existing entry points (a course's own card on Mes cours, NotionsScreen's
-// own toolbar for Lecteur) are unchanged and already covered by other specs
-// (generate-and-review.spec.ts, App.unit.test.tsx's own fromNotions case) —
-// this one is only for the new nav-level picker path.
+// note.) Existing entry points (a course's own card on Mes cours,
+// NotionsScreen's own toolbar for Lecteur/Tuteur) are unchanged and already
+// covered by other specs (generate-and-review.spec.ts, App.unit.test.tsx's
+// own fromNotions case) — this one is only for the new nav-level picker
+// path.
 //
-// Both Notions and Lecteur dropped their own separate picker page in later
-// redesigns (ignoring docs/UI.md, per the user): the nav's own entry for
-// each now shows a pill selector plus a course's own content directly, no
-// separate picker page and no "Retour" at all.
+// Notions, Lecteur and Tuteur each dropped their own separate picker page
+// in later redesigns (ignoring docs/UI.md, per the user): the nav's own
+// entry for each now shows a pill selector plus a course's own content
+// directly, no separate picker page and no "Retour" at all.
 test.describe("nav pickers (M9)", () => {
-  test("Notions and Lecteur are each reachable directly from the nav, each showing a course's own content directly via its pill selector, no 'Retour'", async ({ page }) => {
+  test("Notions, Lecteur and Tuteur are each reachable directly from the nav, each showing a course's own content directly via its pill selector, no 'Retour'", async ({ page }) => {
     test.setTimeout(30_000);
     await page.goto("/");
 
@@ -46,6 +46,15 @@ test.describe("nav pickers (M9)", () => {
     await expect(page.getByRole("heading", { name: "Lecteur" })).toBeVisible();
     await page.getByRole("button", { name: "Cours pour les pickers", exact: true }).click();
     await expect(page.getByTestId("reader-study-panel")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: /retour/i })).not.toBeVisible();
+
+    // Tuteur: directly from the nav, the same pill-selector unification
+    // (docs/UI.md's Tuteur note) — its own pill picks the course, no
+    // separate picker page.
+    await page.getByRole("button", { name: "Tuteur", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Tuteur" })).toBeVisible();
+    await page.getByRole("button", { name: "Cours pour les pickers", exact: true }).click();
+    await expect(page.getByTestId("tutor-greeting")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /retour/i })).not.toBeVisible();
   });
 });

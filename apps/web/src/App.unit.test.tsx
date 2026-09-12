@@ -123,7 +123,11 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Mes cours" })).not.toHaveAttribute("aria-current");
   });
 
-  it("Tuteur is reachable directly from the nav (a course picker) and from within a course via NotionsScreen's 'Discuter du cours'", async () => {
+  // Tuteur's own later redesign unified it with the same pill selector
+  // Notions/Lecteur already use (docs/UI.md's Tuteur note): the nav's own
+  // direct entry shows a pill selector plus the first course's own chat
+  // immediately, no separate picker page.
+  it("Tuteur is reachable directly from the nav via its own pill selector, and from within a course via NotionsScreen's 'Discuter du cours'", async () => {
     const aDocument = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
     const aNotion = { id: "n1", documentId: "doc-1", userId: "u1", title: "Notion 1", body: "Corps.", difficulty: "medium", position: 0, createdAt: "2026-01-01T00:00:00Z" };
     vi.stubGlobal(
@@ -149,11 +153,13 @@ describe("App", () => {
     render(<App />);
     await screen.findByText("Bonjour, alex.");
 
-    // Directly from the nav: a picker, not a specific course's chat yet.
+    // Directly from the nav: its own pill selector, the first (only)
+    // course pre-selected and its chat shown immediately, no back link.
     await user.click(screen.getByRole("button", { name: "Tuteur" }));
     await screen.findByRole("heading", { name: "Tuteur" });
-    await screen.findByText("Cours test");
-    expect(screen.getByRole("button", { name: /discuter/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cours test" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("button", { name: /retour/i })).not.toBeInTheDocument();
+    await screen.findByRole("textbox");
 
     // From within a course instead: Notions' own redesign (M9) shows the
     // first (only) course's notions directly, no separate "Voir les
@@ -171,10 +177,11 @@ describe("App", () => {
 
   // M9's own redesign of Notions: reachable directly from the nav with no
   // course chosen, showing a pill selector plus the first course's own
-  // notions immediately — no separate picker page to land on first, unlike
-  // Lecteur/Tuteur below, which still use the shared CoursePickerScreen.
-  // No "Retour" at all in that state (matching Aujourd'hui/Mes cours'
-  // own top-level pages): there is no picker page left to have come from.
+  // notions immediately — no separate picker page to land on first (Lecteur
+  // and Tuteur, below, later dropped their own shared CoursePickerScreen
+  // the same way, in their own redesigns). No "Retour" at all in that state
+  // (matching Aujourd'hui/Mes cours' own top-level pages): there is no
+  // picker page left to have come from.
   it("Notions is reachable directly from the nav, showing a course pill selector and the first course's own notions immediately, no back link", async () => {
     const docOne = { id: "doc-1", title: "Cours test", sourceType: "photo", status: "done", pageCount: 1, colour: "#F87171", createdAt: "2026-01-01T00:00:00Z" };
     const docTwo = { id: "doc-2", title: "Autre cours", sourceType: "photo", status: "done", pageCount: 1, colour: "#38BDF8", createdAt: "2026-01-01T00:00:00Z" };

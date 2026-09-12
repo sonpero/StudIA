@@ -10,9 +10,11 @@ import { NotionsScreen } from "./NotionsScreen.js";
 // Redesigned per a "Notions" mockup, ignoring docs/UI.md per the user: one
 // unified page — a pill selector of courses at the top, then that course's
 // own summary card and notion list — replacing the old two-step picker
-// page → course page flow (CoursePickerScreen is untouched; Lecteur and
-// Tuteur still use it, only Notions dropped it). Deep links from elsewhere
-// (documentId set) still pre-select that course and show "Retour à mes
+// page → course page flow (CoursePickerScreen was still shared with
+// Lecteur/Tuteur at the time; both later dropped it too, in their own
+// redesigns, and it was deleted once Tuteur — its last consumer — did).
+// Deep links from elsewhere (documentId set) still pre-select that course
+// and show "Retour à mes
 // cours"; the nav's own direct entry (documentId undefined) shows no back
 // link and defaults to the first course. Each notion's status badge
 // (Maîtrisée/À réviser/En apprentissage), review count and next-review

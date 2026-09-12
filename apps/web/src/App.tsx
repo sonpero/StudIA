@@ -184,8 +184,7 @@ function AppShell() {
           {view.name === "tutor" && (
             <TutorScreen
               documentId={view.documentId}
-              onSelectDocument={(documentId) => setView({ name: "tutor", documentId })}
-              onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "tutor" }))}
+              onBack={() => (view.fromNotions && view.documentId ? setView({ name: "notions", documentId: view.documentId }) : setView({ name: "documents" }))}
             />
           )}
         </div>
