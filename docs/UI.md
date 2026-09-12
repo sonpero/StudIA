@@ -2263,6 +2263,15 @@ Checked in the Playwright suite:
   components are where parallel agents collide.
 - If a screen needs a pattern not described here, stop and ask. Do not invent an
   interaction model and leave the human to find it in review.
+- **`Button`'s own `link` variant is the only sanctioned way to build a
+  plain, clickable text link** ("Retour", a content toggle) — never a bare
+  `<button>` with an ad hoc `underline` class. It carries the 44px touch
+  target (`Responsive conventions`, above) without the 44px visual box
+  every other variant gets from `min-h-11`, through a pseudo-element
+  instead. Reintroducing a raw underlined `<button>` is a regression, not
+  a stylistic choice — it's exactly the pattern that had reaccumulated,
+  independently, on Notions, Lecteur, Progression and Tuteur before this
+  variant existed.
 - **A Tailwind arbitrary value referencing a token (`text-[var(--...)]`,
   `font-[var(--...)]`, and any other prefix covering more than one CSS
   property) needs an explicit type hint** — `text-[length:var(--text-title)]`,

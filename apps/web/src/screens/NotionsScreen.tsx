@@ -213,9 +213,9 @@ function NotionCard({
         </span>
       </div>
 
-      <button type="button" className="self-start text-sm text-primary underline" aria-expanded={expanded} onClick={onToggleBody}>
+      <Button type="button" variant="link" className="self-start text-primary" aria-expanded={expanded} onClick={onToggleBody}>
         {expanded ? "Masquer le contenu" : "Voir le contenu"}
-      </button>
+      </Button>
       {expanded && <Markdown components={NOTION_BODY_COMPONENTS}>{notion.body}</Markdown>}
     </Card>
   );
@@ -336,9 +336,9 @@ function NotionsCourseScreen({
   return (
     <div className="flex flex-col gap-[var(--space-block)]">
       {showBackLink && (
-        <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
+        <Button type="button" variant="link" className="self-start" onClick={onBack}>
           Retour à mes cours
-        </button>
+        </Button>
       )}
 
       <CourseSummaryCard document={document} dueCount={dueCount} onReview={() => onReview()} />

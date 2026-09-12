@@ -78,9 +78,9 @@ function CoursePill({ document, active, onSelect }: { document: DocumentSummary;
 // (App.tsx) returns to whichever one it was.
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
-    <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
+    <Button type="button" variant="link" className="self-start" onClick={onBack}>
       Retour
-    </button>
+    </Button>
   );
 }
 
@@ -98,9 +98,9 @@ function MessageBubble({ message }: { message: TutorMessage }) {
       <Markdown components={TUTOR_MARKDOWN_COMPONENTS}>{message.content}</Markdown>
       {hasCitations && (
         <div className="border-t border-border pt-2">
-          <button type="button" className="text-sm text-text-muted underline" aria-expanded={expanded} onClick={() => setExpanded((prev) => !prev)}>
+          <Button type="button" variant="link" aria-expanded={expanded} onClick={() => setExpanded((prev) => !prev)}>
             {expanded ? "Masquer les sources" : `Voir les sources (${String(message.citations!.length)})`}
-          </button>
+          </Button>
           {expanded && (
             <ul className="mt-2 flex flex-col gap-1 text-text-muted">
               {message.citations!.map((citation, index) => (

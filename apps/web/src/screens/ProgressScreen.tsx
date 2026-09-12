@@ -476,9 +476,9 @@ export function ProgressScreen({
       <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
-          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+          <Button type="button" variant="link" onClick={onBack}>
             Retour
-          </button>
+          </Button>
         </div>
         <div className="h-56 animate-pulse rounded-[var(--radius-card)] bg-border" />
       </main>
@@ -503,9 +503,9 @@ export function ProgressScreen({
       <main className="flex flex-col gap-[var(--space-section)] p-8">
         <div className="flex items-center justify-between">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
-          <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+          <Button type="button" variant="link" onClick={onBack}>
             Retour
-          </button>
+          </Button>
         </div>
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <Idle />
@@ -525,9 +525,9 @@ export function ProgressScreen({
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progression</h1>
           <p className="text-sm text-text-muted">Ta préparation pour chaque examen, et la part de ton programme déjà couverte.</p>
         </div>
-        <button type="button" className="text-sm text-text-muted underline" onClick={onBack}>
+        <Button type="button" variant="link" onClick={onBack}>
           Retour
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">

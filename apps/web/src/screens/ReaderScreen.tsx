@@ -68,9 +68,9 @@ function CoursePill({ document, active, onSelect }: { document: DocumentSummary;
 // other path.
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
-    <button type="button" className="self-start text-sm text-text-muted underline" onClick={onBack}>
+    <Button type="button" variant="link" className="self-start" onClick={onBack}>
       Retour
-    </button>
+    </Button>
   );
 }
 
