@@ -4,7 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PropsWithChildren } from "react";
-import { useActivePomodoro } from "./use-active-pomodoro.js";
+import { POMODORO_ACTIVE_QUERY_KEY, useActivePomodoro } from "./use-active-pomodoro.js";
+
+// waitFor's own assertion can pass while the query is still in its initial
+// pending state (before the stubbed fetch above ever resolves) if the
+// asserted value happens to match the loading-time default too — "idle" is
+// exactly that default, so a test asserting idle must first prove the
+// query actually settled, or it would pass for the wrong reason even
+// against a hook with no guard at all.
+async function waitForQuerySettled(queryClient: QueryClient) {
+  await waitFor(() => expect(queryClient.getQueryState(POMODORO_ACTIVE_QUERY_KEY)?.status).toBe("success"));
+}
 
 // Lot 1 of the persistent-pomodoro work (see CLAUDE.md's session history):
 // the server is already the source of truth for a session (startedAt +
@@ -43,6 +53,68 @@ describe("useActivePomodoro", () => {
     await waitFor(() => expect(result.current.phase).toBe("idle"));
     expect(result.current.session).toBeNull();
     expect(result.current.remainingSeconds).toBeNull();
+  });
+
+  // Production guard, not just a test-fixture fix: a cached payload this
+  // hook cannot safely compute a countdown from must never reach the
+  // widget/PomodoroCard as "running" with a garbage remainingSeconds
+  // (NaN:NaN) — it must read as idle, the same as no session at all. This
+  // is also what makes App.unit.test.tsx's own ad hoc fetch stubs (many of
+  // which answer every unlisted route, /api/pomodoro/active included, with
+  // a bare `[]`/200 — truthy, but not a usable session) harmless without
+  // having to fix each one of them.
+  it("a cached payload with no usable startedAt/durationSeconds (e.g. the bare [] many test fetch stubs default to) reads as idle, never a garbage countdown", async () => {
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") return new Response(JSON.stringify([]), { status: 200 });
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitForQuerySettled(queryClient);
+
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.session).toBeNull();
+    expect(result.current.remainingSeconds).toBeNull();
+  });
+
+  it("a cached session missing startedAt reads as idle rather than computing NaN", async () => {
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, endedAt: null, durationSeconds: 1500 }), { status: 200 });
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitForQuerySettled(queryClient);
+
+    expect(result.current.phase).toBe("idle");
+  });
+
+  it("a cached session with an unparseable startedAt reads as idle rather than computing NaN", async () => {
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") {
+        return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: "not-a-date", endedAt: null, durationSeconds: 1500 }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitForQuerySettled(queryClient);
+
+    expect(result.current.phase).toBe("idle");
+  });
+
+  it("a cached session with a non-finite durationSeconds reads as idle rather than computing NaN", async () => {
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") {
+        return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: null }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitForQuerySettled(queryClient);
+
+    expect(result.current.phase).toBe("idle");
   });
 
   it("resumes an already-active server session on mount: phase running, real remaining time derived from startedAt/durationSeconds", async () => {

@@ -9,6 +9,19 @@ function remainingSeconds(session: PomodoroSession): number {
   return Math.max(0, session.durationSeconds - elapsed);
 }
 
+// A cache entry this hook cannot safely compute a countdown from must read
+// as "no session", never as "running" with a garbage remainingSeconds
+// (NaN:NaN, once formatted) — a production guard, not merely a test-fixture
+// concern: `getActivePomodoro`'s own `res.json() as Promise<PomodoroSession>`
+// is a type assertion, not real validation, so nothing upstream stops a
+// malformed payload from reaching this hook. This also happens to make
+// every test fetch stub that answers an unlisted route (`/api/pomodoro/
+// active` included) with a bare `[]`/200 — truthy, but not a usable session
+// — harmless without having to fix each one individually.
+function isUsableSession(session: PomodoroSession): boolean {
+  return Number.isFinite(new Date(session.startedAt).getTime()) && Number.isFinite(session.durationSeconds);
+}
+
 export function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
@@ -43,8 +56,24 @@ export type UseActivePomodoroResult = PomodoroActions &
 // is the only state and the mutations keep it current.
 export function useActivePomodoro(): UseActivePomodoroResult {
   const queryClient = useQueryClient();
+  // staleTime: Infinity + refetchOnWindowFocus: false carry real behaviour,
+  // not a performance tweak: they are what replaces the old initializedRef
+  // guard (PomodoroCard's previous implementation, dead code now, not
+  // ported here). That guard existed only to stop a later background
+  // refetch from overwriting a locally-tracked "running" state with data
+  // that had gone stale in the meantime; here there is no local state left
+  // to overwrite (phase/session are derived straight from this query's own
+  // cache below), so the risk moves instead to the cache itself — a
+  // background refetch is the only thing that could still replace a
+  // correct, mutation-written session with something older or wrong.
+  // Marking this query as never-stale and never-refetch-on-focus removes
+  // that path entirely: the cache changes only when this hook's own
+  // mutations write to it (below), which is also what makes several
+  // simultaneous consumers (PomodoroCard, the header widget) guaranteed to
+  // agree — nothing else is racing to overwrite what they both read.
   const activeQuery = useQuery({ queryKey: POMODORO_ACTIVE_QUERY_KEY, queryFn: getActivePomodoro, staleTime: Infinity, refetchOnWindowFocus: false });
-  const session = activeQuery.data ?? null;
+  const rawSession = activeQuery.data ?? null;
+  const session = rawSession && isUsableSession(rawSession) ? rawSession : null;
   const phase: "idle" | "running" = session ? "running" : "idle";
 
   // One interval per mounted hook instance, ticking only while that
