@@ -1,5 +1,7 @@
+import { getAudioContext, unlockAudioContext } from "./audio-context.js";
+
 // Synthesized, no audio file (M10 Phase 2, lot 2's own constraint). Two
-// rules this module exists to keep: the AudioContext must be created by
+// rules this module exists to keep: the AudioContext must be unlocked by
 // unlockChime(), called synchronously from the "Démarrer" click handler —
 // one microtask later and the browser's autoplay-unlock rule no longer
 // considers it inside the user gesture — and the chime itself is a bonus
@@ -7,20 +9,16 @@
 // enough that it can arrive late or not at all). Neither function may ever
 // throw past its caller: a synthesis failure here must never look like a
 // real error to the rest of the app.
-let audioContext: AudioContext | null = null;
-
+//
+// The AudioContext itself lives in audio-context.ts (M10 Phase 2, lot 4),
+// not here: it is shared with the ambient sounds card, one context for the
+// whole app rather than one per feature.
 export function unlockChime(): void {
-  try {
-    if (!audioContext) audioContext = new AudioContext();
-    void audioContext.resume();
-  } catch {
-    // Web Audio unavailable, or the browser refused the unlock — the chime
-    // stays silent, which is fine: it was always a bonus signal.
-  }
+  unlockAudioContext();
 }
 
 export function playChime(): void {
-  const ctx = audioContext;
+  const ctx = getAudioContext();
   if (!ctx) return;
   try {
     const now = ctx.currentTime;

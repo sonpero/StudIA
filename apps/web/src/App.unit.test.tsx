@@ -575,4 +575,51 @@ describe("App", () => {
       expect(screen.getByText(/Pause courte/)).toBeInTheDocument();
     });
   });
+
+  // M10 Phase 2, lot 4: decision 3's own direct consequence — a sound that
+  // survives navigation must be stoppable without navigating back to
+  // Aujourd'hui. Same discretion as the pomodoro header widget: hidden
+  // entirely (not just styled invisible) both when nothing is playing and
+  // on Aujourd'hui itself, where StudySoundsCard already has its own
+  // pause control.
+  describe("ambient sound header stop control (M10 Phase 2, lot 4)", () => {
+    it("no sound playing: the stop control renders nowhere", async () => {
+      stubAuthenticatedFetch();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      await user.click(screen.getByRole("button", { name: "Mes cours" }));
+      await screen.findByRole("heading", { name: "Mes cours" });
+
+      expect(screen.queryByRole("button", { name: "Couper le son d'ambiance" })).not.toBeInTheDocument();
+    });
+
+    it("a playing sound shows the stop control on another screen, but not on Aujourd'hui itself, and clicking it pauses the sound", async () => {
+      stubAuthenticatedFetch();
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+
+      await user.click(screen.getByRole("button", { name: "Lecture" }));
+      await screen.findByRole("button", { name: "Pause" });
+
+      // Still on Aujourd'hui: StudySoundsCard shows its own pause control,
+      // the header must not carry a second one.
+      expect(screen.queryByRole("button", { name: "Couper le son d'ambiance" })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Mes cours" }));
+      await screen.findByRole("heading", { name: "Mes cours" });
+
+      const stopControl = await screen.findByRole("button", { name: "Couper le son d'ambiance" });
+      await user.click(stopControl);
+
+      expect(screen.queryByRole("button", { name: "Couper le son d'ambiance" })).not.toBeInTheDocument();
+
+      // Back on Aujourd'hui, the card itself agrees the sound is paused —
+      // the same shared state, not a second, independently-tracked copy.
+      await user.click(screen.getByRole("button", { name: "Aujourd'hui" }));
+      await screen.findByRole("button", { name: "Lecture" });
+    });
+  });
 });

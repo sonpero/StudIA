@@ -195,7 +195,11 @@ test.describe("Aujourd'hui mobile (M10 Phase 1)", () => {
 
     expect(await scrollWidth(page)).toBeLessThanOrEqual(375);
 
-    const group = page.getByRole("radiogroup");
+    // Scoped to the pomodoro card specifically (M10 Phase 2, lot 4 added a
+    // second, unrelated radiogroup to this same screen — the ambient sound
+    // selector, its own test below): a bare page-wide role query is
+    // ambiguous once two exist.
+    const group = page.getByTestId("pomodoro-card").getByRole("radiogroup");
     await expect(group).toBeVisible();
     const groupBox = await group.boundingBox();
     if (!groupBox) throw new Error("expected the radiogroup to report a bounding box");
@@ -220,5 +224,45 @@ test.describe("Aujourd'hui mobile (M10 Phase 1)", () => {
     // directly either) actually selects the option.
     await page.getByText("Pause courte").click();
     await expect(page.getByRole("radio", { name: "Pause courte" })).toBeChecked();
+  });
+
+  // M10 Phase 2, lot 4: StudySoundsCard's own three sound-selector rows,
+  // its play/pause button, and its volume slider — three brand-new
+  // controls, not an M10 Phase 1 pass, so each gets its real size directly
+  // rather than the pseudo-element expansion technique other passes on
+  // this screen needed to preserve a pre-existing small visual.
+  test("ready state: the ambient sound selector fits at 375px, and its sound rows, play/pause button, and volume slider all reach 44px", async ({ page }) => {
+    await page.route(TODAY_ROUTE, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(EMPTY_TODAY_VIEW) }));
+    await page.goto("/");
+    await page.getByText(/rien à réviser pour l'instant/i).waitFor();
+
+    expect(await scrollWidth(page)).toBeLessThanOrEqual(375);
+
+    const card = page.getByTestId("study-sounds-card");
+    const group = card.getByRole("radiogroup");
+    await expect(group).toBeVisible();
+    const groupBox = await group.boundingBox();
+    if (!groupBox) throw new Error("expected the ambient sound radiogroup to report a bounding box");
+    expect(groupBox.x).toBeGreaterThanOrEqual(0);
+    expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(375);
+
+    for (const name of ["Bruit blanc", "Bruit rose", "Bruit brun"]) {
+      const label = card.getByRole("radio", { name }).locator("..");
+      const box = await label.boundingBox();
+      if (!box) throw new Error(`expected the "${name}" option's own label to report a bounding box`);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+
+    const playButton = card.getByRole("button", { name: "Lecture" });
+    const playBox = await playButton.boundingBox();
+    if (!playBox) throw new Error("expected the play/pause button to report a bounding box");
+    expect(playBox.height).toBeGreaterThanOrEqual(44);
+    expect(playBox.width).toBeGreaterThanOrEqual(44);
+
+    const volume = card.getByRole("slider", { name: "Volume" });
+    const volumeBox = await volume.boundingBox();
+    if (!volumeBox) throw new Error("expected the volume slider to report a bounding box");
+    expect(volumeBox.height).toBeGreaterThanOrEqual(44);
   });
 });

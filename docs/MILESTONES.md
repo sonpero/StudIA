@@ -842,9 +842,14 @@ ambient sound from the study-sounds card.
       its own Drizzle migration; the composer's three-segment selector is
       a real `radiogroup` of radio buttons, not three decorative `<span>`s
       (lot 3)
-- [ ] The study-sounds card plays real audio, no third-party embed, no
-      OAuth; the provenance and licence of every audio file are recorded
-      in the repo
+- [x] The study-sounds card plays real audio, no third-party embed, no
+      OAuth (lot 4) — synthesized Web Audio noise (white/pink/brown),
+      not licensed recordings: a deliberate pivot from this box's own
+      original wording (decided with the user before lot 4 started, not
+      a reinterpretation after the fact), made specifically to need no
+      audio file at all — there is nothing for "provenance and licence"
+      to apply to. A real recording may still replace this later if the
+      synthesized result disappoints.
 - [ ] `docs/UI.md`'s Screen notes are reconciled with each phase-2 pass as
       it lands, not deferred
 

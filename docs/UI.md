@@ -671,15 +671,30 @@ visible). Every icon is `aria-hidden="true"` and `focusable="false"`,
 exactly like the mascot: the accessible name of a nav destination or a card
 action is its text label alone, unaffected by the icon beside it.
 
-**Two exceptions now, not one: ReviewScreen's graded-MCQ `Check`/`X`, and
-`Agenda`'s own month-nav `ChevronLeft`/`ChevronRight` (a second M9
-follow-up pass, `Screen notes`' own Agenda note below) — the latter
-is a genuine icon-only button, confirmed with the user as a deliberate
-reversal the same way the streak/countdown badges were, not a rediscovery
-that the rule was wrong. Its accessible name lives entirely in
-`aria-label` ("Mois précédent"/"Mois suivant"), since there is no visible
-text left for the rule's "keeps the label itself always visible" clause to
-apply to.**
+**Three exceptions now: ReviewScreen's graded-MCQ `Check`/`X`, `Agenda`'s
+own month-nav `ChevronLeft`/`ChevronRight` (a second M9 follow-up pass,
+`Screen notes`' own Agenda note below), and the header's own
+"Se déconnecter" below 768px (M10 Phase 2, lot 4's own header-width fix,
+`Screen notes`' own Aujourd'hui — study sounds note) — the last two are
+genuine icon-only buttons, each confirmed with the user as a deliberate
+reversal the same way the streak/countdown badges were, not a
+rediscovery that the rule was wrong. Each one's accessible name lives
+entirely in `aria-label` ("Mois précédent"/"Mois suivant", "Se
+déconnecter"), since there is no visible text left for the rule's "keeps
+the label itself always visible" clause to apply to.**
+
+**"Se déconnecter" is also a bounded exception to the Tablet section's own
+"icons only, labels as tooltips" plan (below) — a tooltip does not fire
+on touch, and this collapse happens specifically on a touch-first mobile
+breakpoint.** The distinction is scope: the tablet collapse replaces
+several *persistent* nav labels at once, where a hover-revealed tooltip
+genuinely stands in for each hidden one on a pointer device. A single,
+non-navigational, one-off action — closing the session — carrying its
+own `aria-label` needs no such stand-in: there is nothing else on screen
+that action could be confused with, tooltip or not. This exception is
+scoped to exactly that shape (one action, not a destination, not part of
+a persistent set) — it does not reopen the tablet collapse itself, still
+unbuilt for the reason stated there.
 
 The graded-MCQ pair predates this and stays decorative rather than
 icon-only: every icon above is redundant with a label already on
@@ -1471,15 +1486,95 @@ playlist URL, the no-iframe-before-click guarantee, the CSP grant)
 described a real, shipped feature that no longer exists. Building it
 again starts from zero, CSP included, not from restoring a hidden block.
 
-**Aujourd'hui — study sounds, new, mock only.** A card beside Pomodoro in
-the right column (`data-testid="study-sounds-card"`): a track/playlist
-line, a fixed-position progress bar, transport controls and a volume bar,
-a two-row "up next" list. None of it is wired to real audio — the
-controls carry accessible labels but no handlers, the progress fill and
-times are hardcoded. Disclosed the same way this file discloses other
-not-yet-built pieces elsewhere (`Layout and responsiveness`'s own list,
-above): a placeholder for a feature that does not exist yet, not a
-finished one.
+**Aujourd'hui — study sounds is real now, and smaller than its own mockup
+(M10 Phase 2, lot 4).** A card beside Pomodoro in the right column
+(`data-testid="study-sounds-card"`), wired to synthesized Web Audio noise
+— a noise buffer, a filter, a gain (`apps/web/src/lib/
+ambient-sound-graph.ts`) — never an audio file, never a third-party
+embed, never OAuth. Three sounds, named for what they actually are:
+**"Bruit blanc"**, **"Bruit rose"**, **"Bruit brun"**. Never a mood name
+like "Pluie" or "Café": filtered noise is not a field recording, and
+naming it as one is a promise synthesis cannot keep. A real recording may
+still arrive later if the synthesized result disappoints — this cut is
+about what lot 4 ships now, not a permanent ban on ever adding one.
+
+**This reverses the mockup, argued, not a minor retouch — the same
+discipline M9's own two reversals and lot 2's zero-arrival state used.**
+The original mockup was a small music player: an artist line ("Lo-Fi
+Study Club"), track durations ("3:38"/"3:14"), a scrubbable position
+("0:37" against a fixed-position progress bar), and previous/next
+transport. A synthesized noise generator has none of these honestly to
+give — no artist, no fixed duration, no meaningful position within an
+endless loop, and nothing "before" or "after" the one sound currently
+selected. Every one of those elements is removed outright, not wired to
+a fake value: a smaller, true card beats a complete one that lies. What
+remains, exactly: a list of the three sounds, selecting one, play/pause,
+and volume.
+
+**Sound selection is a real `radiogroup`, on the same shape the pomodoro
+composer's own selector uses (lot 3, above) — vertical rows here, not a
+horizontal three-segment pill**, since this reads as a list, not a set of
+tabs. Selecting a row changes which sound would play without starting it;
+if a sound is already playing, selecting a different row switches to it
+immediately instead. Play/pause is one real button (`Lecture`/`Pause`,
+`h-11 w-11`, no pseudo-element hit-zone expansion — this is a brand-new
+control, not an M10 Phase 1 pass preserving an existing small visual).
+Volume is a real `<input type="range">`, `h-11` tall so its own layout
+box is the 44px touch target directly. Every one of these — the three
+rows, the button, the slider — was measured live at 375px, not assumed:
+309×44px per row, 44×44px for play/pause, a 233×44px slider.
+
+**The sound survives navigating away from Aujourd'hui, on purpose
+(decision, not an oversight): a card that stops the moment you open your
+course is useless, since that is exactly when ambient noise is wanted.**
+The Web Audio graph itself lives in a single carrier, `AmbientSoundEffects`
+— mounted once, unconditionally, in `App.tsx`, no visible render of its
+own, on the exact model `PomodoroEffects` (lot 2) already established.
+`StudySoundsCard` and the header's own stop control (below) both call
+`useAmbientSound` too, but only to derive what they render and to
+trigger actions — neither touches the graph directly, which is what lets
+the sound keep playing regardless of which of the two happens to be
+mounted at any given moment. One `AudioContext` for the whole app
+(`apps/web/src/lib/audio-context.ts`), shared with the pomodoro chime
+(lot 2): browsers cap how many can exist and Safari is strict about it,
+so nothing here creates a second one. No persistence anywhere: the
+selected sound and the volume live only in the shared `QueryClient`
+cache App() creates once per page load, so a reload always finds it
+silent — there is no code path by which a sound could resume without a
+fresh user gesture, which is also what keeps the `AudioContext` itself
+honestly tied to a real click (unlocked inside `play()`, same reasoning
+as the pomodoro chime's own unlock).
+
+**A stop control in the header bar** (`AmbientSoundHeaderControl`),
+visible only while a sound is playing, hidden specifically on Aujourd'hui
+itself — the same discretion `PomodoroHeaderWidget` already uses, and for
+the same reason: `StudySoundsCard` already carries an identical action
+there, under a different name (`Pause`, not `Couper le son
+d'ambiance`), and showing both would be redundant. This is a genuine
+icon-only button (`Icons`' own note, above, has the accessibility
+reasoning and the narrow exception it is scoped to) — a real `h-11 w-11`
+box, not the link variant's pseudo-element hit-zone trick, since there is
+no pre-existing small visual to preserve here either.
+
+**Adding that stop control pushed the header's own worst-case row
+(a running pomodoro session and a playing sound at once) past 375px by
+about 128px — measured live, not assumed — and the fix is a documented
+stopgap, not a design position.** Below 768px only: the plain-text
+greeting ("Bonjour, {username}.") is hidden outright (it repeats
+information already on screen — every screen's own greeting heading, for
+Aujourd'hui specifically, or simply the person's own session), and
+"Se déconnecter" collapses to icon-only (`Icons`' own third exception,
+above) — both unchanged at `md` and up, including the underlined text
+link style. Re-measured live after the fix: `scrollWidth` returns exactly
+375px in the same worst case — it fits, but by construction, not with
+comfortable room: freeing the greeting and the old text-link button
+recovers only about as much width as the new control's own 44px cost, not
+a generous margin. If a future header addition reopens this, the next
+lever is the pomodoro widget's own type label on mobile, not stated here
+as already decided. Longer term, "Se déconnecter" belongs in the
+secondary nav group `AppNav.tsx`'s own header comment already
+anticipates (not yet built) rather than living in this bar at all — this
+fix holds until that group exists, not a permanent home for it.
 
 **Mes cours was redesigned from a user-supplied mockup (2026-09-06),
 ignoring this file's own former "card grid, cover or subject-coloured

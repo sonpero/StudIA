@@ -1,14 +1,16 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { BookOpen, BookOpenText, Calendar, GraduationCap, Home, Layers, MessageCircle, TrendingUp } from "lucide-react";
+import { BookOpen, BookOpenText, Calendar, GraduationCap, Home, Layers, LogOut, MessageCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { APP_NAME } from "./app-info.js";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { Button } from "./components/ui/button.js";
+import { AmbientSoundEffects } from "./components/AmbientSoundEffects.js";
+import { AmbientSoundHeaderControl } from "./components/AmbientSoundHeaderControl.js";
 import { LoginScreen } from "./components/LoginScreen.js";
 import { PomodoroEffects } from "./components/PomodoroEffects.js";
 import { PomodoroHeaderWidget } from "./components/PomodoroHeaderWidget.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
-import { ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "./lib/icons.js";
+import { ICON_SIZE_INLINE, ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "./lib/icons.js";
 import { getToday } from "./lib/today-api.js";
 import { CalendarScreen } from "./screens/CalendarScreen.js";
 import { DocumentsScreen } from "./screens/DocumentsScreen.js";
@@ -142,6 +144,12 @@ function AppShell() {
           still call useActivePomodoro too, but only to derive what they
           render. */}
       <PomodoroEffects />
+      {/* Same pattern, same reasoning, for the ambient sound's own Web
+          Audio graph (M10 Phase 2, lot 4): mounted once here so the sound
+          survives navigating away from Aujourd'hui, StudySoundsCard and
+          AmbientSoundHeaderControl both only reading/acting via
+          useAmbientSound. */}
+      <AmbientSoundEffects />
       <AppNav items={navItems} dimmed={view.name === "review"} streak={sidebarStreak} dueCount={sidebarDueCount} username={auth.user?.username ?? ""} />
       {/* md:ml-60 reserves the space the now-fixed sidebar (AppNav) takes
           out of normal flow on desktop — without it, content would render
@@ -166,9 +174,33 @@ function AppShell() {
           </div>
           <div className="flex items-center gap-3">
             <PomodoroHeaderWidget hideOnCurrentView={view.name === "today"} />
-            <p>Bonjour, {auth.user?.username}.</p>
-            <Button type="button" variant="link" onClick={() => void auth.logout()}>
-              Se déconnecter
+            <AmbientSoundHeaderControl hideOnCurrentView={view.name === "today"} />
+            {/* Hidden below 768px (M10 Phase 2, lot 4's own header-width
+                fix, docs/UI.md's Aujourd'hui — study sounds note): a real
+                stop control for the ambient sound pushed this row's own
+                worst case (a running pomodoro session and a playing sound
+                at once) past 375px, and this is the one piece that carries
+                no distinct information the greeting heading already on
+                every screen doesn't. Unchanged at md and up. */}
+            <p className="hidden md:block">Bonjour, {auth.user?.username}.</p>
+            {/* Icon-only below 768px, the plain underlined text link
+                unchanged at md and up (same Button, one responsive tree —
+                docs/UI.md's Responsive conventions note — not a second
+                element). A real h-11 w-11 box, not the link variant's own
+                pseudo-element hit-zone expansion: that technique exists to
+                enlarge an existing small *visual* box without changing it,
+                and there is no pre-existing mobile box to preserve here. */}
+            <Button
+              type="button"
+              variant="link"
+              aria-label="Se déconnecter"
+              onClick={() => void auth.logout()}
+              className="flex h-11 w-11 items-center justify-center whitespace-nowrap p-0 no-underline md:h-auto md:w-auto md:underline"
+            >
+              <LogOut aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="md:hidden" />
+              <span aria-hidden="true" className="hidden md:inline">
+                Se déconnecter
+              </span>
             </Button>
           </div>
         </div>

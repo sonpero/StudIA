@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodayView } from "../lib/today-api.js";
@@ -677,7 +677,11 @@ describe("TodayScreen (Aujourd'hui)", () => {
       renderScreen();
       await screen.findByText(/rien à réviser pour l'instant/i);
 
-      const group = screen.getByRole("radiogroup");
+      // Scoped to the pomodoro card specifically (M10 Phase 2, lot 4 added
+      // a second, unrelated radiogroup to this same screen — the ambient
+      // sound selector, below): a bare screen-wide role query is ambiguous
+      // once two exist.
+      const group = within(screen.getByTestId("pomodoro-card")).getByRole("radiogroup");
       const focus = within(group).getByRole("radio", { name: "Concentration" });
       const shortBreak = within(group).getByRole("radio", { name: "Pause courte" });
       const longBreak = within(group).getByRole("radio", { name: "Pause longue" });
@@ -777,12 +781,72 @@ describe("TodayScreen (Aujourd'hui)", () => {
     });
   });
 
-  it("renders the study sounds card (still mock)", async () => {
-    stubFetch(emptyView);
-    renderScreen();
-    await screen.findByText(/rien à réviser pour l'instant/i);
-    expect(screen.getByText("Sons d'ambiance")).toBeInTheDocument();
-    expect(screen.getAllByText("Rainy Window")).toHaveLength(2);
+  // M10 Phase 2, lot 4: this card stops being a mock music player and
+  // becomes real, synthesized ambient noise — the previous version of this
+  // test asserted on exactly the placeholder content ("Rainy Window",
+  // twice) this lot's own purpose is to remove, so it is rewritten here
+  // rather than merely extended; see the session's own final report for
+  // the full list of removed mockup elements (artist line, durations,
+  // progress bar, prev/next transport buttons).
+  describe("study sounds (M10 Phase 2, lot 4)", () => {
+    it("renders the three sounds as a real radiogroup, Bruit blanc selected by default, and none of the removed mockup elements remain", async () => {
+      stubFetch(emptyView);
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      expect(screen.getByText("Sons d'ambiance")).toBeInTheDocument();
+      const group = within(screen.getByTestId("study-sounds-card")).getByRole("radiogroup");
+      expect(within(group).getByRole("radio", { name: "Bruit blanc" })).toBeChecked();
+      expect(within(group).getByRole("radio", { name: "Bruit rose" })).not.toBeChecked();
+      expect(within(group).getByRole("radio", { name: "Bruit brun" })).not.toBeChecked();
+
+      // Nothing a noise generator cannot honestly claim: no artist/track
+      // identity, no duration, no elapsed position, no track-skip controls.
+      expect(screen.queryByText("Rainy Window")).not.toBeInTheDocument();
+      expect(screen.queryByText("Lo-Fi Study Club")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deep Focus")).not.toBeInTheDocument();
+      expect(screen.queryByText("3:38")).not.toBeInTheDocument();
+      expect(screen.queryByText("3:14")).not.toBeInTheDocument();
+      expect(screen.queryByText("0:37")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Piste précédente" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Piste suivante" })).not.toBeInTheDocument();
+    });
+
+    it("selecting a sound changes the selection without starting playback", async () => {
+      stubFetch(emptyView);
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      await user.click(screen.getByText("Bruit rose"));
+
+      expect(screen.getByRole("radio", { name: "Bruit rose" })).toBeChecked();
+      expect(screen.getByRole("button", { name: "Lecture" })).toBeInTheDocument();
+    });
+
+    it("clicking 'Lecture' starts playback (button becomes 'Pause'), and clicking it again stops playback", async () => {
+      stubFetch(emptyView);
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      await user.click(screen.getByRole("button", { name: "Lecture" }));
+      expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Pause" }));
+      expect(await screen.findByRole("button", { name: "Lecture" })).toBeInTheDocument();
+    });
+
+    it("the volume control is a real range input, not a fixed-width fake bar", async () => {
+      stubFetch(emptyView);
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      const volume = screen.getByRole("slider", { name: "Volume" });
+      fireEvent.change(volume, { target: { value: "0.1" } });
+
+      await waitFor(() => expect(volume).toHaveValue("0.1"));
+    });
   });
 
   // M10 Phase 1's per-screen backlog: a todo's checkbox and its own delete

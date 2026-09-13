@@ -9,11 +9,10 @@ import {
   Clock,
   ListChecks,
   Music,
+  Pause,
   Play,
   Plus,
   RotateCcw,
-  SkipBack,
-  SkipForward,
   Timer,
   Volume2,
   X,
@@ -22,11 +21,13 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { FIELD_CLASS, SELECT_CHEVRON } from "../components/ui/field-styles.js";
+import { AMBIENT_SOUND_KINDS } from "../lib/ambient-sound-graph.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { EXPAND_TAP_TARGET_44 } from "../lib/tap-target.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView, type Todo } from "../lib/today-api.js";
+import { ambientSoundLabel, useAmbientSound } from "../lib/use-ambient-sound.js";
 import { formatCountdown, pomodoroFinishedLabel, pomodoroSessionTypeLabel, sessionType, useActivePomodoro } from "../lib/use-active-pomodoro.js";
 import type { PomodoroSessionType } from "../lib/pomodoro-api.js";
 
@@ -711,10 +712,20 @@ function PomodoroCard() {
   );
 }
 
-// Still a mock, not yet backed by real audio (unlike the pomodoro above) —
-// wired later, one piece at a time, same as every other section of this
-// screen was.
+// M10 Phase 2, lot 4: real, synthesized ambient noise (Web Audio, no audio
+// file — apps/web/src/lib/ambient-sound-graph.ts), no longer a mock music
+// player. The previous mockup promised things synthesis cannot honestly
+// keep — an artist line ("Lo-Fi Study Club"), track durations, a scrubbable
+// position, previous/next transport — and all of it is gone rather than
+// wired to a fake value: a noise generator has no artist, no duration, no
+// position, and nothing before or after the one sound currently selected.
+// What remains is exactly the three real capabilities left: pick a sound,
+// play or pause it, set its volume. The graph itself lives in
+// AmbientSoundEffects (mounted once in App.tsx, docs/UI.md's own note) —
+// this card only reads useAmbientSound's state and calls its actions.
 function StudySoundsCard() {
+  const { kind, playing, volume, select, play, pause, setVolume } = useAmbientSound();
+
   return (
     <Card className="flex flex-col gap-[var(--space-block)]" data-testid="study-sounds-card">
       <div className="flex items-center gap-[var(--space-related)] text-sm font-semibold">
@@ -722,54 +733,60 @@ function StudySoundsCard() {
         Sons d'ambiance
       </div>
 
+      <div role="radiogroup" aria-label="Son d'ambiance" className="flex flex-col gap-1">
+        {AMBIENT_SOUND_KINDS.map((soundKind) => {
+          const checked = kind === soundKind;
+          const label = ambientSoundLabel(soundKind);
+          return (
+            <label
+              key={soundKind}
+              className={`flex min-h-11 cursor-pointer items-center rounded-[var(--radius-button)] px-2.5 text-sm ${
+                checked ? "bg-primary-soft font-semibold text-primary" : "text-text"
+              }`}
+            >
+              <input
+                type="radio"
+                name="ambient-sound"
+                value={soundKind}
+                checked={checked}
+                onChange={() => select(soundKind)}
+                aria-label={label}
+                className="sr-only"
+              />
+              {label}
+            </label>
+          );
+        })}
+      </div>
+
       <div className="flex items-center gap-[var(--space-related)]">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary-soft">
-          <Music aria-hidden="true" focusable="false" size={18} strokeWidth={ICON_STROKE_WIDTH} color="#0f7b5f" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[length:var(--text-label)] text-text-muted">Sons de concentration</span>
-          <span className="text-sm font-bold">Rainy Window</span>
-          <span className="text-[length:var(--text-label)] text-text-muted">Lo-Fi Study Club</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-[var(--space-related)]">
-        <div className="relative h-1 rounded-full bg-border">
-          <div className="absolute left-0 top-0 h-1 w-[16%] rounded-full bg-primary" />
-        </div>
-        <div className="flex justify-between text-[length:var(--text-label)] text-text-muted">
-          <span>0:37</span>
-          <span>3:38</span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-center gap-[var(--space-block)]">
-        <button type="button" aria-label="Piste précédente" className="text-text-muted">
-          <SkipBack aria-hidden="true" focusable="false" size={18} fill="currentColor" strokeWidth={0} />
-        </button>
-        <button type="button" aria-label="Lecture" className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-primary text-white">
-          <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
-        </button>
-        <button type="button" aria-label="Piste suivante" className="text-text-muted">
-          <SkipForward aria-hidden="true" focusable="false" size={18} fill="currentColor" strokeWidth={0} />
-        </button>
-        <div className="ml-1 flex items-center gap-[var(--space-related)]">
-          <Volume2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="text-text-muted" />
-          <div className="relative h-1 w-[52px] rounded-full bg-border">
-            <div className="absolute left-0 top-0 h-1 w-[65%] rounded-full bg-text-muted" />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center justify-between rounded-[var(--radius-button)] bg-primary-soft px-2.5 py-2">
-          <span className="text-sm font-semibold text-primary">Rainy Window</span>
-          <span className="text-[length:var(--text-label)] text-primary">3:38</span>
-        </div>
-        <div className="flex items-center justify-between rounded-[var(--radius-button)] px-2.5 py-2">
-          <span className="text-sm">Deep Focus</span>
-          <span className="text-[length:var(--text-label)] text-text-muted">3:14</span>
-        </div>
+        <Button
+          variant="accent"
+          aria-label={playing ? "Pause" : "Lecture"}
+          onClick={() => (playing ? pause() : play())}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full p-0"
+        >
+          {playing ? (
+            <Pause aria-hidden="true" focusable="false" size={16} fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Play aria-hidden="true" focusable="false" size={16} fill="currentColor" strokeWidth={0} />
+          )}
+        </Button>
+        <Volume2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} className="shrink-0 text-text-muted" />
+        {/* h-11: the input's own layout box is the real touch target here,
+            not a pseudo-element halo — this is a brand-new control, not an
+            M10 Phase 1 pass, so there is no existing small hit area to work
+            around (docs/UI.md's own Aujourd'hui — study sounds note). */}
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={(e) => setVolume(Number(e.target.value))}
+          aria-label="Volume"
+          className="h-11 w-full flex-1 accent-primary"
+        />
       </div>
     </Card>
   );
