@@ -702,12 +702,20 @@ assuming this list is complete or exact:
   defect likely exists in each of their own copies too; each screen's
   own future pass owns confirming and fixing its own, not assumed fixed
   by this one.
-- **Lecteur** (`ReaderScreen.tsx`) — unconditional `p-8`; no fixed-width
-  `shrink-0` column and no sub-44px button found in a source read, but
-  neither claim is measured yet the way the shell's own numbers were —
-  and Notions' own pass found its source-read audit missed real
-  touch-target gaps twice already, so this screen's own pass should
-  re-measure at 375px rather than trust this line.
+- **Lecteur** (`ReaderScreen.tsx`) — **done**: `p-4 md:p-8` added to all
+  four of this screen's own top-level states; the reading-card/study-panel
+  two-column layout needed no change, confirmed by real measurement
+  (`scrollWidth` already 375 before this pass touched anything) — its own
+  `lg:flex-row`/`lg:w-72` breakpoint, a deliberate pre-existing exception
+  (`docs/UI.md`'s own Lecteur note), already stacks correctly. Exactly as
+  predicted, the course pill (this screen's own local copy of
+  `CoursePill`, duplicated verbatim from `NotionsScreen.tsx`) carried the
+  identical 38px defect — fixed the same way, `min-h-11 md:min-h-0`.
+  Every `Button`-based control here was already 44px, confirmed by
+  measurement, not assumed. `ProgressScreen.tsx`/`TutorScreen.tsx` still
+  carry their own un-measured `CoursePill` copies — two confirmations of
+  the same duplicated defect now, not zero; their own future passes still
+  own confirming and fixing their own.
 - **Progrès** (`ProgressScreen.tsx`) — unconditional `p-8`; `RingSpacer`
   (`sm:w-[140px]`) is hidden below the `sm` breakpoint (640px) so it is
   not an overflow risk; "Supprimer l'échéance" is already `h-11 w-11`

@@ -311,4 +311,22 @@ describe("ReaderScreen", () => {
     await screen.findByText(/encore en cours de lecture/i);
     expect(screen.queryByTestId("reader-study-panel")).not.toBeInTheDocument();
   });
+
+  // M10 Phase 1's per-screen backlog: a real 375px measurement (the same
+  // way NotionsScreen's own pass found this — CoursePill is duplicated
+  // verbatim between the two files, docs/UI.md's Notions note flagged this
+  // exact screen as a likely carrier of the same defect) found this
+  // screen's own CoursePill at 38px tall too. Same fix: a real min-height,
+  // not Aujourd'hui's own invisible pseudo-element — CoursePill sits in a
+  // flex-wrap row with a real, fixed gap-2, so growing its own real box
+  // can never overlap a neighbour.
+  it("a course pill carries a 44px minimum height on mobile, reset back to its own natural height from md up", async () => {
+    stubFetch({ documents: [docA, docB], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
+
+    renderScreen();
+    const pill = await screen.findByRole("button", { name: "Biologie" });
+
+    expect(pill.className).toMatch(/min-h-11/);
+    expect(pill.className).toMatch(/md:min-h-0/);
+  });
 });

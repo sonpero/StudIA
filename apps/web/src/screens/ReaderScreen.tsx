@@ -51,7 +51,7 @@ function CoursePill({ document, active, onSelect }: { document: DocumentSummary;
       type="button"
       aria-current={active ? "page" : undefined}
       onClick={onSelect}
-      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+      className={`flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors md:min-h-0 ${
         active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
       }`}
     >
@@ -240,7 +240,7 @@ export function ReaderScreen({
 
   if (documentsQuery.status === "pending") {
     return (
-      <main className="p-8">
+      <main className="p-4 md:p-8">
         <h1 className="mb-[var(--space-section)] font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
@@ -253,7 +253,7 @@ export function ReaderScreen({
 
   if (documentsQuery.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-4 md:p-8 text-center">
         <Confused />
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
         <p>Impossible de charger tes cours. Vérifie ta connexion et réessaie.</p>
@@ -268,7 +268,7 @@ export function ReaderScreen({
 
   if (documents.length === 0) {
     return (
-      <main className="flex flex-col items-center gap-4 p-8 text-center">
+      <main className="flex flex-col items-center gap-4 p-4 md:p-8 text-center">
         <Idle />
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
         <p>Ajoute un cours dans Mes cours pour le lire.</p>
@@ -280,7 +280,7 @@ export function ReaderScreen({
   const selectedDocument = documents.find((d) => d.id === selectedId) ?? documents[0]!;
 
   return (
-    <main className="p-8">
+    <main className="p-4 md:p-8">
       <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Lecteur</h1>
       <p className="mb-[var(--space-section)] text-sm text-text-muted">Le contenu de ton cours, mis en forme pour une lecture confortable.</p>
 

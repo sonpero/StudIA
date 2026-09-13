@@ -2033,15 +2033,36 @@ Notions went through first (`Screen notes`' own Notions note, above).
 `Navigation`'s own note (above) already describes what changed at the
 nav-entry level; this note describes the page itself.
 
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) touched two
+things here: root padding (`p-4 md:p-8` on all four of this screen's own
+top-level states, each its own `<main>`) and the course pill (below).**
+The reading-card/study-panel two-column layout needed no change — it
+already stacks correctly below its own `lg` breakpoint, checked live by
+measurement (`scrollWidth` already 375 before this pass touched
+anything), not merely assumed from the source read that flagged this
+screen as unmeasured.
+
 **One page: a pill row of every course, then that course's own reading
 surface and "Étudier ce cours" panel — no separate picker to leave.**
 Reached the same three ways as before this pass — a course's card on Mes
 cours ("Lire le cours"), Notions du cours' own toolbar, and directly from
 the nav — but all three now land on this one page rather than two of them
-skipping a separate picker page. Each pill reuses `NotionsScreen`'s own
-`CoursePill` component unmodified (`BookOpen` plus the course's own title,
-filled `--primary`/white when active). Switching pills is a local
-selection, not a navigation: the selected course's own content
+skipping a separate picker page. Each pill is this screen's own local
+copy of the same idiom `NotionsScreen`'s own `CoursePill` establishes
+(`BookOpen` plus the course's own title, filled `--primary`/white when
+active) — not a shared import, small enough that one would cost more
+than it saves, same reasoning as the two screens' own separate
+`CourseSummaryCard`/`ReaderCourseContent` split. This duplication is
+exactly why the same 38px-tall, no-responsive-variant defect
+`NotionsScreen`'s own M10 pass found turned up here too, unmeasured
+until this pass's own real 375px check: fixed the same way, a real
+`min-h-11 md:min-h-0` rather than Aujourd'hui's own invisible
+pseudo-element, since the pill sits in a `flex-wrap` row with a real,
+fixed `gap-2` — growing the real box can never overlap a neighbour.
+`ProgressScreen.tsx`/`TutorScreen.tsx` carry their own copies too,
+not yet checked — each screen's own future pass still owns confirming
+its own by measurement, not assumed fixed here. Switching pills is a
+local selection, not a navigation: the selected course's own content
 (`ReaderCourseContent`) resets on switch via a `key`-based remount, the
 same idiom `NotionsScreen`'s own course body already uses, so a stale poll
 from the previously-selected course never leaks into the new one.
