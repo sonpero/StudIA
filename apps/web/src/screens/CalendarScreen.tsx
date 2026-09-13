@@ -247,11 +247,11 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
   // in aria-label, since there is no visible text left to carry it.
   const monthNav = (
     <div className="flex items-center justify-between">
-      <Button variant="secondary" aria-label="Mois précédent" className="rounded-2xl px-3" onClick={goToPreviousMonth}>
+      <Button variant="secondary" aria-label="Mois précédent" className="min-w-11 rounded-2xl px-3 md:min-w-0" onClick={goToPreviousMonth}>
         <ChevronLeft aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
       </Button>
       <h2 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">{monthLabel(viewed.year, viewed.month)}</h2>
-      <Button variant="secondary" aria-label="Mois suivant" className="rounded-2xl px-3" onClick={goToNextMonth}>
+      <Button variant="secondary" aria-label="Mois suivant" className="min-w-11 rounded-2xl px-3 md:min-w-0" onClick={goToNextMonth}>
         <ChevronRight aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
       </Button>
     </div>
@@ -259,7 +259,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
         {pageHeader}
         <Card className="flex flex-col gap-[var(--space-section)] rounded-2xl">
           {monthNav}
@@ -275,7 +275,7 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-4 md:p-8 text-center">
         <Confused />
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Agenda</h1>
         <p>Impossible de charger le calendrier. Vérifie ta connexion et réessaie.</p>
@@ -293,14 +293,14 @@ export function CalendarScreen({ onOpenCourse }: { onOpenCourse: (documentId: st
   const selectedEntries = selectedDate ? (entriesByDate.get(selectedDate) ?? []) : null;
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
       {pageHeader}
 
       <div className="grid gap-[var(--space-section)] lg:grid-cols-[2fr_1fr] lg:items-start">
         <Card className="flex flex-col gap-[var(--space-section)] rounded-2xl">
           {monthNav}
 
-          <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid">
+          <div className="grid grid-cols-7 gap-0 md:gap-1" data-testid="calendar-grid">
             {WEEKDAY_LABELS.map((label) => (
               <div key={label} className="p-1 text-center text-xs font-medium text-text-muted" aria-hidden="true">
                 {label}

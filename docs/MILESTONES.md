@@ -737,10 +737,22 @@ assuming this list is complete or exact:
   breakpoint governs its `display`, so a naive visibility check would
   have passed even against the unfixed bug (found the hard way, by first
   writing exactly that check and watching it stay green pre-fix).
-- **Agenda** (`CalendarScreen.tsx`) — unconditional `p-8`; no fixed-width
-  `shrink-0` column; day cells are `min-h-14` (56px, a compliant
-  height), but their width comes from an unconstrained 7-column grid —
-  a real candidate for under 44px at 375px, not yet measured.
+- **Agenda** (`CalendarScreen.tsx`) — **done**: `p-4 md:p-8` added to
+  this screen's own three top-level states (no distinct "empty" branch
+  here, unlike Notions/Lecteur/Progrès). A real 375px measurement found
+  day cells at 36px wide (`min-h-14` already gave a compliant 56px
+  height) — exactly the "real candidate" this line used to flag
+  unmeasured — and the month-nav buttons at 42px, 2px short. Month-nav
+  fixed the same way as every `CoursePill` this milestone already fixed,
+  `min-w-11 md:min-w-0`. Day cells fixed differently: a 7-column grid has
+  no per-cell class to widen, so its own `gap-1` (24px total) was the
+  entire deficit — dropped to `gap-0 md:gap-1`, closing it exactly
+  (44.14px measured) without the overflow a wider per-cell minimum would
+  have caused (7 × 44px alone exceeds this screen's own available width
+  at 375px, checked by arithmetic before choosing this fix). The
+  two-column split (`lg:grid-cols-[2fr_1fr]`) is untouched — this screen
+  is one of the two already-sanctioned late-breakpoint exceptions named
+  above ("Calendrier"), not a bug.
 - **Tuteur** (`TutorScreen.tsx`) — unconditional `p-8`; no fixed-width
   `shrink-0` column and no sub-44px button found in a source read, same
   caveat as Lecteur above.

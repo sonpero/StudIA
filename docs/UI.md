@@ -1870,6 +1870,32 @@ many FSRS cards will be due on a future date, and no module computes one.
 Building that forecast would be a new capability, not a reskin — out of
 scope for this pass, confirmed with the user rather than assumed away.
 
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) touched three
+things here.** Root padding (`p-4 md:p-8` on this screen's own three
+top-level states — loading, error, ready; unlike Notions/Lecteur/Progrès
+there is no distinct "empty" branch, an empty month is a normal,
+always-present grid with nothing in it, the "Prochaines échéances" empty
+sentence below already covers that sub-case). A real 375px measurement —
+not just the original source-read audit, which only flagged the day
+cell's own width as "a real candidate" — found day cells at 36px wide
+(`min-h-14` already gave a compliant 56px height) and the month-nav
+buttons at 42px, 2px short. The month-nav fix is the same real-min-width
+pattern this milestone's other passes already used for `CoursePill`
+(`min-w-11 md:min-w-0`, invisible at desktop). The day-cell fix is
+different in kind: a 7-column grid has no per-cell class to widen — its
+own `gap-1` (4px × 6 gaps = 24px) was the entire deficit, so dropping it
+to `gap-0` below `md` (reset to `gap-1` from `md` up) closes it exactly,
+without touching any cell's own size classes or risking the horizontal
+overflow a wider minimum would have caused (7 cells × 44px alone already
+exceeds this screen's own available width at 375px — confirmed by
+arithmetic before choosing this fix, not assumed safe). The two-column
+split (`lg:grid-cols-[2fr_1fr]`) is untouched: this screen (named
+"Calendrier" in the milestone's own acceptance text) is one of the two
+already-sanctioned exceptions to the default 768px point, alongside
+Lecteur — a month grid is exactly the kind of content the milestone's
+own Responsive conventions note names as needing extra width before
+splitting.
+
 **Page chrome, new in this pass:** a `Calendar` icon plus an "h1"
 "Agenda" and a one-line, plain-fact subtitle ("Tes échéances et ce
 qui est prévu, d'un coup d'œil.") sit above everything else, present in

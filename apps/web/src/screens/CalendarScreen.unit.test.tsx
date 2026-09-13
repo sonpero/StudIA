@@ -522,4 +522,35 @@ describe("CalendarScreen", () => {
       expect(screen.getByTestId("calendar-day-2026-03-15")).toHaveAttribute("aria-pressed", "true");
     });
   });
+
+  // M10 Phase 1's per-screen backlog: a real 375px measurement (not just
+  // the original source-read audit, which only flagged the day cell's own
+  // width as "a real candidate") found the grid at gap-1 puts each day
+  // cell at 36px wide — well under 44px — and the month-nav buttons at
+  // 42px, 2px short. jsdom computes no real layout, so there is no
+  // behaviour left to assert beyond "the classes that produce the fix are
+  // actually on the rendered element" (docs/UI.md's own class-name-
+  // assertion exception) — the actual resulting width (44.14px, no
+  // horizontal overflow) is checked for real in
+  // e2e/calendar-mobile.spec.ts against an actual browser layout.
+  it("the calendar grid drops its own gap on mobile (reset from md up) — the gap alone was the difference between a 36px and a 44px-wide day cell, not a change to any cell's own size classes", async () => {
+    stubFetch({});
+    renderScreen();
+
+    const grid = await screen.findByTestId("calendar-grid");
+    expect(grid.className).toMatch(/gap-0/);
+    expect(grid.className).toMatch(/md:gap-1/);
+  });
+
+  it("each month-nav button carries a 44px minimum width on mobile, reset back to its own natural width from md up", async () => {
+    stubFetch({});
+    renderScreen();
+    await screen.findByTestId("calendar-grid");
+
+    for (const name of [/mois précédent/i, /mois suivant/i]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toMatch(/min-w-11/);
+      expect(button.className).toMatch(/md:min-w-0/);
+    }
+  });
 });
