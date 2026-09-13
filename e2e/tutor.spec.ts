@@ -8,16 +8,7 @@ import { expect, test } from "@playwright/test";
 // no reason to wait on -- the nav entry only needs the document itself
 // done, independent of notions.
 test.describe("tutor", () => {
-  // FIXME (pre-existing, not M9): fails on the last two assertions since
-  // citations were made collapsed by default, per message (commit
-  // 0e0255e, "Tuteur citations collapse, markdown rendering, link/image
-  // neutralisation") — this test never clicks "Voir les sources" to expand
-  // them before asserting on "Contenu extrait.", so it now looks for text
-  // that is present in the DOM but hidden behind that toggle. Found while
-  // running the full e2e suite for M9's own nav-restructure commit; the
-  // fix belongs to a separate follow-up (add the expand step), not to that
-  // commit, so this is marked fixme rather than silently left red.
-  test.fixme("ask a question about a course and get a streamed, grounded answer with a citation", async ({ page }) => {
+  test("ask a question about a course and get a streamed, grounded answer with a citation", async ({ page }) => {
     test.setTimeout(30_000);
     await page.goto("/");
 
@@ -55,6 +46,10 @@ test.describe("tutor", () => {
     await expect(page.getByText("La photosynthèse est le processus par lequel les plantes convertissent la lumière en énergie chimique.")).toBeVisible({
       timeout: 10_000,
     });
+
+    // Citations are collapsed by default, per message (commit 0e0255e) —
+    // expand them before looking for the cited text below.
+    await page.getByRole("button", { name: /voir les sources/i }).click();
 
     // A citation, the actual cited text from the course's own extracted
     // markdown (FixtureDocumentExtractor's "valid" case), never a
