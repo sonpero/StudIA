@@ -1134,6 +1134,17 @@ note, above) and is visible from every screen, not only this one
 owed `docs/UI.md` since that pass — nothing above the header note is
 stale any more.
 
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) adapted this screen
+first, as the reference the other six followed** — root padding, column
+stacking and the four touch targets below all set the pattern the rest of
+Phase 1 reused rather than each re-deciding it. The root now carries `p-4
+md:p-8` (`docs/UI.md`'s Responsive conventions: 16px below 768px, 32px at
+or above), a deliberate desktop change — this was the one screen with no
+padding at all before, unlike every other screen's own unconditional
+`p-8` — logged as an exception to Phase 1's own "desktop unchanged"
+acceptance box (`docs/MILESTONES.md`), alongside the shell pass's own
+`Se déconnecter` underline.
+
 **Header.** A full-width block, its own top edge lining up with nothing
 beside it: the date ("Dimanche 6 septembre", capitalised, `fr-FR`
 long-weekday/day/month format) in `--primary`, then "Bonjour, {username}"
@@ -1156,12 +1167,27 @@ unlike the `sleeping`-mascot empty state this section used to describe.
 Flagged here rather than left to look intentional; closing this gap is a
 distinct, not-yet-scoped task.
 
-**Two independent layouts side by side, not one shared grid.** A left
-column (`flex-1`) stacks the due-course grid and the todos card; a fixed
-300px right column stacks Pomodoro and the study-sounds card (below).
-Nothing from `items-stretch`, row-matched card heights, or a todos card
-"pinned" relative to course cards in one grid still applies — the two
-columns don't share rows at all.
+**Two independent layouts side by side from 768px up, one column below
+it — never one shared grid at any width.** A left column (`flex-1`)
+stacks the due-course grid and the todos card, in source order first: the
+content a person came here to consult, ahead of the pomodoro, which stays
+reachable from anywhere via the header widget (M10 Phase 2's own
+persistent-visibility work, below) once it lands. A right column, fixed
+at 300px only from `md` up (`w-full flex-col md:w-[300px] md:shrink-0`),
+stacks Pomodoro and the study-sounds card (below) — full width and
+stacked beneath the left column below 768px instead, the outer row itself
+switching `flex-col`/`md:flex-row` at the same breakpoint (`docs/UI.md`'s
+Responsive conventions: 768px is the default point to become a row).
+M10 Phase 1's own per-screen backlog (`docs/MILESTONES.md`) is what this
+fixed: the fixed-300px column, with no responsive variant at all, used to
+overflow 375px in every state (43px while loading or on error — it
+rendered unconditionally regardless of `view`; 158px once real content —
+the todos card, a due course card — rendered beside it), the exact shape
+this section's own Responsive conventions bans ("a fixed pixel width
+combined with `shrink-0` and no responsive variant at all"). Nothing from
+`items-stretch`, row-matched card heights, or a todos card "pinned"
+relative to course cards in one grid still applies — the two columns
+don't share rows at all.
 
 **One heading, "À réviser aujourd'hui" (a `Calendar` icon plus the label),
 over a grid of course cards, two columns from 640px up — only when at
@@ -1226,6 +1252,30 @@ nothing else) and the photo picker (one file input, "Photo de l'agenda")
 are otherwise unchanged from before: both close on Escape or their own
 "Fermer", the add form's draft survives a close/reopen, the photo picker
 has nothing to preserve.
+
+**Four controls on this screen carry a 44px tap target with their own
+visible box unchanged — the todos card's own two triggers above, and a
+todo row's own checkbox and delete button.** All four were smaller than
+44px (18px, 24px) with no responsive variant at all, an M10 Phase 1
+per-screen backlog item (`docs/MILESTONES.md`); enlarging the real box
+would have changed it on desktop too, which Phase 1's own "desktop
+unchanged" rule forbids. The fix instead is the same technique Button's
+own `link` variant already established (`apps/web/src/components/ui/
+button.tsx`): a `relative` positioning context plus an absolutely
+centred `before` pseudo-element, fixed 44px square (`EXPAND_TAP_TARGET_44`
+in `TodayScreen.tsx`) — centred on both axes here, where `link`'s own
+variant only needed vertical centring (its box was already full width).
+A native `<input>` cannot host a `::before` (a replaced element, undefined
+by the CSS spec): the checkbox wraps in a `<label>` sized to its own
+18px box instead, carrying the pattern there — clicking the label's own
+enlarged area still toggles the input it wraps, the ordinary behaviour of
+a `<label>` around a control. Measured, not assumed: on this row, the
+label between the checkbox and the delete button is itself `flex-1`, so
+it — not a fixed gap — is what keeps their two 44px zones far apart in
+practice (273px measured at 375px, `e2e/today-mobile.spec.ts`); nothing
+here guarantees that by construction, so a screen reusing this pattern on
+a row without a flex-growing element between two such targets needs its
+own measurement, not an assumption that this one generalises for free.
 
 This screen still has no "Retour" — the nav's own "Aujourd'hui" leads
 here from anywhere, and "Mes cours" is the app's other home.

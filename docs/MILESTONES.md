@@ -614,30 +614,48 @@ horizontal overflow.
 closing the shell pass, before any per-screen pass started): the first
 two boxes and this last one hold; the two about per-screen overflow and
 about desktop staying unchanged across *every* pass do not yet, and stay
-unticked on purpose — desktop was verified unchanged for the one pass
-done so far (the shell), via a throwaway before/after screenshot
-comparison against commit `0d71df3` (pre-shell), but that box covers
-every remaining screen pass too, none of which have happened yet.
+unticked on purpose — desktop was verified unchanged for the two passes
+done so far (the shell, then Aujourd'hui), via a throwaway before/after
+screenshot comparison each time (`0d71df3` pre-shell; the shell pass
+itself pre-Aujourd'hui), but that box covers every remaining screen pass
+too, five of which have not happened yet.
+
+**Two exceptions to "desktop unchanged," both deliberate, not
+regressions the two passes so far introduced by accident:** the shell
+pass's own migration of "Se déconnecter" from a bare `<button>` to
+Button's `link` variant added an underline that was not there before
+(`App.tsx`, commit `844e296`); Aujourd'hui's own pass (below) added
+`p-4 md:p-8` to a screen that previously had no padding at all, a 32px
+desktop change (`docs/UI.md`'s Aujourd'hui note). Both are logged here
+rather than left to look like an oversight against a box that otherwise
+reads as absolute.
 
 **Remaining work — per-screen backlog**, from a source read of all seven
 screens against this phase's own three concerns (page padding, a fixed-
 width column that cannot stack, a touch target under 44px), not yet
 measured against a real 375px render the way the shell pass's own
-numbers were — each screen's own future pass still owns confirming these
-by measurement, not assuming this list is complete or exact:
+numbers were, except where marked done below — each remaining screen's
+own future pass still owns confirming its own entry by measurement, not
+assuming this list is complete or exact:
 
-- **Aujourd'hui** (`TodayScreen.tsx`) — no page-level padding at any
-  breakpoint today (unlike every other screen's own unconditional
-  `p-8`), so mobile needs padding added without disturbing desktop's
-  current lack of it; a fixed `w-[300px] shrink-0` sidebar (Pomodoro,
-  Sons d'ambiance) that never stacks, confirmed overflowing 375px in all
-  four states (43px in loading/error, 158px once a due course card and
-  the todos card are present); several touch targets under 44px with no
-  responsive variant at all today — a todo's own checkbox and its
-  delete "×" (18×18 each), "Ajouter depuis une photo"/"Ajouter un todo"
-  (24×24 each), the ambiance player's previous/next (18×18) and play
-  (34×34) — enlarging any of these as they're written today would change
-  their desktop box too, since none has an `md:` override to hold it.
+- **Aujourd'hui** (`TodayScreen.tsx`) — **done**, the reference pass the
+  other six follow (`docs/UI.md`'s Aujourd'hui note has the full
+  reasoning): `p-4 md:p-8` added (a deliberate desktop change, logged
+  above); the fixed `w-[300px] shrink-0` sidebar (Pomodoro, Sons
+  d'ambiance) now stacks full width below `md` and is only a fixed 300px
+  column from `md` up, fixing the confirmed 375px overflow in all four
+  states (43px in loading/error, 158px once a due course card and the
+  todos card are present) — measured at 0 in all four,
+  `e2e/today-mobile.spec.ts`; four touch targets enlarged to a 44px zone
+  via a `before`-pseudo-element pattern with their own visible box
+  unchanged (a todo's own checkbox and delete button, "Ajouter depuis une
+  photo"/"Ajouter un todo") — the checkbox/delete pair's own 44px zones
+  measured 273px apart at 375px, not assumed clear. **Not done**: the
+  ambiance player's own previous/next (18×18) and play (34×34) buttons —
+  out of scope for this pass (the user's own call: that card is unwired
+  mock content whose controls change shape once Phase 2 wires it, so
+  enlarging them now would be thrown away); still under 44px, carried
+  forward rather than silently dropped from the backlog.
 - **Mes cours** (`DocumentsScreen.tsx`) — unconditional `p-8`; a fixed
   `w-[320px] shrink-0` upload panel that never stacks, confirmed
   overflowing 375px (the pre-existing bug the shell pass's own

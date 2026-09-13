@@ -552,4 +552,63 @@ describe("TodayScreen (Aujourd'hui)", () => {
     expect(screen.getByText("Sons d'ambiance")).toBeInTheDocument();
     expect(screen.getAllByText("Rainy Window")).toHaveLength(2);
   });
+
+  // M10 Phase 1's per-screen backlog: a todo's checkbox and its own delete
+  // button were 18x18, with no responsive variant at all — enlarging their
+  // real box would also enlarge it on desktop. Same fix Button's own `link`
+  // variant already uses (apps/web/src/components/ui/button.tsx): a
+  // `relative` positioning context plus an absolutely centred `before`
+  // pseudo-element, fixed 44px square, leaving the visible box untouched.
+  // jsdom computes no real layout, so there is no behaviour left to assert
+  // beyond "the classes that produce this are actually on the rendered
+  // element" (docs/UI.md's own class-name-assertion exception) — whether
+  // the resulting 44px zones actually avoid covering each other is a real
+  // behaviour instead, checked for real in e2e/today-mobile.spec.ts against
+  // an actual browser layout.
+  it("a todo's checkbox and delete button both carry the 44px expanded tap-target pattern, with their own visible box unchanged", async () => {
+    stubFetch({
+      ...emptyView,
+      todos: [{ id: "t1", label: "Réviser", dueDate: null, documentId: null, done: false, source: "manual", createdAt: "2026-09-01T00:00:00.000Z" }],
+    });
+    renderScreen();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Réviser" });
+    expect(checkbox.className).toMatch(/h-\[18px\] w-\[18px\]/);
+    const checkboxHitZone = checkbox.closest("label");
+    expect(checkboxHitZone?.className).toMatch(/before:h-11/);
+    expect(checkboxHitZone?.className).toMatch(/before:w-11/);
+    // Regression lock (found by e2e/todo-photo.spec.ts's own real click on
+    // this checkbox after this pattern first shipped): without a negative
+    // z-index, the label's own pseudo-element paints on top of the real
+    // input and intercepts every click on it, including directly over its
+    // own visible box.
+    expect(checkboxHitZone?.className).toMatch(/before:-z-10/);
+    // A second regression lock: `relative` alone does not create a
+    // stacking context, so a bare `-z-10` escapes to a distant ancestor
+    // instead of staying scoped to "behind this label's own input"
+    // (e2e/today-mobile.spec.ts's own click test caught this — the margin
+    // started hitting the todos card instead of the checkbox).
+    expect(checkboxHitZone?.className).toMatch(/isolate/);
+
+    const deleteButton = screen.getByRole("button", { name: "Supprimer « Réviser »" });
+    expect(deleteButton.className).toMatch(/h-\[18px\] w-\[18px\]/);
+    expect(deleteButton.className).toMatch(/before:h-11/);
+    expect(deleteButton.className).toMatch(/before:w-11/);
+  });
+
+  it("the todos-card's two triggers ('Ajouter depuis une photo', 'Ajouter un todo') both carry the 44px expanded tap-target pattern, with their own visible box unchanged", async () => {
+    stubFetch(emptyView);
+    renderScreen();
+    await screen.findByText(/rien à réviser pour l'instant/i);
+
+    const camera = screen.getByRole("button", { name: /ajouter depuis une photo/i });
+    expect(camera.className).toMatch(/h-6 w-6/);
+    expect(camera.className).toMatch(/before:h-11/);
+    expect(camera.className).toMatch(/before:w-11/);
+
+    const plus = screen.getByRole("button", { name: "Ajouter un todo" });
+    expect(plus.className).toMatch(/h-6 w-6/);
+    expect(plus.className).toMatch(/before:h-11/);
+    expect(plus.className).toMatch(/before:w-11/);
+  });
 });

@@ -43,6 +43,57 @@ const IDLE_DISPLAY = "25:00";
 // displayed day never shifts by one under a non-UTC timezone.
 const TODO_DUE_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
+// M10 Phase 1's own reference pattern for expanding a touch target to 44px
+// without changing its visible box (docs/UI.md's Responsive conventions),
+// the technique Button's own `link` variant already established
+// (apps/web/src/components/ui/button.tsx): a `relative` positioning
+// context plus an absolutely centred `before` pseudo-element, fixed 44px
+// square. `link`'s own variant only needed vertical centring (its box was
+// already full width); every target here is small in both dimensions, so
+// this centres on both axes instead. Factored once for the four controls
+// below that need it (a todo's own checkbox and delete button, the two
+// todos-card triggers) — not shared outside this file, since nothing else
+// here needs it.
+//
+// A native `<input>` cannot host a `::before` pseudo-element at all (a
+// replaced element, undefined by the CSS spec) — the checkbox below wraps
+// it in a `<label>` instead, sized to the checkbox's own visible box, and
+// puts this pattern on the label: clicking anywhere in the label's own
+// (enlarged) box still toggles the input it wraps, the ordinary behaviour
+// of a `<label>` around a control, no `htmlFor` needed.
+//
+// `before:-z-10` is load-bearing, not decoration: an absolutely-positioned
+// pseudo-element with the default `z-index: auto` paints *after* — on top
+// of — its host's own in-flow, non-positioned children (CSS2.1's stacking
+// order), so without this the checkbox's own label-wrapper pseudo would
+// sit visually on top of the real `<input>` and intercept every pointer
+// event over it, including directly over its own visible box — confirmed
+// by a real regression (`e2e/todo-photo.spec.ts`'s own `.click()` on this
+// exact checkbox started timing out, Playwright reporting the `<label>`
+// itself as "intercepting pointer events"). A negative z-index moves the
+// pseudo behind the real, in-flow `<input>` instead: the input (unmoved,
+// still un-positioned) keeps painting on top wherever the two overlap — its
+// own 18px box — while the pseudo, being the only thing painted in the
+// margin beyond that box, still catches a click there and the wrapping
+// `<label>` still forwards it to the input, natively.
+//
+// `isolate` is just as load-bearing as the negative z-index, and for a
+// subtler reason: `position: relative` alone does not create a stacking
+// context, so a plain `-z-10` doesn't stay scoped to "behind this element's
+// own content" — it escapes to the nearest actual stacking context, which
+// could be several ancestors up (confirmed by a second real regression
+// while fixing the first: without `isolate`, a click in the margin started
+// hitting `todos-card` or the page's own `<html>`, several levels above the
+// button, instead of the button itself). `isolate` (`isolation: isolate`)
+// forces this element to start its own stacking context, so `-z-10` only
+// ever competes against that element's own children — the real input or
+// icon — never anything outside it. Needed on all four controls below, not
+// only the label-wrapped checkbox: a button's own icon is exactly as
+// "in-flow, non-positioned content" as the checkbox's own input is, so the
+// same escape would otherwise happen there too.
+const EXPAND_TAP_TARGET_44 =
+  "relative isolate before:absolute before:left-1/2 before:top-1/2 before:-z-10 before:h-11 before:w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+
 function formatTodoDueDate(dueDate: string): string {
   const year = Number(dueDate.slice(0, 4));
   const month = Number(dueDate.slice(5, 7));
@@ -364,14 +415,16 @@ const CHECK_MARK_SVG =
 function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColour: string | null; onToggle: (done: boolean) => void; onDelete: () => void }) {
   return (
     <li data-testid="today-todo-row" className="flex items-center gap-[var(--space-related)]">
-      <input
-        type="checkbox"
-        checked={todo.done}
-        onChange={(e) => onToggle(e.target.checked)}
-        aria-label={todo.label}
-        className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface bg-center bg-no-repeat checked:border-success checked:bg-success"
-        style={{ backgroundSize: "11px 11px", backgroundImage: todo.done ? `url("${CHECK_MARK_SVG}")` : undefined }}
-      />
+      <label className={`flex h-[18px] w-[18px] shrink-0 ${EXPAND_TAP_TARGET_44}`}>
+        <input
+          type="checkbox"
+          checked={todo.done}
+          onChange={(e) => onToggle(e.target.checked)}
+          aria-label={todo.label}
+          className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface bg-center bg-no-repeat checked:border-success checked:bg-success"
+          style={{ backgroundSize: "11px 11px", backgroundImage: todo.done ? `url("${CHECK_MARK_SVG}")` : undefined }}
+        />
+      </label>
       <span className={todo.done ? "flex-1 text-sm text-text-muted line-through" : "flex-1 text-sm"}>{todo.label}</span>
       {todo.dueDate && <span className="whitespace-nowrap text-[length:var(--text-label)] text-text-muted">{formatTodoDueDate(todo.dueDate)}</span>}
       {dotColour && <span aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: dotColour }} />}
@@ -379,7 +432,7 @@ function TodoRow({ todo, dotColour, onToggle, onDelete }: { todo: Todo; dotColou
         type="button"
         aria-label={`Supprimer « ${todo.label} »`}
         onClick={onDelete}
-        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-text-muted hover:text-text"
+        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center text-text-muted hover:text-text ${EXPAND_TAP_TARGET_44}`}
       >
         <X aria-hidden="true" focusable="false" size={13} strokeWidth={ICON_STROKE_WIDTH} />
       </button>
@@ -431,10 +484,20 @@ function TodosCard({
         {!addOpen && !photoOpen && (
           <div className="flex items-center gap-[var(--space-related)]">
             <span className="text-[length:var(--text-label)] text-text-muted">{remaining} restants</span>
-            <button type="button" aria-label="Ajouter depuis une photo" onClick={() => setPhotoOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <button
+              type="button"
+              aria-label="Ajouter depuis une photo"
+              onClick={() => setPhotoOpen(true)}
+              className={`flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary ${EXPAND_TAP_TARGET_44}`}
+            >
               <Camera aria-hidden="true" focusable="false" size={14} strokeWidth={ICON_STROKE_WIDTH} />
             </button>
-            <button type="button" aria-label="Ajouter un todo" onClick={() => setAddOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <button
+              type="button"
+              aria-label="Ajouter un todo"
+              onClick={() => setAddOpen(true)}
+              className={`flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-primary ${EXPAND_TAP_TARGET_44}`}
+            >
               <Plus aria-hidden="true" focusable="false" size={14} strokeWidth={2.2} />
             </button>
           </div>
@@ -650,7 +713,7 @@ export function TodayScreen({
   const courseColourByDocumentId = new Map(courseCards.filter((c) => c.colour !== null).map((c) => [c.documentId, c.colour as string]));
 
   return (
-    <div className="flex flex-col gap-[var(--space-section)]">
+    <div className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
       {/* Full width, above the two-column row below — not sharing that
           row with the sidebar's own Pomodoro card, so Pomodoro's own top
           edge lines up with "À réviser aujourd'hui" (this row's own first
@@ -670,7 +733,7 @@ export function TodayScreen({
         </div>
       )}
 
-      <div className="flex gap-[var(--space-section)]">
+      <div className="flex flex-col gap-[var(--space-section)] md:flex-row">
         <main className="flex flex-1 flex-col gap-[var(--space-section)]">
           {query.status === "pending" && <p className="text-sm text-text-muted">Chargement…</p>}
           {query.status === "error" && <p role="alert">Impossible de charger ta journée. Vérifie ta connexion et réessaie.</p>}
@@ -695,7 +758,7 @@ export function TodayScreen({
           )}
         </main>
 
-        <div className="flex w-[300px] shrink-0 flex-col gap-[var(--space-section)]">
+        <div className="flex w-full flex-col gap-[var(--space-section)] md:w-[300px] md:shrink-0">
           <PomodoroCard />
           <StudySoundsCard />
         </div>
