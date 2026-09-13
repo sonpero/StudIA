@@ -235,6 +235,31 @@ describe("DocumentsScreen", () => {
     expect(within(card).getByTestId("course-stats").querySelector("svg")).not.toBeNull();
   });
 
+  // M10 Phase 1's per-screen backlog: this button was h-8 w-8 (32px), no
+  // responsive variant, under docs/UI.md's 44px minimum. Same fix
+  // Aujourd'hui's own pass already established (EXPAND_TAP_TARGET_44,
+  // apps/web/src/lib/tap-target.ts) — a relative/isolate positioning
+  // context plus an absolutely centred, negative-z before-pseudo-element,
+  // leaving the visible box untouched. jsdom computes no real layout, so
+  // there is no behaviour left to assert beyond "the classes that produce
+  // this are actually on the rendered element" (docs/UI.md's own class-
+  // name-assertion exception) — whether a click just outside the visible
+  // box still reaches it is a real behaviour instead, checked for real in
+  // e2e/documents-mobile.spec.ts against an actual browser layout.
+  it("the delete button carries the 44px expanded tap-target pattern, with its own visible box unchanged", async () => {
+    stubFetch({ documents: [aDocument] });
+
+    renderScreen();
+    await screen.findByText("Chapitre 3");
+
+    const deleteButton = screen.getByRole("button", { name: /supprimer.*chapitre 3/i });
+    expect(deleteButton.className).toMatch(/h-8 w-8/);
+    expect(deleteButton.className).toMatch(/before:h-11/);
+    expect(deleteButton.className).toMatch(/before:w-11/);
+    expect(deleteButton.className).toMatch(/before:-z-10/);
+    expect(deleteButton.className).toMatch(/isolate/);
+  });
+
   it("polls while a document is still pending or running", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (typeof url === "string" && url.startsWith("/api/today")) return Promise.resolve(new Response(JSON.stringify(emptyToday), { status: 200 }));

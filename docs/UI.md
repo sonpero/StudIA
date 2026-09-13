@@ -1377,12 +1377,27 @@ upload (one title, one page set, one `documents` row), a scoping decision
 made with the user rather than building a new grouping entity, a new
 route, and a schema change into what was meant to be a front-end pass.
 
-**A persistent two-column layout, not a grid**, in every state alike
-(loading/error/empty/ready) — a `flex-1` column of course cards, stacked
-vertically one per row, beside a fixed 320px `UploadCard`, always open,
+**A persistent two-column layout above 768px, not a grid — one column
+below it** (M10 Phase 1's own mobile pass, `docs/MILESTONES.md`), in
+every state alike (loading/error/empty/ready) — a `flex-1` column of
+course cards, stacked vertically one per row, first in source order;
+beside it from `md` up, a fixed 320px `UploadCard` (`w-full md:w-[320px]
+md:shrink-0`), full width and stacked beneath the course list below
+768px instead — the outer row itself switching `flex-col`/`md:flex-row`
+at the same breakpoint (`docs/UI.md`'s own Responsive conventions: 768px
+is the default point to become a row). `UploadCard` is always open,
 never a floating button or a toggle to reveal it. No cover image, no
 progress ring: each course's own numbers render as a plain stats line
-instead (below).
+instead (below). Root padding is unchanged by this pass (`p-4 md:p-8`,
+already this screen's own convention before M10 — the one thing
+Aujourd'hui's own pass had to add from scratch, this screen already had).
+M10 Phase 1's own per-screen backlog (`docs/MILESTONES.md`) is what this
+fixed: the fixed-320px column, with no responsive variant at all, used to
+overflow 375px in every state, the exact shape this section's own
+Responsive conventions bans ("a fixed pixel width combined with
+`shrink-0` and no responsive variant at all") — the same pre-existing bug
+the shell pass's own `e2e/mobile-shell.spec.ts` had already found and
+deliberately scoped around before any per-screen pass started.
 
 **A course card's own icon sits in a colour-tinted circle, not the
 left-border treatment `Subject colours` describes — a knowing departure,
@@ -1391,7 +1406,14 @@ explains the choice once).** Top row: the icon circle, the title, a
 deadline badge when the course has one (`countdownLabel`'s own relative
 wording, unchanged from Aujourd'hui's), and a delete action (a plain
 `Trash2` icon, accessible label naming the course, no confirmation
-modal). Below: page count; while extraction is running, only its status
+modal) — `h-8 w-8` (32px), its own visible box unchanged, but carrying a
+44px tap zone since M10 Phase 1's own mobile pass (`EXPAND_TAP_TARGET_44`,
+`apps/web/src/lib/tap-target.ts` — the same pattern Aujourd'hui's own
+pass established first and this one reuses rather than re-deriving,
+`docs/MILESTONES.md`'s own per-screen backlog). No adjacent target to
+measure a gap against here, unlike Aujourd'hui's own checkbox/delete
+pair: this row's own `justify-between` spacing leaves the delete button
+as the only enlarged zone on it. Below: page count; while extraction is running, only its status
 label (`en attente`/`en cours`/`échec`, `Réessayer` on failure); once
 `done`, real per-course numbers instead — "N notion(s) · M maîtrisée(s) ·
 **K à réviser**" (`GET /api/documents/:id/progress`, the same
@@ -1433,6 +1455,20 @@ and removable before submitting, each with an accessible label naming it
 "Titre du cours" field; then "Créer le cours" (accent, disabled until at
 least one file is staged) — renamed from "Confirmer", the same word
 through the whole flow `Copy`'s own rule above asks for.
+
+**A staged file's own Monter/Descendre/Retirer controls are a real,
+not-yet-measured gap M10 Phase 1's own mobile pass found but did not
+fix, flagged here rather than left to look intentional.** All three have
+no explicit sizing at all (intrinsic text/line-height, well under 44px),
+packed at a fixed 8px gap with nothing flex-growing between them — unlike
+Aujourd'hui's own checkbox/delete pair, or this screen's own delete
+button, there is no slack in this row to guarantee three separate 44px
+zones stay clear of each other and of their neighbours, and applying
+`EXPAND_TAP_TARGET_44` blind, without measuring that first, risks one
+control's enlarged margin quietly stealing a click meant for another —
+worse than leaving all three exactly as undersized as they already are.
+Carried in `docs/MILESTONES.md`'s own per-screen backlog as its own
+follow-up, not folded into this pass.
 
 **Notions was unified into one page from a second mockup, later still,
 ignoring this file's own former picker-plus-course-view description below

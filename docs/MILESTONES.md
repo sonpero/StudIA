@@ -656,12 +656,27 @@ assuming this list is complete or exact:
   mock content whose controls change shape once Phase 2 wires it, so
   enlarging them now would be thrown away); still under 44px, carried
   forward rather than silently dropped from the backlog.
-- **Mes cours** (`DocumentsScreen.tsx`) — unconditional `p-8`; a fixed
-  `w-[320px] shrink-0` upload panel that never stacks, confirmed
-  overflowing 375px (the pre-existing bug the shell pass's own
-  `e2e/mobile-shell.spec.ts` already found and deliberately scoped
-  around, above); the per-document delete icon button is `h-8 w-8`
-  (32px), under 44px, no responsive variant.
+- **Mes cours** (`DocumentsScreen.tsx`, `UploadCard.tsx`) — **done**:
+  the fixed `w-[320px] shrink-0` upload panel now stacks full width
+  below `md` and is only a fixed 320px column from `md` up, fixing the
+  confirmed 375px overflow in all four states — measured at 0 in all
+  four, `e2e/documents-mobile.spec.ts`; the per-document delete button
+  (`h-8 w-8`, 32px) enlarged to a 44px tap zone via
+  `EXPAND_TAP_TARGET_44` (`apps/web/src/lib/tap-target.ts`, extracted
+  from Aujourd'hui's own local copy once a second screen needed it — no
+  behaviour change to that screen, confirmed by its own still-green
+  suite), with its own visible box unchanged, checked for real with a
+  click 4px outside it (this button's own 6px margin is narrower than
+  the checkbox pair's 13px, `docs/UI.md`'s own note has the arithmetic).
+  Root padding was already `p-4 md:p-8` before this pass — the one thing
+  Aujourd'hui's own pass had to add from scratch, this screen already
+  had. **Not done, flagged rather than silently skipped**: `UploadCard`'s
+  own Monter/Descendre/Retirer controls (no sizing at all, tightly
+  packed at a fixed 8px gap) are also under 44px, but applying the same
+  pattern without first measuring whether three adjacent 44px zones
+  would overlap each other risks a worse bug than the one being fixed —
+  `docs/UI.md`'s own UploadCard note has the full reasoning; carried here
+  as its own follow-up, not folded into this pass.
 - **Notions** (`NotionsScreen.tsx`) — unconditional `p-8`; the toolbar
   trio "Lire le cours" / "Voir tes progrès" / "Discuter du cours" is
   still a plain small-hit-zone `<button>` each, deliberately left out of

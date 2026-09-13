@@ -10,6 +10,7 @@ import { UploadCard } from "../components/UploadCard.js";
 import { deleteDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { getProgress } from "../lib/notions-api.js";
+import { EXPAND_TAP_TARGET_44 } from "../lib/tap-target.js";
 import { getToday } from "../lib/today-api.js";
 import { countdownLabel } from "./TodayScreen.js";
 
@@ -77,7 +78,7 @@ function DocumentCard({
             type="button"
             aria-label={`Supprimer « ${document.title} »`}
             onClick={() => void deleteDocument(document.id).then(onChanged)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-canvas hover:text-text"
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-canvas hover:text-text ${EXPAND_TAP_TARGET_44}`}
           >
             <Trash2 aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           </button>
@@ -181,7 +182,7 @@ export function DocumentsScreen({
   const deadlineByDocumentId = new Map(todayQuery.data?.upcomingDeadlines.map((d) => [d.documentId, d.daysAway]) ?? []);
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Mes cours</h1>
         <p className="text-sm text-text-muted">Importe tes notes et StudIA les transforme en notions, fiches et un plan de révision.</p>
@@ -190,7 +191,7 @@ export function DocumentsScreen({
       {/* A plain flex row, not the title's own column — the upload panel's
           own top edge lines up with the first course card (this row's
           other top item), not with the title sitting above it. */}
-      <div className="flex gap-[var(--space-section)]">
+      <div className="flex flex-col gap-[var(--space-section)] md:flex-row">
         <div className="flex-1">
           {query.status === "pending" && (
             <div className="flex flex-col gap-[var(--space-block)]">
@@ -230,7 +231,7 @@ export function DocumentsScreen({
               </div>
             ))}
         </div>
-        <div className="w-[320px] shrink-0">
+        <div className="w-full md:w-[320px] md:shrink-0">
           <UploadCard onCreated={refresh} />
         </div>
       </div>

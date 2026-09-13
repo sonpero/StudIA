@@ -25,6 +25,7 @@ import { FIELD_CLASS, SELECT_CHEVRON } from "../components/ui/field-styles.js";
 import { listDocuments } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
+import { EXPAND_TAP_TARGET_44 } from "../lib/tap-target.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView, type Todo } from "../lib/today-api.js";
 import { formatCountdown, useActivePomodoro } from "../lib/use-active-pomodoro.js";
 
@@ -43,56 +44,14 @@ const IDLE_DISPLAY = "25:00";
 // displayed day never shifts by one under a non-UTC timezone.
 const TODO_DUE_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-// M10 Phase 1's own reference pattern for expanding a touch target to 44px
-// without changing its visible box (docs/UI.md's Responsive conventions),
-// the technique Button's own `link` variant already established
-// (apps/web/src/components/ui/button.tsx): a `relative` positioning
-// context plus an absolutely centred `before` pseudo-element, fixed 44px
-// square. `link`'s own variant only needed vertical centring (its box was
-// already full width); every target here is small in both dimensions, so
-// this centres on both axes instead. Factored once for the four controls
-// below that need it (a todo's own checkbox and delete button, the two
-// todos-card triggers) — not shared outside this file, since nothing else
-// here needs it.
-//
+// EXPAND_TAP_TARGET_44 (apps/web/src/lib/tap-target.ts): a todo's own
+// checkbox and delete button, and the two todos-card triggers, all use it.
 // A native `<input>` cannot host a `::before` pseudo-element at all (a
 // replaced element, undefined by the CSS spec) — the checkbox below wraps
 // it in a `<label>` instead, sized to the checkbox's own visible box, and
-// puts this pattern on the label: clicking anywhere in the label's own
+// puts the pattern on the label: clicking anywhere in the label's own
 // (enlarged) box still toggles the input it wraps, the ordinary behaviour
 // of a `<label>` around a control, no `htmlFor` needed.
-//
-// `before:-z-10` is load-bearing, not decoration: an absolutely-positioned
-// pseudo-element with the default `z-index: auto` paints *after* — on top
-// of — its host's own in-flow, non-positioned children (CSS2.1's stacking
-// order), so without this the checkbox's own label-wrapper pseudo would
-// sit visually on top of the real `<input>` and intercept every pointer
-// event over it, including directly over its own visible box — confirmed
-// by a real regression (`e2e/todo-photo.spec.ts`'s own `.click()` on this
-// exact checkbox started timing out, Playwright reporting the `<label>`
-// itself as "intercepting pointer events"). A negative z-index moves the
-// pseudo behind the real, in-flow `<input>` instead: the input (unmoved,
-// still un-positioned) keeps painting on top wherever the two overlap — its
-// own 18px box — while the pseudo, being the only thing painted in the
-// margin beyond that box, still catches a click there and the wrapping
-// `<label>` still forwards it to the input, natively.
-//
-// `isolate` is just as load-bearing as the negative z-index, and for a
-// subtler reason: `position: relative` alone does not create a stacking
-// context, so a plain `-z-10` doesn't stay scoped to "behind this element's
-// own content" — it escapes to the nearest actual stacking context, which
-// could be several ancestors up (confirmed by a second real regression
-// while fixing the first: without `isolate`, a click in the margin started
-// hitting `todos-card` or the page's own `<html>`, several levels above the
-// button, instead of the button itself). `isolate` (`isolation: isolate`)
-// forces this element to start its own stacking context, so `-z-10` only
-// ever competes against that element's own children — the real input or
-// icon — never anything outside it. Needed on all four controls below, not
-// only the label-wrapped checkbox: a button's own icon is exactly as
-// "in-flow, non-positioned content" as the checkbox's own input is, so the
-// same escape would otherwise happen there too.
-const EXPAND_TAP_TARGET_44 =
-  "relative isolate before:absolute before:left-1/2 before:top-1/2 before:-z-10 before:h-11 before:w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
 
 function formatTodoDueDate(dueDate: string): string {
   const year = Number(dueDate.slice(0, 4));
