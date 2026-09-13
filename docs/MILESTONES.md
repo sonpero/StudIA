@@ -716,12 +716,27 @@ assuming this list is complete or exact:
   carry their own un-measured `CoursePill` copies — two confirmations of
   the same duplicated defect now, not zero; their own future passes still
   own confirming and fixing their own.
-- **Progrès** (`ProgressScreen.tsx`) — unconditional `p-8`; `RingSpacer`
-  (`sm:w-[140px]`) is hidden below the `sm` breakpoint (640px) so it is
-  not an overflow risk; "Supprimer l'échéance" is already `h-11 w-11`
-  (44px, compliant); `CoursePill` and the "Tous les cours" row size
-  themselves from padding rather than an explicit height — worth
-  confirming by measurement, not assumed compliant.
+- **Progrès** (`ProgressScreen.tsx`) — **done**: `p-4 md:p-8` added to
+  all four of this screen's own top-level states. `CoursePill` (this
+  screen's own local copy, duplicated verbatim from `NotionsScreen.tsx`
+  like Lecteur's own) carried the same 38px defect predicted by both
+  earlier passes — fixed the same way, `min-h-11 md:min-h-0`. "Supprimer
+  l'échéance" was already `h-11 w-11` (44px, compliant); the "Tous les
+  cours" row, measured for real this time, is 154px tall (one big button
+  around real content, nowhere near a risk). The real, third fix: every
+  `sm:` (640px) two-column split on this screen (`RingSpacer`, the
+  header/ring/lower rows, the stat-tile grid, the "Tous les cours" row)
+  renamed to `md:` (768px) — a pre-existing bug this milestone's own
+  Responsive conventions note already named for this screen by name
+  ("Progression's own pre-existing 640px split is the thing actually
+  wrong"), not a new redesign. Invisible at 375px and at the desktop test
+  viewport (confirmed by an unchanged before/after screenshot); the only
+  width where it was ever visible (640–768px) is checked directly via the
+  ring row's own `flex-direction` at 700px, not `RingSpacer`'s own
+  visibility — that element renders at zero height regardless of which
+  breakpoint governs its `display`, so a naive visibility check would
+  have passed even against the unfixed bug (found the hard way, by first
+  writing exactly that check and watching it stay green pre-fix).
 - **Agenda** (`CalendarScreen.tsx`) — unconditional `p-8`; no fixed-width
   `shrink-0` column; day cells are `min-h-14` (56px, a compliant
   height), but their width comes from an unconstrained 7-column grid —

@@ -107,7 +107,7 @@ const RING_SIZE = 140;
 // lower block's own left edge aligned with the bars' own "Couverture"
 // label without either of them needing to share a row with the ring.
 function RingSpacer() {
-  return <div className="hidden shrink-0 sm:block sm:w-[140px]" aria-hidden="true" data-testid="progress-ring-spacer" />;
+  return <div className="hidden shrink-0 md:block md:w-[140px]" aria-hidden="true" data-testid="progress-ring-spacer" />;
 }
 
 // A decorative ring duplicating the readiness number the linear "Préparation"
@@ -173,7 +173,7 @@ function CoursePill({ item, active, onSelect }: { item: ProgressListItem; active
       type="button"
       aria-current={active ? "page" : undefined}
       onClick={onSelect}
-      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors ${
+      className={`flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors md:min-h-0 ${
         active ? "border-transparent bg-primary text-white" : "border-border bg-surface text-text hover:bg-canvas"
       }`}
     >
@@ -295,7 +295,7 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
           and "Préparation" instead of spanning the header's own row, so
           the header can no longer align with the bars by sharing a flex
           row with the ring the way this pass's first cut did. */}
-      <div className="flex flex-col gap-[var(--space-section)] sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-[var(--space-section)] md:flex-row md:items-start">
         <RingSpacer />
         <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]">
           <div className="flex items-start gap-[var(--space-related)]">
@@ -338,7 +338,7 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
       {/* The ring's own row: just the ring and the two gauges,
           vertically centred against each other so the ring lands between
           "Couverture" and "Préparation" — the realignment itself. */}
-      <div className="flex flex-col items-center gap-[var(--space-section)] sm:flex-row sm:items-center">
+      <div className="flex flex-col items-center gap-[var(--space-section)] md:flex-row md:items-center">
         <ReadinessRing value={item.progress.readiness} colour={item.colour} />
         <div className="flex w-full flex-1 flex-col gap-[var(--space-block)]" data-testid="progress-detail-body">
           <Gauge label="Couverture" value={item.progress.coverage} colour={item.colour} />
@@ -349,10 +349,10 @@ function ProgressDetailCard({ item, onOpenCourse, onReview }: { item: ProgressLi
       {/* The lower block (stat tiles, actions) reserves the same spacer
           width so it aligns with "Couverture" too, leaving the space
           beneath the ring empty rather than stretching under it. */}
-      <div className="flex flex-col gap-[var(--space-section)] sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-[var(--space-section)] md:flex-row md:items-start">
         <RingSpacer />
         <div className="flex w-full flex-1 flex-col gap-[var(--space-section)]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <StatTile dataTestId="stat-mastered" value={statsLoading ? null : statsErrored ? 0 : buckets.mastered} label="Maîtrisées" />
             <StatTile dataTestId="stat-learning" value={statsLoading ? null : statsErrored ? 0 : buckets.learning} label="En apprentissage" />
             <StatTile dataTestId="stat-due" value={statsLoading ? null : statsErrored ? 0 : buckets.due} label="À réviser" />
@@ -439,10 +439,10 @@ function CourseListRow({ item, active, onSelect }: { item: ProgressListItem; act
       type="button"
       onClick={onSelect}
       data-testid="progress-list-row"
-      className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-4 text-left transition-colors hover:bg-canvas sm:flex-row sm:items-center sm:gap-[var(--space-related)]"
+      className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-4 text-left transition-colors hover:bg-canvas md:flex-row md:items-center md:gap-[var(--space-related)]"
       style={active ? { borderLeftWidth: 4, borderLeftColor: item.colour } : undefined}
     >
-      <div className="flex items-center gap-[var(--space-related)] sm:w-56 sm:shrink-0">
+      <div className="flex items-center gap-[var(--space-related)] md:w-56 md:shrink-0">
         <CourseIcon colour={item.colour} />
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-sm font-extrabold text-text">{item.title}</h3>
@@ -473,7 +473,7 @@ export function ProgressScreen({
 
   if (query.status === "pending") {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
         <div className="flex items-center justify-between">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
           <Button type="button" variant="link" onClick={onBack}>
@@ -487,7 +487,7 @@ export function ProgressScreen({
 
   if (query.status === "error") {
     return (
-      <main className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+      <main className="flex flex-col items-center gap-[var(--space-section)] p-4 md:p-8 text-center">
         <Confused />
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
         <p>Impossible de charger ta progression. Vérifie ta connexion et réessaie.</p>
@@ -500,7 +500,7 @@ export function ProgressScreen({
 
   if (items.length === 0) {
     return (
-      <main className="flex flex-col gap-[var(--space-section)] p-8">
+      <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
         <div className="flex items-center justify-between">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>
           <Button type="button" variant="link" onClick={onBack}>
@@ -519,7 +519,7 @@ export function ProgressScreen({
   const selectedItem = items.find((item) => item.documentId === selectedId) ?? items[0]!;
 
   return (
-    <main className="flex flex-col gap-[var(--space-section)] p-8">
+    <main className="flex flex-col gap-[var(--space-section)] p-4 md:p-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Progrès</h1>

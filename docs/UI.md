@@ -1584,8 +1584,32 @@ screens. `Navigation`'s and `Subject colours`' own notes (above) already
 describe what changed at the nav-entry and colour-rule level; this note
 describes the page itself.
 
-**One page: a pill row of every course (`NotionsScreen`'s own `CoursePill`
-idiom, reused), then the selected course's own detail card, then a
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) touched three
+things here.** Root padding (`p-4 md:p-8` on all four of this screen's
+own top-level states). The course pill carried the same 38px, no-
+responsive-variant defect Notions'/Lecteur's own passes already found in
+their copies (all three are separate local copies of the same idiom, not
+a shared component) — fixed the same way, a real `min-h-11 md:min-h-0`.
+And a real, pre-existing bug this milestone's own Responsive conventions
+note (above) already named by this screen specifically: every two-column
+split on this screen (the detail card's header/ring/lower rows via
+`RingSpacer`, the stat-tile grid, the "Tous les cours" row) switched at
+`sm` (640px) instead of `md` (768px) — "a later breakpoint is allowed
+when the screen's own note states why (Calendrier, Lecteur), an earlier
+one never is." Renamed every `sm:` on this screen to `md:`; invisible at
+375px (always stacked either way) and at the desktop test viewport (both
+breakpoints already active there, confirmed by an unchanged before/after
+screenshot) — the only width where the two thresholds actually disagree
+is the 640–768px tablet gap this bug lived in, checked directly via the
+ring row's own `flex-direction` at 700px (`e2e/progress-mobile.spec.ts`),
+not the ring spacer's own visibility: that element renders at zero
+height regardless of which breakpoint governs its `display`, so checking
+it would have passed even against the unfixed bug.
+
+**One page: a pill row of every course (this screen's own local copy of
+`NotionsScreen`'s own `CoursePill` idiom, not a shared import — small
+enough that one would cost more than it saves, per that component's own
+code comment), then the selected course's own detail card, then a
 compact "Tous les cours" list — no uniform grid of one full card per
 course any more.** A `documentId` prop pre-selects a course from an
 existing deep link (Notions du cours' own "Voir tes progrès"); its
