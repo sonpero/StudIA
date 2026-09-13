@@ -433,4 +433,44 @@ describe("NotionsScreen", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/impossible de créer les fiches/i);
     expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled();
   });
+
+  // M10 Phase 1's per-screen backlog: a real 375px measurement (not the
+  // original source-read audit, which missed this one) found CoursePill at
+  // 38px tall — under 44px, no responsive variant. Unlike Aujourd'hui's own
+  // small icon-only controls, a real min-height is simpler and safer here
+  // than an invisible pseudo-element: CoursePill's own flex-wrap row uses a
+  // real, fixed gap-2, so growing the pill's own real box (not an invisible
+  // margin around it) can never overlap a neighbour the way an invisible
+  // expansion risked elsewhere (docs/UI.md's UploadCard note has that
+  // arithmetic). `md:min-h-0` keeps the desktop box exactly as it was.
+  it("a course pill carries a 44px minimum height on mobile, reset back to its own natural height from md up", async () => {
+    stubFetch({ documents: [docA, docB], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen();
+    const pill = await screen.findByRole("button", { name: "Biologie" });
+
+    expect(pill.className).toMatch(/min-h-11/);
+    expect(pill.className).toMatch(/md:min-h-0/);
+  });
+
+  // Same reasoning and same fix as the course pill above: a real 375px
+  // measurement found each notion-type checkbox's own label at 20px tall
+  // (the fieldset's flex-wrap row wraps to two lines at 375px — "Flashcards"
+  // and "QCM" on one, "Questions ouvertes" on the next, 16px apart). A real
+  // min-height is used here for the same reason: each row's own gap-4 stays
+  // a real, fixed 16px regardless of the label's own height, so growing the
+  // label's real box (not an invisible margin) can never make two wrapped
+  // rows' own enlarged zones overlap.
+  it("each notion-type checkbox's own label carries a 44px minimum height on mobile, reset back from md up", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen();
+    await screen.findByText("Photosynthèse");
+
+    for (const cardTypeLabel of ["Flashcards", "QCM", "Questions ouvertes"]) {
+      const label = screen.getByText(cardTypeLabel).closest("label");
+      expect(label?.className).toMatch(/min-h-11/);
+      expect(label?.className).toMatch(/md:min-h-0/);
+    }
+  });
 });

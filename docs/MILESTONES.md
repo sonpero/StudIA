@@ -677,17 +677,37 @@ assuming this list is complete or exact:
   would overlap each other risks a worse bug than the one being fixed —
   `docs/UI.md`'s own UploadCard note has the full reasoning; carried here
   as its own follow-up, not folded into this pass.
-- **Notions** (`NotionsScreen.tsx`) — unconditional `p-8`; the toolbar
-  trio "Lire le cours" / "Voir tes progrès" / "Discuter du cours" is
-  still a plain small-hit-zone `<button>` each, deliberately left out of
-  the `Button` link-variant migration (commit `0d71df3`) because their
-  wrapped rows at 375px would overlap by about 8px — confirmed with the
-  user as slated for its own icon-based redesign in a later pass, not an
-  oversight; the notion-type filter's native `<input type="checkbox">`
-  carries no explicit sizing, well under 44px by default.
+- **Notions** (`NotionsScreen.tsx`) — **done**: `p-4 md:p-8` added to all
+  four of this screen's own top-level states (loading, error, empty,
+  ready — each its own `<main>`, unlike Aujourd'hui/Mes cours' single
+  conditional tree); no fixed-width column exists on this screen to fix.
+  A real 375px measurement — not just the original source-read audit,
+  which missed both — found a course pill at 38px and each notion-type
+  checkbox's own label at 20px (that row wraps to two lines at 375px);
+  both fixed with a real `min-h-11 md:min-h-0` rather than Aujourd'hui's
+  own invisible pseudo-element, since each sits in a real, fixed-`gap`
+  `flex-wrap` row where growing the real box can never overlap a
+  neighbour — checked by arithmetic before choosing it (a naive vertical
+  pseudo expansion on the wrapped checkbox row would have overlapped by
+  8px) and confirmed unchanged at desktop by a before/after screenshot.
+  **Not done**: the toolbar trio "Lire le cours" / "Voir tes progrès" /
+  "Discuter du cours" — still a plain small-hit-zone `<button>` each,
+  deliberately left out of the `Button` link-variant migration (commit
+  `0d71df3`) because their wrapped rows at 375px would overlap by about
+  8px — confirmed with the user as slated for its own icon-based
+  redesign in a later pass, not an oversight, and not touched by this
+  one either. **New finding, carried forward**: `CoursePill` is
+  duplicated per screen (`TutorScreen.tsx`, `ProgressScreen.tsx`,
+  `ReaderScreen.tsx` each have their own copy) — the same under-44px
+  defect likely exists in each of their own copies too; each screen's
+  own future pass owns confirming and fixing its own, not assumed fixed
+  by this one.
 - **Lecteur** (`ReaderScreen.tsx`) — unconditional `p-8`; no fixed-width
   `shrink-0` column and no sub-44px button found in a source read, but
-  neither claim is measured yet the way the shell's own numbers were.
+  neither claim is measured yet the way the shell's own numbers were —
+  and Notions' own pass found its source-read audit missed real
+  touch-target gaps twice already, so this screen's own pass should
+  re-measure at 375px rather than trust this line.
 - **Progrès** (`ProgressScreen.tsx`) — unconditional `p-8`; `RingSpacer`
   (`sm:w-[140px]`) is hidden below the `sm` breakpoint (640px) so it is
   not an overflow risk; "Supprimer l'échéance" is already `h-11 w-11`

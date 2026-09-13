@@ -1476,6 +1476,28 @@ in full.** `Navigation`'s own note (above) already describes what changed
 at the nav-entry level;
 this note describes the page itself.
 
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) touched three
+things here, root padding included** (`p-4 md:p-8` on all four of this
+screen's own top-level states — loading, error, empty, ready, each its
+own `<main>`, unlike Aujourd'hui/Mes cours' single conditional tree). No
+fixed-width column exists on this screen to fix (a single column
+throughout) — the other two were a real 375px measurement finding two
+touch targets the original source-read audit had missed: a course pill
+(38px tall) and each notion-type checkbox's own label (20px tall, and
+this row wraps to two lines at 375px). Both use a real `min-h-11
+md:min-h-0` rather than Aujourd'hui's own invisible pseudo-element
+technique — deliberately: each sits in a `flex-wrap` row with a real,
+fixed `gap` between items, so growing the item's own real box (not an
+invisible margin around it) can never make it overlap a neighbour the
+way an invisible expansion risked elsewhere (a checked arithmetic, not
+an assumption — a naive vertical-only pseudo expansion on the checkbox
+row would have overlapped the two wrapped lines by 8px, computed from
+a real measurement before this fix was chosen). `md:min-h-0` resets both
+back to their exact pre-existing desktop box — checked live via a
+before/after screenshot, not assumed. The toolbar below (next note) is
+deliberately untouched — already flagged as needing its own icon-based
+redesign, not a mechanical fix.
+
 **One page: a pill row of every course, then that course's own summary
 and notion list — no separate picker to leave.** Lecteur went through the
 same unification in a later pass (`Screen notes`' own Lecteur note,
@@ -1497,7 +1519,18 @@ This is now the *only* accent action on the page: the toolbar below it
 ("Lire le cours" / "Voir tes progrès" / "Discuter du cours") is three
 plain underlined links, none of them a `Button` any more — the
 "which of four is still accent" question this file used to answer at
-length no longer has more than one candidate to weigh.
+length no longer has more than one candidate to weigh. Styled like a
+link, but not actually `Button`'s own `link` variant: each is still a
+bare `<button className="text-text-muted underline">`, a real,
+unaddressed 375px gap (`docs/MILESTONES.md`'s M10 Phase 1 backlog) —
+migrating them the way every other bare underlined `<button>` in this
+app already was (`Button`'s own `link` variant note, `Forbidden` and
+`Colour`) was tried and reverted: their wrapped row overlaps by about
+8px at 375px once `link`'s own 44px vertical zone is added to three
+adjacent short labels with no slack between them. Needs its own
+icon-based redesign instead, confirmed with the user as a later,
+separate pass — not the mechanical fix this file's own other pill/
+checkbox notes describe.
 
 **"Retour à mes cours" sits above the summary card, its own line, flush
 left, a plain underlined link — shown only when a `documentId` arrived
