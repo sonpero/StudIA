@@ -829,13 +829,13 @@ ambient sound from the study-sounds card.
 - [x] A running session is visible, discreetly, on every screen and in
       the browser tab title — lot 1, shipped before this milestone opened
       (commits `69be23d`, `456a430`, `a290687`, `0ec9b9f`)
-- [ ] Reaching zero is signalled visually and in the tab title, and the
+- [x] Reaching zero is signalled visually and in the tab title, and the
       session is closed exactly once, by a single effect owner — a
       not-found response on close is treated as already-closed, never
-      surfaced as an error
-- [ ] The ring/arc progress visual is derived from the same ratio the
+      surfaced as an error (lot 2)
+- [x] The ring/arc progress visual is derived from the same ratio the
       countdown itself uses, is `aria-hidden`, and that ratio is
-      unit-tested as a pure function
+      unit-tested as a pure function (lot 2)
 - [ ] `POST /api/pomodoro` accepts a session type and derives the
       duration server-side from it — never a client-supplied duration,
       asserted by an integration test; a new `type` column exists with

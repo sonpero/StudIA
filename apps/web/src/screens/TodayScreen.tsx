@@ -515,10 +515,72 @@ function TodosCard({
 // "Réinitialiser" clears that count back to zero; it is disabled while a
 // session is running (so it can never silently diverge from the real,
 // still-live server session) and once the count is already zero.
+// The ring's own diameter/stroke, unchanged from the plain bordered circle
+// it replaces (docs/UI.md's Aujourd'hui — pomodoro note): at rest the two
+// must be visually identical, only a real session running or finished draws
+// an arc at all.
+const POMODORO_RING_SIZE = 170;
+const POMODORO_RING_STROKE = 10;
+
+// Redrawn on useActivePomodoro's own existing 1-second tick, never a
+// continuous CSS animation: on a 25-minute session one second is 0.067% of
+// the arc, so the smoothness a transition would buy is invisible, and it
+// would cost this file a visibility-change handler it does not otherwise
+// need (docs/UI.md's Motion section: recorded there as an argued exception,
+// not a default). aria-hidden — the textual countdown right beside it
+// already carries the same information, and specifically never
+// role="progressbar": a value announced every second for up to 25 minutes
+// straight would be a uniquely bad screen-reader experience.
+function PomodoroRing({ ratio }: { ratio: number }) {
+  const size = POMODORO_RING_SIZE;
+  const stroke = POMODORO_RING_STROKE;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - ratio);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false" className="absolute inset-0">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-canvas)" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="var(--color-primary)"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
+  );
+}
+
 function PomodoroCard() {
-  const { phase, remainingSeconds: remaining, start, end, starting, ending } = useActivePomodoro();
+  const pomodoro = useActivePomodoro();
+  const { phase, start, end, starting, ending } = pomodoro;
   const [resyncNotice, setResyncNotice] = useState(false);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
+
+  // The explicit trap this lot's own spec calls out: sessionsCompleted must
+  // keep incrementing once the zero-arrival close call moves out to
+  // PomodoroEffects (mounted only in App.tsx, not here) — otherwise a
+  // session that runs out the clock, rather than being stopped by hand,
+  // would silently stop counting. This ref is shared by both paths that can
+  // count a session, not just the "reached finished on its own" effect
+  // below: handleEnd's own manual "Terminer" continuation uses it too,
+  // because the two can race — `end()` is a real network round trip, and
+  // the countdown's own real interval keeps ticking on the still-cached
+  // session while that call is in flight, so a manual close and the
+  // natural zero-arrival effect can both be "in progress" for the same
+  // session at once. Whichever settles first must stop the other from
+  // counting it again.
+  const countedSessionIdRef = useRef<string | null>(null);
+  function countSessionOnce(sessionId: string) {
+    if (countedSessionIdRef.current === sessionId) return;
+    countedSessionIdRef.current = sessionId;
+    setSessionsCompleted((n) => n + 1);
+  }
 
   async function handleStart() {
     const result = await start();
@@ -526,12 +588,27 @@ function PomodoroCard() {
   }
 
   async function handleEnd() {
+    // Captured before the await: end() resolves only after that round
+    // trip, during which the interval above can already have flipped this
+    // same session to "finished" (and counted it) — this must name the
+    // session that was running when "Terminer" was clicked, not whatever
+    // the cache holds once the await settles.
+    const endingSessionId = pomodoro.phase !== "idle" ? pomodoro.session.id : null;
     await end();
     setResyncNotice(false);
-    setSessionsCompleted((n) => n + 1);
+    if (endingSessionId) countSessionOnce(endingSessionId);
   }
 
-  const countdownDisplay = phase === "running" ? formatCountdown(remaining) : IDLE_DISPLAY;
+  // Narrowed off `pomodoro.phase` directly (not a separately destructured
+  // `session`) so TypeScript still ties session's non-null type to the
+  // "finished" branch of the union.
+  useEffect(() => {
+    if (pomodoro.phase !== "finished") return;
+    countSessionOnce(pomodoro.session.id);
+  }, [pomodoro]);
+
+  const countdownDisplay = pomodoro.phase === "idle" ? IDLE_DISPLAY : formatCountdown(pomodoro.remainingSeconds);
+  const ringRatio = pomodoro.phase === "idle" ? 0 : pomodoro.elapsedRatio;
 
   return (
     <Card className="flex flex-col items-center gap-[var(--space-block)]" data-testid="pomodoro-card">
@@ -546,12 +623,22 @@ function PomodoroCard() {
         <span className="flex-1 py-1.5 text-center text-text-muted">Pause longue</span>
       </div>
 
-      <div className="flex h-[170px] w-[170px] items-center justify-center rounded-full border-[10px] border-canvas">
-        <div className="flex w-full flex-col items-center gap-1 px-2 text-center">
+      <div className="relative flex h-[170px] w-[170px] shrink-0 items-center justify-center rounded-full">
+        <PomodoroRing ratio={ringRatio} />
+        {/* w-[150px], not w-full: the old bordered circle (border-[10px])
+            gave its text child a 150px-wide content box (170 - 2×10,
+            border-box sizing); the ring draws its stroke in the SVG instead
+            of a real border, so nothing here shrinks that width on its own
+            any more. Left at w-full, the text column would be 170px wide
+            instead — enough for "0 séance de concentration" to stop
+            wrapping onto its own line, which shortens the whole block and
+            visibly shifts the countdown a few pixels within the ring. */}
+        <div className="relative flex w-[150px] flex-col items-center gap-1 px-2 text-center">
           <span className="font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-extrabold tabular-nums">{countdownDisplay}</span>
           <span className="text-center text-[length:var(--text-label)] text-text-muted">
             {sessionsCompleted} séance{sessionsCompleted > 1 ? "s" : ""} de concentration
           </span>
+          {phase === "finished" && <span className="text-center text-[length:var(--text-label)] font-semibold text-primary">Séance terminée !</span>}
           {resyncNotice && <span className="text-[length:var(--text-label)] text-text-muted">Une séance est déjà en cours.</span>}
         </div>
       </div>
@@ -560,20 +647,20 @@ function PomodoroCard() {
         <Button
           variant="secondary"
           aria-label="Réinitialiser"
-          disabled={phase === "running" || sessionsCompleted === 0}
+          disabled={phase !== "idle" || sessionsCompleted === 0}
           onClick={() => setSessionsCompleted(0)}
           className="h-11 w-11 shrink-0 justify-center rounded-2xl px-0"
         >
           <RotateCcw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
         </Button>
-        {phase === "idle" ? (
+        {phase === "running" ? (
+          <Button variant="accent" disabled={ending} onClick={() => void handleEnd()} className="flex-1 justify-center rounded-2xl">
+            {ending ? "…" : "Terminer"}
+          </Button>
+        ) : (
           <Button variant="accent" disabled={starting} onClick={() => void handleStart()} className="flex-1 justify-center rounded-2xl">
             <Play aria-hidden="true" focusable="false" size={14} fill="currentColor" strokeWidth={0} />
             {starting ? "Démarrage…" : "Démarrer"}
-          </Button>
-        ) : (
-          <Button variant="accent" disabled={ending} onClick={() => void handleEnd()} className="flex-1 justify-center rounded-2xl">
-            {ending ? "…" : "Terminer"}
           </Button>
         )}
       </div>

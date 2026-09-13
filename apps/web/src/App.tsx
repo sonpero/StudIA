@@ -5,6 +5,7 @@ import { APP_NAME } from "./app-info.js";
 import { AppNav, type AppNavItem } from "./components/AppNav.js";
 import { Button } from "./components/ui/button.js";
 import { LoginScreen } from "./components/LoginScreen.js";
+import { PomodoroEffects } from "./components/PomodoroEffects.js";
 import { PomodoroHeaderWidget } from "./components/PomodoroHeaderWidget.js";
 import { AuthProvider, useAuth } from "./lib/auth-context.js";
 import { ICON_SIZE_NAV, ICON_STROKE_WIDTH } from "./lib/icons.js";
@@ -134,6 +135,13 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      {/* No visible render of its own — the single carrier for every
+          pomodoro side effect (tab title, the zero-arrival close call, the
+          chime), mounted exactly once regardless of which screen is showing
+          (M10 Phase 2, lot 2). PomodoroCard and PomodoroHeaderWidget both
+          still call useActivePomodoro too, but only to derive what they
+          render. */}
+      <PomodoroEffects />
       <AppNav items={navItems} dimmed={view.name === "review"} streak={sidebarStreak} dueCount={sidebarDueCount} username={auth.user?.username ?? ""} />
       {/* md:ml-60 reserves the space the now-fixed sidebar (AppNav) takes
           out of normal flow on desktop — without it, content would render

@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PropsWithChildren } from "react";
-import { POMODORO_ACTIVE_QUERY_KEY, useActivePomodoro } from "./use-active-pomodoro.js";
+import { POMODORO_ACTIVE_QUERY_KEY, elapsedRatio, useActivePomodoro } from "./use-active-pomodoro.js";
+import type { PomodoroSession } from "./pomodoro-api.js";
 
 // waitFor's own assertion can pass while the query is still in its initial
 // pending state (before the stubbed fetch above ever resolves) if the
@@ -222,5 +223,104 @@ describe("useActivePomodoro", () => {
     await waitFor(() => expect(consumerA.result.current.phase).toBe("running"));
     await waitFor(() => expect(consumerB.result.current.phase).toBe("running"));
     expect(consumerB.result.current.session?.id).toBe(consumerA.result.current.session?.id);
+  });
+});
+
+function aSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
+  return { id: "s1", userId: "u1", todoId: null, startedAt: "2026-03-01T08:00:00.000Z", endedAt: null, durationSeconds: 1500, ...overrides };
+}
+
+// M10 Phase 2, lot 2's own ring/arc visual: the geometry is ordinary pure-
+// function testing (docs/TESTING.md's "one legitimate exception" for the
+// pomodoro countdown covers the interval driving remainingSeconds, not
+// this) -- no fake timers, an explicit `now` like packages/core's own
+// isPomodoroActive(session, now) (packages/core/src/workspace/domain/
+// pomodoro.ts), which this mirrors rather than reinvents.
+describe("elapsedRatio", () => {
+  it("is 0 at the exact start of a session", () => {
+    const session = aSession({ startedAt: "2026-03-01T08:00:00.000Z", durationSeconds: 1500 });
+    expect(elapsedRatio(session, new Date("2026-03-01T08:00:00.000Z"))).toBe(0);
+  });
+
+  it("is 0.5 exactly halfway through the window", () => {
+    const session = aSession({ startedAt: "2026-03-01T08:00:00.000Z", durationSeconds: 1500 });
+    expect(elapsedRatio(session, new Date("2026-03-01T08:12:30.000Z"))).toBe(0.5);
+  });
+
+  // Real, not theoretical (the prompt's own words): a backgrounded tab
+  // throttles the tick interval (docs/UI.md's Aujourd'hui — pomodoro
+  // note), so the first tick to actually notice zero can land well past
+  // the exact instant -- the ring must read as a clean, fully-closed
+  // circle then, never wrap past a full turn or read above 1.
+  it("is clamped to 1 once now is past the window, however far past", () => {
+    const session = aSession({ startedAt: "2026-03-01T08:00:00.000Z", durationSeconds: 1500 });
+    expect(elapsedRatio(session, new Date("2026-03-01T08:25:00.000Z"))).toBe(1);
+    expect(elapsedRatio(session, new Date("2026-03-01T09:00:00.000Z"))).toBe(1);
+  });
+
+  it("is never negative for a now before startedAt (clock skew)", () => {
+    const session = aSession({ startedAt: "2026-03-01T08:00:00.000Z", durationSeconds: 1500 });
+    expect(elapsedRatio(session, new Date("2026-03-01T07:59:00.000Z"))).toBe(0);
+  });
+});
+
+// M10 Phase 2, lot 2: the countdown reaching zero is a client-derived fact
+// (packages/core/src/workspace/domain/pomodoro.ts's own isPomodoroActive
+// upper bound), not something the server pushes -- this hook must reach
+// "finished" on its own, from the cached session plus its own tick, the
+// one legitimate real-interval exception docs/TESTING.md names.
+describe("useActivePomodoro — reaching zero", () => {
+  it("transitions from running to finished once the real interval notices the window has elapsed, remainingSeconds 0 and elapsedRatio 1", async () => {
+    const startedAt = new Date(Date.now() - 900).toISOString(); // 0.9s of a 1s session already elapsed
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 1 }), { status: 200 });
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitFor(() => expect(result.current.phase).toBe("running"));
+
+    await waitFor(() => expect(result.current.phase).toBe("finished"), { timeout: 3000 });
+
+    expect(result.current.remainingSeconds).toBe(0);
+    expect(result.current.elapsedRatio).toBe(1);
+    expect(result.current.session?.id).toBe("s1");
+  });
+
+  // The domain's own strict upper bound (packages/core/src/workspace/
+  // domain/pomodoro.ts's isPomodoroActive) means GET /api/pomodoro/active
+  // stops reporting an elapsed session the instant it would be re-fetched
+  // -- but staleTime: Infinity means it never is. This is what actually
+  // protects the finished state from disappearing: proven here by stubbing
+  // the route to answer 404 on any call after the first, then confirming
+  // both that phase stays "finished" (not reset to "idle") past the
+  // window, and that the route was in fact never called a second time.
+  it("survives past the window without reverting to idle, and without the active route ever being re-fetched", async () => {
+    let calls = 0;
+    const startedAt = new Date(Date.now() - 900).toISOString();
+    stubFetch((url) => {
+      if (url === "/api/pomodoro/active") {
+        calls += 1;
+        if (calls === 1) return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 1 }), { status: 200 });
+        // A real refetch, here, would find the session's own window
+        // already elapsed server-side too (isPomodoroActive's own strict
+        // bound) and answer 404 -- proving this branch is never reached is
+        // exactly what proves staleTime: Infinity is doing its job.
+        return new Response(null, { status: 404 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitFor(() => expect(result.current.phase).toBe("running"));
+
+    await waitFor(() => expect(result.current.phase).toBe("finished"), { timeout: 3000 });
+    // Long enough past the window that a background refetch, if one ever
+    // fired, would have both landed and been observed by now.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(result.current.phase).toBe("finished");
+    expect(result.current.session?.id).toBe("s1");
+    expect(calls).toBe(1);
   });
 });

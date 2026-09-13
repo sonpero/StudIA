@@ -770,6 +770,22 @@ click.** `motion-reduce:transition-none` respects a reduced-motion
 preference the same way the flip and mascot motion are meant to, jumping
 straight to the real value instead of animating toward it.
 
+**The pomodoro ring (M10 Phase 2, lot 2) is a third exception, and not
+really "motion" at all.** A 25-minute session is nowhere near this
+section's 150–200ms ceiling, obviously — but it also isn't a CSS
+animation the ceiling was ever written to bound: the arc is redrawn on
+the countdown's own existing 1-second tick (`Screen notes`' own
+Aujourd'hui note, below), never a continuous `transition` toward a
+moving target. On a 25-minute session, one second is 0.067% of the arc
+— a transition between ticks would buy smoothness nobody could see, at
+the real cost of a `visibilitychange` handler this file would then have
+to require (a backgrounded tab throttles `setInterval`, so a transition
+tuned for 1-second steps would visibly catch up in lurches once the tab
+regains focus). No transition also means no `motion-reduce:transition-none`
+is needed here, unlike the two exceptions above: there is no
+per-frame motion to disable in the first place, only a redraw exactly as
+frequent as the countdown text beside it already is.
+
 ---
 
 ## The mascot
@@ -1346,6 +1362,57 @@ plain bordered circle above), no colour or escalation on a session
 reaching zero, no short/long break behaviour behind "Pause courte"/"Pause
 longue" (still purely decorative, per the note above) — all reserved for
 the two lots after this one.
+
+**Lot 2 narrows "the countdown never escalates," it does not drop it —
+and adds the ring/arc progress visual lot 1 stopped short of.** The
+plain bordered circle is now an SVG ring (`Motion`, above, has the
+argued exception for how it redraws): a track in `--canvas`, an arc in
+`--primary`, empty at rest, filling as the session runs — `aria-hidden`,
+never `role="progressbar"`, because the textual countdown right beside
+it already carries the same number, and a value re-announced by a screen
+reader every second for up to 25 minutes straight would be one of the
+worse experiences this app could produce. The countdown text itself
+keeps the rule exactly as this file has always stated it: no colour, no
+escalation, all the way down to the last second running. What lot 2
+actually adds is a **fourth state reached only at zero**, on top of the
+three this note already named (Repos, En cours, and ending early back to
+Repos) — the countdown stops, not because reaching zero is dangerous or
+late, but because it is a distinct, useful fact worth naming on its own:
+the card and the header widget both read "Séance terminée" in place of
+the countdown, the browser tab title becomes "Séance terminée · StudIA"
+until the session closes, and a short synthesized chime plays (Web
+Audio, no audio file, unlocked by the `AudioContext` the "Démarrer"
+click itself creates — a backgrounded tab can throttle it late or
+silence it altogether, which is exactly why the visual and title changes
+above are the actual signal, the chime only ever a bonus on top of them).
+This is the same shape as M9's own reversal of "never counts down"
+(`Who this is for`, above): the general rule survives, a specific,
+argued exception is carved out of it, and the exception is recorded here
+rather than left to look like this file went stale.
+
+Closing a session once it reaches zero is entirely a client-side fact,
+not a server push: the domain's own `isPomodoroActive` (`docs/modules/
+workspace.md`) has a strict upper bound at `startedAt + durationSeconds`,
+past which the active route simply stops reporting the session, with no
+server-side cleanup job to notice or announce the transition. A single
+component (`PomodoroEffects`, mounted once and unconditionally in
+`App.tsx`, no visible render of its own) is what actually calls the
+close route once zero is reached — PomodoroCard and the header widget
+both still read the shared session via the same hook, but only to
+render, never to act — which is what keeps the close call from firing
+once per mounted consumer. The close call itself is idempotent: a
+not-found response reads as "already closed", not a failure, since the
+same strict upper bound means a slow tab and a fast one could both reach
+zero and both try. The finished state survives being reached at all only
+because `staleTime: Infinity` (this note's own hook, `apps/web/src/lib/
+use-active-pomodoro.ts`) keeps the query from ever refetching in the
+background — a refetch, here, would find the session already gone
+server-side and empty the cache under the very state this section
+describes.
+
+Still out of scope for lot 2, unchanged from lot 1's own list: short and
+long breaks behind "Pause courte"/"Pause longue" (still purely
+decorative), and the study-sounds card below (still mock).
 
 **Aujourd'hui — Spotify (M7) has been removed entirely, not merely
 restyled.** Confirmed with the user (2026-09-06) as an intentional cut,

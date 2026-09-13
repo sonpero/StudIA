@@ -41,4 +41,54 @@ test.describe("pomodoro", () => {
     await expect(pomodoroCardAfterReload.getByRole("button", { name: "Démarrer" })).toBeVisible({ timeout: 10_000 });
     await expect(pomodoroCardAfterReload.getByText("0 séance de concentration")).toBeVisible();
   });
+
+  // M10 Phase 2, lot 2: the countdown reaching zero on its own, not just a
+  // manual "Terminer". The backend's own pomodoro duration is fixed at 25
+  // minutes (packages/core/src/workspace/domain/types.ts's
+  // POMODORO_DURATION_SECONDS, not user-configurable this milestone) — real
+  // time is never actually waited out; page.clock jumps the *client's* own
+  // clock forward instead (precedent: e2e/generate-and-review.spec.ts's own
+  // use of page.clock.install). The server's real clock is untouched:
+  // isPomodoroActive's own strict upper bound (packages/core/src/workspace/
+  // domain/pomodoro.ts) is what would make GET /api/pomodoro/active stop
+  // reporting this session if it were ever refetched — staleTime: Infinity
+  // (apps/web/src/lib/use-active-pomodoro.ts) is what ensures it never is
+  // during this test, which is exactly what lets the finished state survive
+  // client-side past the window at all.
+  test("a session reaching zero on its own shows the finished state, and the tab title changes then restores once it auto-closes", async ({ page }) => {
+    test.setTimeout(30_000);
+    await page.clock.install();
+    await page.goto("/");
+    await page.getByRole("button", { name: "Aujourd'hui" }).click();
+    await expect(page.getByRole("heading", { name: `Bonjour, ${TEST_USERNAME}` })).toBeVisible();
+
+    // Against a local fixture-backed server, the auto-close round trip
+    // (PomodoroEffects) resolves fast enough that the finished state can
+    // come and go inside a single assertion poll — delaying the close route
+    // by a beat is what actually gives this test a real window to observe
+    // "finished" as its own state, distinct from idle, rather than only
+    // ever seeing whichever one wins the race.
+    await page.route("**/api/pomodoro/*/end", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    const originalTitle = await page.title();
+    const pomodoroCard = page.getByTestId("pomodoro-card");
+    await pomodoroCard.getByRole("button", { name: "Démarrer" }).click();
+    await expect(pomodoroCard.getByRole("button", { name: "Terminer" })).toBeVisible({ timeout: 10_000 });
+
+    await page.clock.fastForward("25:01");
+
+    await expect(pomodoroCard.getByRole("button", { name: "Démarrer" })).toBeVisible();
+    await expect(pomodoroCard.getByText("00:00")).toBeVisible();
+    await expect(pomodoroCard.getByText("1 séance de concentration")).toBeVisible();
+    await expect.poll(() => page.title()).toContain("Séance terminée");
+
+    // The auto-close call (PomodoroEffects, apps/web/src/components/
+    // PomodoroEffects.tsx) is a real network round trip, not a virtualized
+    // timer — fastForward accelerates the browser's own JS timers only, so
+    // the title's own restoration still needs to be awaited in real time.
+    await expect.poll(() => page.title(), { timeout: 10_000 }).toBe(originalTitle);
+  });
 });

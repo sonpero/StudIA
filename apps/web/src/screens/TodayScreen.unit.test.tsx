@@ -510,6 +510,99 @@ describe("TodayScreen (Aujourd'hui)", () => {
     expect(screen.getByText("1 séance de concentration")).toBeInTheDocument();
   });
 
+  // M10 Phase 2, lot 2's explicit trap: sessionsCompleted is PomodoroCard's
+  // own local counter, previously incremented only inside handleEnd's manual
+  // "Terminer" click. Migrating the zero-arrival close call into a separate
+  // effects carrier (PomodoroEffects, mounted only in App.tsx — not here)
+  // must not silently stop this counter from incrementing when a session
+  // reaches zero on its own; PomodoroCard now also counts a session the
+  // instant it reaches "finished", via its own ref-guarded effect.
+  //
+  // The server already reports the session past its own window (startedAt
+  // well beyond durationSeconds ago — the same "resume on mount" shape the
+  // "resumes an already-active pomodoro session" test above uses, just past
+  // zero instead of mid-session) rather than waiting on a real tick to carry
+  // it there: use-active-pomodoro.unit.test.tsx already covers the tick
+  // driving that transition with real-timer patience, so this test only
+  // needs to observe PomodoroCard's own reaction to "finished", not
+  // re-prove the tick itself under a shared test-runner's own timing
+  // pressure. PomodoroEffects is not mounted in this test at all (only
+  // App.tsx mounts it), so the finished state is never auto-closed here —
+  // phase simply stays "finished", which is exactly what lets this test
+  // observe the finished visual state directly.
+  it("a session already past its own window on mount shows the finished state — 00:00, 'Démarrer' again — and still increments the real session count exactly once", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date(Date.now() - 5000).toISOString(), endedAt: null, durationSeconds: 1 }), {
+              status: 200,
+            }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    renderScreen();
+
+    // "00:00", specifically — not just the "Démarrer" button, which idle
+    // shows too (IDLE_DISPLAY is "25:00") — is what actually proves the
+    // query resolved into "finished" rather than this assertion racing
+    // ahead of it and passing against the still-idle initial render.
+    expect(await screen.findByText("00:00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Démarrer" })).toBeInTheDocument();
+    expect(screen.getByText("1 séance de concentration")).toBeInTheDocument();
+  });
+
+  // The counter's own guard against double-counting has two independent
+  // paths that both increment it: the "reached finished on its own" effect
+  // above, and handleEnd's manual "Terminer" continuation. A ref keyed only
+  // by "have I already counted this session" must be shared between both,
+  // or the exact race named here double-counts: the countdown's own real
+  // interval can flip the session to "finished" (auto-incrementing) *while*
+  // a manual "Terminer" close for that same session is still a pending
+  // network round trip — held open here deliberately so the real tick has
+  // room to land first — and the manual click's own continuation must then
+  // see the session already counted and skip incrementing a second time.
+  it("clicking 'Terminer' does not double-count a session that reaches 'finished' on its own while that manual close is still in flight", async () => {
+    let resolveEnd: (() => void) | undefined;
+    const startedAt = new Date(Date.now() - 900).toISOString();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        if (url === "/api/pomodoro/active") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 1 }), { status: 200 }),
+          );
+        }
+        if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") {
+          return new Promise<Response>((resolve) => {
+            resolveEnd = () => resolve(new Response(null, { status: 204 }));
+          });
+        }
+        return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByRole("button", { name: "Terminer" });
+
+    await user.click(screen.getByRole("button", { name: "Terminer" }));
+
+    // The manual close above is still pending (resolveEnd not yet called):
+    // this proves the real interval reached "finished" on its own, on the
+    // same still-cached session, before that close ever resolved.
+    await screen.findByText("00:00", {}, { timeout: 3000 });
+
+    resolveEnd?.();
+    await screen.findByRole("button", { name: "Démarrer" });
+
+    expect(screen.getByText("1 séance de concentration")).toBeInTheDocument();
+  });
+
   it("'Réinitialiser' clears the session count once at least one is completed, and stays disabled while a session runs or the count is zero", async () => {
     vi.stubGlobal(
       "fetch",

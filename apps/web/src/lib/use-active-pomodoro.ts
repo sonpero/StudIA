@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { unlockChime } from "./pomodoro-chime.js";
 import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession, type StartPomodoroResult } from "./pomodoro-api.js";
 
 export const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
@@ -7,6 +8,20 @@ export const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
 function remainingSeconds(session: PomodoroSession): number {
   const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
   return Math.max(0, session.durationSeconds - elapsed);
+}
+
+// Pure, explicit-`now` sibling of remainingSeconds, mirroring
+// packages/core/src/workspace/domain/pomodoro.ts's own isPomodoroActive(session,
+// now) rather than reinventing the pattern — this is what makes the ring's
+// geometry testable without fake timers (docs/TESTING.md's one named
+// exception for this feature is the tick interval, not this function).
+// Clamped both ends: a backgrounded tab's throttled tick can land now well
+// past startedAt + durationSeconds (never wrap past a full turn), and clock
+// skew could in principle put now before startedAt (never go negative).
+export function elapsedRatio(session: PomodoroSession, now: Date): number {
+  const elapsedMs = now.getTime() - new Date(session.startedAt).getTime();
+  const ratio = elapsedMs / (session.durationSeconds * 1000);
+  return Math.min(1, Math.max(0, ratio));
 }
 
 // A cache entry this hook cannot safely compute a countdown from must read
@@ -38,7 +53,17 @@ type PomodoroActions = {
 };
 
 export type UseActivePomodoroResult = PomodoroActions &
-  ({ phase: "idle"; session: null; remainingSeconds: null } | { phase: "running"; session: PomodoroSession; remainingSeconds: number });
+  (
+    | { phase: "idle"; session: null; remainingSeconds: null; elapsedRatio: null }
+    | { phase: "running"; session: PomodoroSession; remainingSeconds: number; elapsedRatio: number }
+    // The domain's own strict upper bound (packages/core/src/workspace/domain/
+    // pomodoro.ts's isPomodoroActive) means the server stops reporting a
+    // session the instant its window elapses — "finished" is this hook's own
+    // client-side memory of that fact, derived from the last cached session
+    // plus the tick, kept alive only by staleTime: Infinity never letting a
+    // background refetch empty the cache out from under it.
+    | { phase: "finished"; session: PomodoroSession; remainingSeconds: 0; elapsedRatio: 1 }
+  );
 
 // The server is already the source of truth for a session (startedAt +
 // durationSeconds) — phase and remainingSeconds are derived straight from
@@ -74,7 +99,10 @@ export function useActivePomodoro(): UseActivePomodoroResult {
   const activeQuery = useQuery({ queryKey: POMODORO_ACTIVE_QUERY_KEY, queryFn: getActivePomodoro, staleTime: Infinity, refetchOnWindowFocus: false });
   const rawSession = activeQuery.data ?? null;
   const session = rawSession && isUsableSession(rawSession) ? rawSession : null;
-  const phase: "idle" | "running" = session ? "running" : "idle";
+  // Ticking stops once the session's own window has elapsed: remainingSeconds
+  // and elapsedRatio are then fixed (0 and 1) until a new session overwrites
+  // the cache, so re-rendering on a timer buys nothing once "finished".
+  const isTicking = session !== null && remainingSeconds(session) > 0;
 
   // One interval per mounted hook instance, ticking only while that
   // instance's own session is running — not a per-consumer reimplementation
@@ -82,10 +110,10 @@ export function useActivePomodoro(): UseActivePomodoroResult {
   // tests/no implicit timers": a real interval, here, is the point).
   const [, forceTick] = useState(0);
   useEffect(() => {
-    if (phase !== "running") return;
+    if (!isTicking) return;
     const interval = setInterval(() => forceTick((t) => t + 1), 1000);
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [isTicking]);
 
   const startMutation = useMutation({
     mutationFn: () => startPomodoro(null),
@@ -97,13 +125,22 @@ export function useActivePomodoro(): UseActivePomodoroResult {
     onSuccess: () => queryClient.setQueryData(POMODORO_ACTIVE_QUERY_KEY, null),
   });
 
-  const active = session
-    ? { phase: "running" as const, session, remainingSeconds: remainingSeconds(session) }
-    : { phase: "idle" as const, session: null, remainingSeconds: null };
+  const active = !session
+    ? { phase: "idle" as const, session: null, remainingSeconds: null, elapsedRatio: null }
+    : remainingSeconds(session) > 0
+      ? { phase: "running" as const, session, remainingSeconds: remainingSeconds(session), elapsedRatio: elapsedRatio(session, new Date()) }
+      : { phase: "finished" as const, session, remainingSeconds: 0 as const, elapsedRatio: 1 as const };
 
   return {
     ...active,
-    start: () => startMutation.mutateAsync(),
+    // unlockChime() must run synchronously here, not inside the mutation or
+    // after an await: this is the last point still guaranteed to be in the
+    // same call stack as the "Démarrer" click itself, which is what the
+    // browser's autoplay-unlock rule requires.
+    start: () => {
+      unlockChime();
+      return startMutation.mutateAsync();
+    },
     end: () => (session ? endMutation.mutateAsync(session.id) : Promise.resolve()),
     starting: startMutation.isPending,
     ending: endMutation.isPending,

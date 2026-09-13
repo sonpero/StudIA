@@ -37,7 +37,26 @@ export async function startPomodoro(todoId: string | null): Promise<StartPomodor
   throw new Error("Impossible de démarrer la séance.");
 }
 
+// A 403 here is the route's own domain error (apps/api/src/routes/
+// workspace.ts), but that single HTTP status covers two different real
+// situations indistinguishably at the domain layer: the repository's own
+// endPomodoroSession (packages/core/src/workspace/infra/
+// sqlite-todo-repository.ts) filters by `id AND userId` in one query, so a
+// session that is genuinely already closed (or never existed) and a session
+// id belonging to someone else entirely both come back as the same
+// "not-found". Only the first is safe to swallow — a race between the
+// effects carrier's auto-close and a manual "Terminer" click, or a retry
+// after a dropped response, must never surface an error for a session
+// that's already gone — so this checks the route's own tagged body
+// (`{error: "not-found"}`), not just the status code: any other 403 (a real
+// authorization failure, or any future domain error this route might one
+// day map here too) surfaces exactly like a 500 would.
 export async function endPomodoro(id: string): Promise<void> {
   const res = await apiFetch(`/api/pomodoro/${id}/end`, { method: "POST" });
+  if (res.status === 403) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (body?.error === "not-found") return;
+    throw new Error("Impossible de terminer la séance.");
+  }
   if (!res.ok) throw new Error("Impossible de terminer la séance.");
 }
