@@ -26,21 +26,31 @@ countdown bans) and adds two more scoped exceptions along the way
 graded-MCQ one) — read `docs/UI.md`'s own notes on each before assuming
 this file is stale. Phase 2 is now formally closed, not left open-ended.
 
-**M10 — Mobile and focus is open.** Two phases: Phase 1 (mobile
-adaptation — responsive conventions written into `docs/UI.md` first, then
-the shell, then the seven screens one by one) and Phase 2 (focus tools —
-the pomodoro's countdown reaching zero, the ring/arc progress visual,
-short/long breaks, and wiring the still-mock study-sounds card). Phase 2's
-own persistent-visibility lot (the header widget, the tab title) is
-already merged, ahead of this milestone's own opening — `docs/MILESTONES.md`'s
+**M10 — Mobile and focus is open, Phase 1 accepted, Phase 2 open.**
+Phase 1 (mobile adaptation — responsive conventions written into
+`docs/UI.md` first, then the shell, then the seven screens one by one) is
+formally closed: all four acceptance boxes ticked, the shell plus all
+seven screens (Aujourd'hui, Mes cours, Notions, Lecteur, Progrès, Agenda,
+Tuteur) each adapted for 375px in its own pass, every one checked live
+against a real 375px measurement and a before/after desktop screenshot,
+not assumed from the original per-screen backlog's own source-read audit
+— which that discipline caught being wrong twice (Notions found
+`CoursePill` at 38px and a wrapped-checkbox overlap it never named;
+Progrès found a real, pre-existing `sm:`-vs-`md:` breakpoint bug it never
+mentioned either). Phase 2 (focus tools — the pomodoro's countdown
+reaching zero, the ring/arc progress visual, short/long breaks, and
+wiring the still-mock study-sounds card) is open next. Phase 2's own
+persistent-visibility lot (the header widget, the tab title) is already
+merged, ahead of this milestone's own opening — `docs/MILESTONES.md`'s
 own M10 section has the full scope and acceptance criteria for both
 phases; this line only tracks position.
 
 A mockup screenshot for one of the seven M9 screens is still fair game as
-more polish under M10 Phase 1 (the user returned to Agenda three times
-and to no screen more than that during M9) — treat it as such rather than
-as new-milestone work, the same permission M9 itself used to carry, now
-migrated here since M9 is closed. Anything else (a new capability, a new
+more polish, now under M10 Phase 2 since Phase 1 is closed (the user
+returned to Agenda three times and to no screen more than that during
+M9) — treat it as such rather than as new-milestone work, the same
+permission M9 itself used to carry, migrated forward once already (to
+M10 Phase 1) and now again. Anything else (a new capability, a new
 screen, a new data model unrelated to mobile or focus tools) still needs a
 milestone defined first: ask the user rather than inventing scope, per the
 `no work outside a milestone` rule below.

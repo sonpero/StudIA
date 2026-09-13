@@ -566,6 +566,18 @@ below).
   rather than as new-milestone work, the same permission M9 itself used
   to carry.
 
+**All seven screens are done, and this phase is now formally closed** —
+Aujourd'hui, Mes cours, Notions, Lecteur, Progrès, Agenda and Tuteur each
+had their own pass, in that order, the shell first. Two real, previously
+unmeasured bugs the original per-screen backlog only flagged as
+candidates surfaced along the way and were fixed as part of this
+phase, not deferred: `CoursePill` (duplicated across four screens) at
+38px, and Progrès' own pre-existing `sm:` (640px) two-column split
+switching before the milestone's own 768px point. Phase 2, below, is a
+separate scope — any further mobile-specific fix for one of the seven
+screens moves there instead, the same forward-carrying permission M9
+Phase 2's own closure used.
+
 **Demo** — Load the app at 375px width: every nav destination is
 reachable, the header bar and the bottom safe-area render correctly, and
 each of the seven screens is usable in all four of its states without
@@ -594,12 +606,20 @@ horizontal overflow.
       both now read one shared `--nav-bar-height-mobile` token
       (`tokens.css`); `e2e/mobile-shell.spec.ts`, at a 375×812 viewport
       override
-- [ ] Each of the seven screens is usable at 375px without horizontal
+- [x] Each of the seven screens is usable at 375px without horizontal
       overflow, in each of its four required states (loading, empty,
-      error, ready)
-- [ ] Desktop rendering above 768px is unchanged by each pass: every
+      error, ready) — Aujourd'hui, Mes cours, Notions, Lecteur, Progrès,
+      Agenda and Tuteur all done, each with its own `e2e/*-mobile.spec.ts`
+      measuring 0 overflow in every state it has (three screens have no
+      distinct empty state, `docs/UI.md`'s own Notions/Agenda/Tuteur
+      notes explain why per screen)
+- [x] Desktop rendering above 768px is unchanged by each pass: every
       existing Playwright scenario (all authored against the desktop
-      viewport) still passes unmodified after that pass
+      viewport) still passes unmodified after that pass — checked for
+      real by a throwaway before/after screenshot on every one of the
+      seven per-screen passes, not merely assumed from unmodified test
+      files; the two deliberate exceptions below are the only differences
+      any of those screenshots ever found
 - [x] Playwright, at a 375px viewport: navigating between all seven
       screens — `e2e/mobile-shell.spec.ts` clicks each of the seven nav
       destinations in turn, waits for that destination's own heading,
@@ -611,32 +631,34 @@ horizontal overflow.
       satisfy a Phase-1-wide box
 
 **Reconciled against the acceptance text above, not assumed** (session
-closing the shell pass, before any per-screen pass started): the first
-two boxes and this last one hold; the two about per-screen overflow and
-about desktop staying unchanged across *every* pass do not yet, and stay
-unticked on purpose — desktop was verified unchanged for the two passes
-done so far (the shell, then Aujourd'hui), via a throwaway before/after
-screenshot comparison each time (`0d71df3` pre-shell; the shell pass
-itself pre-Aujourd'hui), but that box covers every remaining screen pass
-too, five of which have not happened yet.
+closing the Tuteur pass, the seventh and last of the seven): all four
+boxes hold. Desktop was verified unchanged for all eight passes (the
+shell, then all seven screens), via a throwaway before/after screenshot
+comparison every single time, never skipped and never assumed from an
+unmodified test file alone.
 
 **Two exceptions to "desktop unchanged," both deliberate, not
-regressions the two passes so far introduced by accident:** the shell
-pass's own migration of "Se déconnecter" from a bare `<button>` to
-Button's `link` variant added an underline that was not there before
-(`App.tsx`, commit `844e296`); Aujourd'hui's own pass (below) added
-`p-4 md:p-8` to a screen that previously had no padding at all, a 32px
-desktop change (`docs/UI.md`'s Aujourd'hui note). Both are logged here
-rather than left to look like an oversight against a box that otherwise
-reads as absolute.
+regressions any pass introduced by accident, and the only two any of the
+eight screenshots ever found:** the shell pass's own migration of "Se
+déconnecter" from a bare `<button>` to Button's `link` variant added an
+underline that was not there before (`App.tsx`, commit `844e296`);
+Aujourd'hui's own pass (below) added `p-4 md:p-8` to a screen that
+previously had no padding at all, a 32px desktop change (`docs/UI.md`'s
+Aujourd'hui note) — every other screen already had `p-8` unconditionally,
+so the same padding change was invisible at desktop everywhere else.
+Both are logged here rather than left to look like an oversight against
+a box that otherwise reads as absolute.
 
-**Remaining work — per-screen backlog**, from a source read of all seven
+**Per-screen backlog, all seven done** — from a source read of all seven
 screens against this phase's own three concerns (page padding, a fixed-
-width column that cannot stack, a touch target under 44px), not yet
-measured against a real 375px render the way the shell pass's own
-numbers were, except where marked done below — each remaining screen's
-own future pass still owns confirming its own entry by measurement, not
-assuming this list is complete or exact:
+width column that cannot stack, a touch target under 44px), confirmed or
+corrected against a real 375px render for every one of them, not left as
+assumptions the way the original source-read audit stated them. That
+audit's own record of missing things twice (Notions found `CoursePill`
+at 38px and a wrapped-checkbox-row overlap the audit never named;
+Progrès found a real, pre-existing `sm:`-vs-`md:` bug the audit's own
+line about this screen never mentioned) is the reason every later pass
+in this list re-measured rather than trusted its own entry below:
 
 - **Aujourd'hui** (`TodayScreen.tsx`) — **done**, the reference pass the
   other six follow (`docs/UI.md`'s Aujourd'hui note has the full
@@ -753,9 +775,16 @@ assuming this list is complete or exact:
   two-column split (`lg:grid-cols-[2fr_1fr]`) is untouched — this screen
   is one of the two already-sanctioned late-breakpoint exceptions named
   above ("Calendrier"), not a bug.
-- **Tuteur** (`TutorScreen.tsx`) — unconditional `p-8`; no fixed-width
-  `shrink-0` column and no sub-44px button found in a source read, same
-  caveat as Lecteur above.
+- **Tuteur** (`TutorScreen.tsx`) — **done**, the seventh and last screen:
+  `p-4 md:p-8` added to all four of this screen's own top-level states.
+  Exactly as predicted by three earlier passes in a row (`CoursePill` is
+  duplicated verbatim across Notions/Lecteur/Progrès/Tuteur), the course
+  pill carried the same 38px defect — fixed the same way, `min-h-11
+  md:min-h-0`. Everything else — the composer input, every `Button`-based
+  control — was already 44px, confirmed by a real measurement this time,
+  not the "no sub-44px button found in a source read" this line used to
+  say unmeasured. No fixed-width column and no two-column split exist on
+  this screen, so nothing else needed checking.
 
 **Two open questions, not yet decided, carried here so neither needs
 digging out of the session history:**

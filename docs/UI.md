@@ -2241,6 +2241,20 @@ pass, ignoring this file's own former picker-plus-chat description in
 full, the same unification Notions/Lecteur/Progrès already went
 through.
 
+**M10 Phase 1's own mobile pass (`docs/MILESTONES.md`) — the seventh and
+last screen — touched two things here.** Root padding (`p-4 md:p-8` on
+all four of this screen's own top-level states). Exactly as predicted by
+three earlier passes in a row (`CoursePill` is duplicated verbatim across
+Notions/Lecteur/Progrès/Tuteur), the course pill carried the same 38px,
+no-responsive-variant defect — fixed the same way, a real `min-h-11
+md:min-h-0`. Everything else was already compliant, confirmed by a real
+375px measurement rather than assumed from the original source-read
+audit's "no sub-44px button found": the composer input already declared
+`min-h-11` explicitly, and every `Button`-based control (the suggested-
+question chips, "Envoyer", "Voir les sources") already had it built in.
+No fixed-width column and no two-column split exist on this screen at
+all — a single column throughout — so there was nothing else to check.
+
 **One page: a pill row of every course, then that course's own chat — no
 separate picker to leave.** Reached the same two ways as before this pass
 — directly from the nav, and from within a course via a toolbar entry on

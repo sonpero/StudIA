@@ -166,6 +166,24 @@ describe("TutorScreen — course picker (pill selector, no separate picker page)
 
     expect(onBack).toHaveBeenCalled();
   });
+
+  // M10 Phase 1's per-screen backlog: a real 375px measurement (the same
+  // way Notions'/Lecteur's/Progrès' own passes found this — CoursePill is
+  // duplicated verbatim across all four files, each flagged in turn as a
+  // likely carrier of the same defect) found this screen's own CoursePill
+  // at 38px tall too. Same fix: a real min-height, not Aujourd'hui's own
+  // invisible pseudo-element — CoursePill sits in a flex-wrap row with a
+  // real, fixed gap-2, so growing its own real box can never overlap a
+  // neighbour.
+  it("a course pill carries a 44px minimum height on mobile, reset back to its own natural height from md up", async () => {
+    stubFetch({ documents: [docA, docB], detailsByDocument: { "doc-1": detail(docA) } });
+    renderScreen();
+
+    const pill = await screen.findByRole("button", { name: "La photosynthèse" });
+
+    expect(pill.className).toMatch(/min-h-11/);
+    expect(pill.className).toMatch(/md:min-h-0/);
+  });
 });
 
 describe("TutorScreen — document readiness (reuses Lecteur's own states)", () => {
