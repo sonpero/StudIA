@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { endPomodoro } from "../lib/pomodoro-api.js";
 import { playChime } from "../lib/pomodoro-chime.js";
-import { formatCountdown, POMODORO_ACTIVE_QUERY_KEY, useActivePomodoro } from "../lib/use-active-pomodoro.js";
+import { formatCountdown, pomodoroFinishedLabel, POMODORO_ACTIVE_QUERY_KEY, sessionType, useActivePomodoro } from "../lib/use-active-pomodoro.js";
 
 // M10 Phase 2, lot 2's ÉTAPE 1: the single carrier for every pomodoro side
 // effect. PomodoroCard and PomodoroHeaderWidget both call useActivePomodoro
@@ -26,8 +26,9 @@ export function PomodoroEffects() {
       // docs/UI.md's Aujourd'hui — pomodoro note's own argued reversal: the
       // countdown itself stays colourless and non-escalating right up to
       // zero, but zero itself is now a distinct, named state everywhere,
-      // title included.
-      document.title = `Séance terminée · ${originalTitleRef.current}`;
+      // title included. Type-aware since M10 Phase 2, lot 3: a finished
+      // break is not "a session".
+      document.title = `${pomodoroFinishedLabel(sessionType(pomodoro.session))} · ${originalTitleRef.current}`;
     } else {
       document.title = originalTitleRef.current;
     }

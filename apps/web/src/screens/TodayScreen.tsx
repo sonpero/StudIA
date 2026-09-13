@@ -27,7 +27,8 @@ import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { uploadTodoPhoto } from "../lib/proposals-api.js";
 import { EXPAND_TAP_TARGET_44 } from "../lib/tap-target.js";
 import { createTodo, deleteTodo, getToday, toggleTodo, type TodayView, type Todo } from "../lib/today-api.js";
-import { formatCountdown, useActivePomodoro } from "../lib/use-active-pomodoro.js";
+import { formatCountdown, pomodoroFinishedLabel, pomodoroSessionTypeLabel, sessionType, useActivePomodoro } from "../lib/use-active-pomodoro.js";
+import type { PomodoroSessionType } from "../lib/pomodoro-api.js";
 
 const QUERY_KEY = ["today"];
 const DOCUMENTS_QUERY_KEY = ["documents"];
@@ -556,11 +557,21 @@ function PomodoroRing({ ratio }: { ratio: number }) {
   );
 }
 
+// The three session types, in the order the segmented control has always
+// shown them (M10 Phase 2, lot 3) — a real radiogroup now, not three
+// decorative <span>s.
+const POMODORO_TYPES: PomodoroSessionType[] = ["focus", "shortBreak", "longBreak"];
+
 function PomodoroCard() {
   const pomodoro = useActivePomodoro();
   const { phase, start, end, starting, ending } = pomodoro;
   const [resyncNotice, setResyncNotice] = useState(false);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  // The user's own next choice while idle; while a session is running or
+  // finished, the radio group instead reflects that real session's own
+  // type (below), not this — resuming a break on reload must show "Pause
+  // courte" checked even though this state's own default is "focus".
+  const [selectedType, setSelectedType] = useState<PomodoroSessionType>("focus");
 
   // The explicit trap this lot's own spec calls out: sessionsCompleted must
   // keep incrementing once the zero-arrival close call moves out to
@@ -574,16 +585,19 @@ function PomodoroCard() {
   // session while that call is in flight, so a manual close and the
   // natural zero-arrival effect can both be "in progress" for the same
   // session at once. Whichever settles first must stop the other from
-  // counting it again.
+  // counting it again. Type-gated (M10 Phase 2, lot 3): the label reads "N
+  // séance(s) de concentration" specifically, so a closed break must never
+  // move it — the ref is still updated so a break's own session id is
+  // never miscounted twice, only the actual increment is skipped.
   const countedSessionIdRef = useRef<string | null>(null);
-  function countSessionOnce(sessionId: string) {
+  function countSessionOnce(sessionId: string, type: PomodoroSessionType) {
     if (countedSessionIdRef.current === sessionId) return;
     countedSessionIdRef.current = sessionId;
-    setSessionsCompleted((n) => n + 1);
+    if (type === "focus") setSessionsCompleted((n) => n + 1);
   }
 
   async function handleStart() {
-    const result = await start();
+    const result = await start(selectedType);
     setResyncNotice(result.status === "already-active");
   }
 
@@ -593,10 +607,10 @@ function PomodoroCard() {
     // same session to "finished" (and counted it) — this must name the
     // session that was running when "Terminer" was clicked, not whatever
     // the cache holds once the await settles.
-    const endingSessionId = pomodoro.phase !== "idle" ? pomodoro.session.id : null;
+    const endingSession = pomodoro.phase !== "idle" ? pomodoro.session : null;
     await end();
     setResyncNotice(false);
-    if (endingSessionId) countSessionOnce(endingSessionId);
+    if (endingSession) countSessionOnce(endingSession.id, sessionType(endingSession));
   }
 
   // Narrowed off `pomodoro.phase` directly (not a separately destructured
@@ -604,11 +618,18 @@ function PomodoroCard() {
   // "finished" branch of the union.
   useEffect(() => {
     if (pomodoro.phase !== "finished") return;
-    countSessionOnce(pomodoro.session.id);
+    countSessionOnce(pomodoro.session.id, sessionType(pomodoro.session));
   }, [pomodoro]);
 
   const countdownDisplay = pomodoro.phase === "idle" ? IDLE_DISPLAY : formatCountdown(pomodoro.remainingSeconds);
   const ringRatio = pomodoro.phase === "idle" ? 0 : pomodoro.elapsedRatio;
+  // Disabled for the whole non-idle window, running and finished alike —
+  // the same idle-vs-not split "Réinitialiser" already uses just below.
+  // Re-enabling mid-"finished" would let a person pick a different type
+  // before that session has even closed, and would fight the type this
+  // same window's own "Pause/Séance terminée" label is reporting.
+  const radioDisabled = pomodoro.phase !== "idle";
+  const activeType = pomodoro.phase === "idle" ? selectedType : sessionType(pomodoro.session);
 
   return (
     <Card className="flex flex-col items-center gap-[var(--space-block)]" data-testid="pomodoro-card">
@@ -617,10 +638,30 @@ function PomodoroCard() {
         Pomodoro
       </div>
 
-      <div className="flex w-full rounded-full bg-canvas p-1 text-[length:var(--text-label)] font-medium">
-        <span className="flex-1 rounded-full bg-surface py-1.5 text-center font-semibold shadow-[0_1px_2px_rgba(16,24,40,.08)]">Concentration</span>
-        <span className="flex-1 py-1.5 text-center text-text-muted">Pause courte</span>
-        <span className="flex-1 py-1.5 text-center text-text-muted">Pause longue</span>
+      <div role="radiogroup" aria-label="Type de séance" className="flex w-full rounded-full bg-canvas p-1 text-[length:var(--text-label)] font-medium">
+        {POMODORO_TYPES.map((type) => {
+          const checked = activeType === type;
+          return (
+            <label
+              key={type}
+              className={`flex min-h-11 flex-1 items-center justify-center rounded-full py-1.5 text-center ${radioDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${
+                checked ? "bg-surface font-semibold shadow-[0_1px_2px_rgba(16,24,40,.08)]" : "text-text-muted"
+              }`}
+            >
+              <input
+                type="radio"
+                name="pomodoro-type"
+                value={type}
+                checked={checked}
+                disabled={radioDisabled}
+                onChange={() => setSelectedType(type)}
+                aria-label={pomodoroSessionTypeLabel(type)}
+                className="sr-only"
+              />
+              {pomodoroSessionTypeLabel(type)}
+            </label>
+          );
+        })}
       </div>
 
       <div className="relative flex h-[170px] w-[170px] shrink-0 items-center justify-center rounded-full">
@@ -638,7 +679,9 @@ function PomodoroCard() {
           <span className="text-center text-[length:var(--text-label)] text-text-muted">
             {sessionsCompleted} séance{sessionsCompleted > 1 ? "s" : ""} de concentration
           </span>
-          {phase === "finished" && <span className="text-center text-[length:var(--text-label)] font-semibold text-primary">Séance terminée !</span>}
+          {phase === "finished" && (
+            <span className="text-center text-[length:var(--text-label)] font-semibold text-primary">{pomodoroFinishedLabel(activeType)} !</span>
+          )}
           {resyncNotice && <span className="text-[length:var(--text-label)] text-text-muted">Une séance est déjà en cours.</span>}
         </div>
       </div>

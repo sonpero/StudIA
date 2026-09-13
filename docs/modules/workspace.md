@@ -320,15 +320,23 @@ this module already composes.
 ### Pomodoro (M7)
 
 ```ts
-export const POMODORO_DURATION_SECONDS = 25 * 60; // fixed, not user-configurable this milestone
+// M10 Phase 2, lot 3: one fixed duration became three, one per session
+// type — still fixed, still not user-configurable, just no longer a
+// single number.
+export const POMODORO_FOCUS_DURATION_SECONDS = 25 * 60;
+export const POMODORO_SHORT_BREAK_DURATION_SECONDS = 5 * 60;
+export const POMODORO_LONG_BREAK_DURATION_SECONDS = 15 * 60;
+
+type PomodoroSessionType = "focus" | "shortBreak" | "longBreak";
 
 type PomodoroSession = {
   id: string;
   userId: string;
-  todoId: string | null;   // optional link to a todo
+  todoId: string | null;   // optional link to a todo — focus sessions only, see below
   startedAt: string;
   endedAt: string | null;
   durationSeconds: number; // captured at creation, never re-read from the constant later
+  type: PomodoroSessionType;
 };
 ```
 
@@ -347,6 +355,38 @@ type would contradict its own documented design, not extend it.
 `PomodoroSession` is a new, separate type, living in `workspace` per this
 module's own header ("M7 (pomodoro, music)") and
 `docs/modules/README.md`'s existing table entry.
+
+**`type` exists so a break is never mistaken for work (M10 Phase 2,
+lot 3).** Without it, a pause and a focus session would be identical rows
+once stored — indistinguishable to any counter or statistics screen built
+on this table, which would then count time spent resting as time spent
+working. The route accepts a `type`, never a `durationSeconds`: the
+server alone maps `type` to its constant (`pomodoroDurationSeconds`,
+`domain/pomodoro.ts`), so a client cannot post a three-second or ten-hour
+pomodoro by supplying its own duration — there is no field for one to
+occupy. `type` defaults to `"focus"` at the route: every caller before
+this lot started exactly that kind of session, and still does without
+sending anything new.
+
+**A `todoId` on a non-focus session is rejected, not silently dropped.**
+A pause is not "for" anything the way a focus session optionally is —
+linking a todo to a break has no meaning. `startPomodoro` returns a
+distinct `{ kind: "todo-on-break" }` error (mapped to the same `400` shape
+`todo-not-found` already uses) rather than quietly ignoring the field:
+silently dropping caller-supplied data would hide a bug in whoever sent
+it, the same reasoning that already governs `todo-not-found` itself.
+
+**One active session at a time, regardless of type — unchanged from
+before this lot.** `isPomodoroActive` and `getLatestOpenPomodoroSession`
+(below) carry no type awareness at all: the `409`-refuses-a-second-session
+rule (next note) applies identically whether the still-active session is
+a focus session or a break, and switching from one type to the next is
+manual — the person ends the current session, then starts the next type
+themselves. No automatic hand-off and no "long break every four sessions"
+rule exist: either would require counting consecutive sessions
+server-side, which the `type` column now makes possible without a further
+migration, but nothing here builds it speculatively ahead of a milestone
+that actually asks for it.
 
 **"Active" is a pure function of `now`, never a stored flag:**
 ```ts
@@ -533,15 +573,19 @@ resolving weekday names in post-processing cannot recover.
   - Both then call the file-cleanup step below, after their own DB
     transaction commits, never inside it (file I/O does not belong in a
     write transaction any more than an LLM call does).
-- `startPomodoro(userId, now, todoId?)` (M7) — validates `todoId` belongs
-  to `userId` when given (`400` at the route if not, same convention
+- `startPomodoro(userId, now, todoId?, type = 'focus')` (M7; `type` added
+  M10 Phase 2, lot 3) — rejects a non-null `todoId` paired with a
+  non-`'focus'` type outright (`Err({ kind: 'todo-on-break' })`, before
+  touching the repository at all), then validates `todoId` belongs to
+  `userId` when given (`400` at the route if not, same convention
   `PATCH /api/todos/:id` already uses for a `documentId` that doesn't),
   then checks `TodoRepository.getLatestOpenPomodoroSession(userId)`: if
   one exists and `isPomodoroActive` says it's still running, returns
   `Err({ kind: 'already-active', session })` rather than creating a
   second row (see "Domain" above for why refusing, not silently ending
-  the first one). Otherwise creates a new `PomodoroSession` with
-  `durationSeconds: POMODORO_DURATION_SECONDS`.
+  the first one) — this check does not look at type either way. Otherwise
+  creates a new `PomodoroSession` with `durationSeconds:
+  pomodoroDurationSeconds(type)`.
   - **Port.** Two new methods on this module's own `TodoRepository`:
     `createPomodoroSession(session)` and
     `getLatestOpenPomodoroSession(userId)`.
@@ -758,11 +802,15 @@ verb this codebase actually settled on for the identical shape of action
 older, no-longer-representative sketch.
 
 ```
-POST /api/pomodoro          body: { todoId?: string }
+POST /api/pomodoro          body: { todoId?: string; type?: 'focus' | 'shortBreak' | 'longBreak' }
+                             (type defaults to 'focus'; never a durationSeconds field — M10
+                              Phase 2, lot 3)
   -> 201 PomodoroSession
   -> 409 PomodoroSession    (an existing session is still active — not
-                              created; the body is that session, to resume)
+                              created; the body is that session, to resume;
+                              applies identically regardless of type)
   -> 400 { error: 'todo-not-found' }  (todoId given but isn't the caller's)
+  -> 400 { error: 'todo-on-break' }   (todoId given with a non-focus type)
 
 POST /api/pomodoro/:id/end
   -> 204                    (no body — same convention as review's own

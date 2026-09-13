@@ -1,7 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { unlockChime } from "./pomodoro-chime.js";
-import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession, type StartPomodoroResult } from "./pomodoro-api.js";
+import { endPomodoro, getActivePomodoro, startPomodoro, type PomodoroSession, type PomodoroSessionType, type StartPomodoroResult } from "./pomodoro-api.js";
+
+// A cached payload from before M10 Phase 2, lot 3 (or any malformed one)
+// has no `type` field at all — this is what keeps every such session
+// reading as a focus session, exactly what it always was, rather than
+// showing an undefined label or crashing.
+export function sessionType(session: PomodoroSession): PomodoroSessionType {
+  return session.type === "shortBreak" || session.type === "longBreak" ? session.type : "focus";
+}
+
+// French, sentence case, matching TodayScreen's own tab labels exactly —
+// this is the one place that spelling is written down, so the header
+// widget and the finished-state text never drift from what the radio
+// group itself says.
+export function pomodoroSessionTypeLabel(type: PomodoroSessionType): string {
+  switch (type) {
+    case "focus":
+      return "Concentration";
+    case "shortBreak":
+      return "Pause courte";
+    case "longBreak":
+      return "Pause longue";
+  }
+}
+
+// docs/UI.md's Aujourd'hui — pomodoro note's lot 3 reversal: a pause that
+// ends is not "a session" — the countdown reaching zero on a break needs
+// its own label, not lot 2's "Séance terminée" verbatim. Both break types
+// share one generic label: which one it was stops mattering the instant
+// it's over.
+export function pomodoroFinishedLabel(type: PomodoroSessionType): string {
+  return type === "focus" ? "Séance terminée" : "Pause terminée";
+}
 
 export const POMODORO_ACTIVE_QUERY_KEY = ["pomodoro-active"];
 
@@ -46,7 +78,7 @@ export function formatCountdown(totalSeconds: number): string {
 }
 
 type PomodoroActions = {
-  start: () => Promise<StartPomodoroResult>;
+  start: (type?: PomodoroSessionType) => Promise<StartPomodoroResult>;
   end: () => Promise<void>;
   starting: boolean;
   ending: boolean;
@@ -116,7 +148,7 @@ export function useActivePomodoro(): UseActivePomodoroResult {
   }, [isTicking]);
 
   const startMutation = useMutation({
-    mutationFn: () => startPomodoro(null),
+    mutationFn: (type: PomodoroSessionType) => startPomodoro(null, type),
     onSuccess: (result) => queryClient.setQueryData(POMODORO_ACTIVE_QUERY_KEY, result.session),
   });
 
@@ -137,9 +169,9 @@ export function useActivePomodoro(): UseActivePomodoroResult {
     // after an await: this is the last point still guaranteed to be in the
     // same call stack as the "Démarrer" click itself, which is what the
     // browser's autoplay-unlock rule requires.
-    start: () => {
+    start: (type = "focus") => {
       unlockChime();
-      return startMutation.mutateAsync();
+      return startMutation.mutateAsync(type);
     },
     end: () => (session ? endMutation.mutateAsync(session.id) : Promise.resolve()),
     starting: startMutation.isPending,

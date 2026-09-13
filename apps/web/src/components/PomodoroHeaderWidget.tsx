@@ -1,4 +1,4 @@
-import { formatCountdown, useActivePomodoro } from "../lib/use-active-pomodoro.js";
+import { formatCountdown, pomodoroFinishedLabel, pomodoroSessionTypeLabel, sessionType, useActivePomodoro } from "../lib/use-active-pomodoro.js";
 
 // Persistent, cross-screen visibility for an active pomodoro session (lot 1
 // of 3 — see CLAUDE.md's session history): always mounted in App.tsx's own
@@ -16,15 +16,25 @@ import { formatCountdown, useActivePomodoro } from "../lib/use-active-pomodoro.j
 // — showing both at once would put two elements on screen reachable by the
 // same accessible name, exactly the getByRole ambiguity AppNav.tsx's own
 // header comment already warns against for a duplicated nav tree.
+// M10 Phase 2, lot 3: "04:12" alone doesn't say whether a session is work
+// or rest, so the type is named too — in a sibling span, not folded into
+// the countdown's own text. Two existing exact-match assertions
+// (App.unit.test.tsx, e2e/pomodoro-persistent.spec.ts) already pin
+// data-testid="pomodoro-header-widget" down to being exactly the countdown
+// text and nothing else; splitting the type out like this satisfies the
+// new requirement without touching either one.
 export function PomodoroHeaderWidget({ hideOnCurrentView }: { hideOnCurrentView: boolean }) {
   const pomodoro = useActivePomodoro();
 
   if (hideOnCurrentView) return null;
   if (pomodoro.phase === "idle") return null;
 
+  const type = sessionType(pomodoro.session);
+
   return (
-    <span data-testid="pomodoro-header-widget" className="text-sm font-semibold tabular-nums text-primary">
-      {pomodoro.phase === "finished" ? "Séance terminée" : formatCountdown(pomodoro.remainingSeconds)}
+    <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-primary">
+      <span className="font-normal text-text-muted">{pomodoroSessionTypeLabel(type)} ·</span>
+      <span data-testid="pomodoro-header-widget">{pomodoro.phase === "finished" ? pomodoroFinishedLabel(type) : formatCountdown(pomodoro.remainingSeconds)}</span>
     </span>
   );
 }

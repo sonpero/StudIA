@@ -1,9 +1,9 @@
-export type { Todo, TodayView, TodoProposal, CalendarEntry, CalendarDay, CalendarView, PomodoroSession } from "./domain/types.js";
-export { POMODORO_DURATION_SECONDS } from "./domain/types.js";
+export type { Todo, TodayView, TodoProposal, CalendarEntry, CalendarDay, CalendarView, PomodoroSession, PomodoroSessionType } from "./domain/types.js";
+export { POMODORO_FOCUS_DURATION_SECONDS, POMODORO_SHORT_BREAK_DURATION_SECONDS, POMODORO_LONG_BREAK_DURATION_SECONDS } from "./domain/types.js";
 export type { TodoRepository, TodoExtractor, ExtractedTodo, TodoExtractionOutput, TodoExtractionError } from "./domain/ports.js";
 export { daysAway } from "./domain/days-away.js";
 export { computeStreak } from "./domain/streak.js";
-export { isPomodoroActive } from "./domain/pomodoro.js";
+export { isPomodoroActive, pomodoroDurationSeconds } from "./domain/pomodoro.js";
 
 export { createTodo, type CreateTodoDeps, type CreateTodoInput } from "./application/create-todo.js";
 export { updateTodo, type UpdateTodoDeps, type UpdateTodoPatch } from "./application/update-todo.js";

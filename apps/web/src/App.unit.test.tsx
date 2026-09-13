@@ -532,5 +532,47 @@ describe("App", () => {
 
       expect(document.title).toBe("StudIA");
     });
+
+    // M10 Phase 2, lot 3: "04:12" alone doesn't say whether a session is
+    // work or rest — the widget's own text (data-testid="pomodoro-header-widget")
+    // must still be exactly the countdown, unchanged (the assertion two
+    // tests above already pins that down): the type label lives in a
+    // sibling element instead, so the widget as a whole names both without
+    // either existing assertion breaking.
+    it("the header widget names the running session's own type, in a sibling of the countdown element itself", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (typeof url === "string" && url.includes("/api/me")) return Promise.resolve(new Response(JSON.stringify({ id: "u1", username: "alex" }), { status: 200 }));
+          if (typeof url === "string" && url.startsWith("/api/today")) {
+            return Promise.resolve(
+              new Response(JSON.stringify({ date: "2026-01-01", dueCards: [], notionsBelowTarget: [], todos: [], upcomingDeadlines: [], streak: 0 }), { status: 200 }),
+            );
+          }
+          if (typeof url === "string" && url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+          if (typeof url === "string" && url === "/api/pomodoro" && init?.method === "POST") {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 300, type: "shortBreak" }),
+                { status: 201 },
+              ),
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        }),
+      );
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Bonjour, alex.");
+      await user.click(screen.getByRole("radio", { name: "Pause courte" }));
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+
+      await user.click(screen.getByRole("button", { name: "Mes cours" }));
+      await screen.findByRole("heading", { name: "Mes cours" });
+
+      expect(await screen.findByTestId("pomodoro-header-widget")).toHaveTextContent(/^\d{2}:\d{2}$/);
+      expect(screen.getByText(/Pause courte/)).toBeInTheDocument();
+    });
   });
 });

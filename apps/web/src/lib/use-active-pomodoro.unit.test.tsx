@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PropsWithChildren } from "react";
-import { POMODORO_ACTIVE_QUERY_KEY, elapsedRatio, useActivePomodoro } from "./use-active-pomodoro.js";
-import type { PomodoroSession } from "./pomodoro-api.js";
+import { POMODORO_ACTIVE_QUERY_KEY, elapsedRatio, pomodoroFinishedLabel, pomodoroSessionTypeLabel, sessionType, useActivePomodoro } from "./use-active-pomodoro.js";
+import type { PomodoroSession, PomodoroSessionType } from "./pomodoro-api.js";
 
 // waitFor's own assertion can pass while the query is still in its initial
 // pending state (before the stubbed fetch above ever resolves) if the
@@ -226,8 +226,10 @@ describe("useActivePomodoro", () => {
   });
 });
 
+// type: "focus" added here (M10 Phase 2, lot 3): a mechanical fix for
+// PomodoroSession's new required field — elapsedRatio is type-agnostic.
 function aSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
-  return { id: "s1", userId: "u1", todoId: null, startedAt: "2026-03-01T08:00:00.000Z", endedAt: null, durationSeconds: 1500, ...overrides };
+  return { id: "s1", userId: "u1", todoId: null, startedAt: "2026-03-01T08:00:00.000Z", endedAt: null, durationSeconds: 1500, type: "focus", ...overrides };
 }
 
 // M10 Phase 2, lot 2's own ring/arc visual: the geometry is ordinary pure-
@@ -322,5 +324,87 @@ describe("useActivePomodoro — reaching zero", () => {
     expect(result.current.phase).toBe("finished");
     expect(result.current.session?.id).toBe("s1");
     expect(calls).toBe(1);
+  });
+});
+
+// M10 Phase 2, lot 3.
+describe("sessionType", () => {
+  it("returns the session's own type when it is one of the three known values", () => {
+    expect(sessionType(aSession({ type: "shortBreak" }))).toBe("shortBreak");
+    expect(sessionType(aSession({ type: "longBreak" }))).toBe("longBreak");
+    expect(sessionType(aSession({ type: "focus" }))).toBe("focus");
+  });
+
+  // Every session fixture across this codebase written before this lot
+  // (App.unit.test.tsx, PomodoroEffects.unit.test.tsx, TodayScreen's own
+  // stubs) has no `type` field at all — this is what keeps every one of
+  // them reading as a focus session, unchanged, rather than crashing or
+  // showing an undefined label.
+  it("defaults to focus for a missing or unrecognised type", () => {
+    const { type: _type, ...withoutType } = aSession();
+    expect(sessionType(withoutType as PomodoroSession)).toBe("focus");
+    expect(sessionType(aSession({ type: "nonsense" as PomodoroSessionType }))).toBe("focus");
+  });
+});
+
+describe("pomodoroSessionTypeLabel", () => {
+  it("labels each type in French, sentence case, matching TodayScreen's own tab labels", () => {
+    expect(pomodoroSessionTypeLabel("focus")).toBe("Concentration");
+    expect(pomodoroSessionTypeLabel("shortBreak")).toBe("Pause courte");
+    expect(pomodoroSessionTypeLabel("longBreak")).toBe("Pause longue");
+  });
+});
+
+describe("pomodoroFinishedLabel", () => {
+  // A pause that finishes is not "a session" (the exact distinction the
+  // spec calls out) — both break types share the same generic label since
+  // knowing it was short or long stops mattering the instant it's over.
+  it("distinguishes a finished focus session from a finished break", () => {
+    expect(pomodoroFinishedLabel("focus")).toBe("Séance terminée");
+    expect(pomodoroFinishedLabel("shortBreak")).toBe("Pause terminée");
+    expect(pomodoroFinishedLabel("longBreak")).toBe("Pause terminée");
+  });
+});
+
+describe("useActivePomodoro — start(type)", () => {
+  it("defaults to focus when called with no type argument, unchanged from before this lot", async () => {
+    stubFetch((url, init) => {
+      if (url === "/api/pomodoro/active") return new Response(null, { status: 404 });
+      if (url === "/api/pomodoro" && init?.method === "POST") {
+        expect(JSON.parse(init.body as string)).toEqual({ type: "focus" });
+        return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 1500, type: "focus" }), {
+          status: 201,
+        });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+
+    await result.current.start();
+
+    await waitFor(() => expect(result.current.phase).toBe("running"));
+    expect(result.current.session?.type).toBe("focus");
+  });
+
+  it("starts a short break when given explicitly, and the resulting session carries that type", async () => {
+    const startedAt = new Date().toISOString();
+    stubFetch((url, init) => {
+      if (url === "/api/pomodoro/active") return new Response(null, { status: 404 });
+      if (url === "/api/pomodoro" && init?.method === "POST") {
+        expect(JSON.parse(init.body as string)).toEqual({ type: "shortBreak" });
+        return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 300, type: "shortBreak" }), { status: 201 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useActivePomodoro(), { wrapper: wrapper(queryClient) });
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+
+    await result.current.start("shortBreak");
+
+    await waitFor(() => expect(result.current.phase).toBe("running"));
+    expect(result.current.session?.type).toBe("shortBreak");
   });
 });

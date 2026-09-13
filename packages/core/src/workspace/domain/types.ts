@@ -66,7 +66,21 @@ export type CalendarView = {
 // speculatively now. Deliberately not review.Session: that type's own
 // comment states it is "not fixed-length: no target count, no timer",
 // which a pomodoro, by definition, is.
-export const POMODORO_DURATION_SECONDS = 25 * 60; // fixed, not user-configurable this milestone
+// M10 Phase 2, lot 3: one fixed duration becomes three, one per session
+// type — still fixed, still not user-configurable, just no longer a single
+// number. pomodoroDurationSeconds (domain/pomodoro.ts) is the one place
+// that maps a `PomodoroSessionType` to its constant; nothing else may
+// compute a duration.
+export const POMODORO_FOCUS_DURATION_SECONDS = 25 * 60;
+export const POMODORO_SHORT_BREAK_DURATION_SECONDS = 5 * 60;
+export const POMODORO_LONG_BREAK_DURATION_SECONDS = 15 * 60;
+
+// "focus" rather than the French "concentration" used in the UI copy
+// (`TodayScreen.tsx`'s own tab label): CLAUDE.md's own convention keeps
+// code and comments in English, UI copy in French — this identifier is
+// never shown to a person directly, `pomodoroSessionTypeLabel`
+// (apps/web/src/lib/use-active-pomodoro.ts) is what the UI actually reads.
+export type PomodoroSessionType = "focus" | "shortBreak" | "longBreak";
 
 export type PomodoroSession = {
   id: string;
@@ -75,6 +89,10 @@ export type PomodoroSession = {
   startedAt: string;
   endedAt: string | null;
   durationSeconds: number; // captured at creation, never re-read from the constant later
+  // Without this, a break is indistinguishable from a focus session once
+  // stored — any counter or statistics screen built on this table would
+  // count a break as work. M10 Phase 2, lot 3.
+  type: PomodoroSessionType;
 };
 
 // A photo-extraction job's output, never written directly to `todos`

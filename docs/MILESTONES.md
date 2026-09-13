@@ -836,11 +836,12 @@ ambient sound from the study-sounds card.
 - [x] The ring/arc progress visual is derived from the same ratio the
       countdown itself uses, is `aria-hidden`, and that ratio is
       unit-tested as a pure function (lot 2)
-- [ ] `POST /api/pomodoro` accepts a session type and derives the
+- [x] `POST /api/pomodoro` accepts a session type and derives the
       duration server-side from it — never a client-supplied duration,
       asserted by an integration test; a new `type` column exists with
       its own Drizzle migration; the composer's three-segment selector is
       a real `radiogroup` of radio buttons, not three decorative `<span>`s
+      (lot 3)
 - [ ] The study-sounds card plays real audio, no third-party embed, no
       OAuth; the provenance and licence of every audio file are recorded
       in the repo

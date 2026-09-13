@@ -1,5 +1,12 @@
 import { apiFetch } from "./api-client.js";
 
+// "focus" | "shortBreak" | "longBreak", mirroring packages/core/src/
+// workspace/domain/types.ts's own PomodoroSessionType exactly (M10 Phase 2,
+// lot 3) — kept as a plain string union here rather than importing the
+// domain type across the API boundary, the same arm's-length relationship
+// this file's PomodoroSession already has with its own domain counterpart.
+export type PomodoroSessionType = "focus" | "shortBreak" | "longBreak";
+
 export type PomodoroSession = {
   id: string;
   userId: string;
@@ -7,6 +14,7 @@ export type PomodoroSession = {
   startedAt: string;
   endedAt: string | null;
   durationSeconds: number;
+  type: PomodoroSessionType;
 };
 
 // Two success shapes, not one: a 409 body is the same PomodoroSession shape
@@ -24,13 +32,18 @@ export async function getActivePomodoro(): Promise<PomodoroSession | null> {
 }
 
 // todoId omitted entirely when absent, never sent as null: the route's own
-// schema is `z.object({ todoId: z.string().optional() })`
-// (apps/api/src/routes/workspace.ts), which rejects null.
-export async function startPomodoro(todoId: string | null): Promise<StartPomodoroResult> {
+// schema is `z.object({ todoId: z.string().optional(), ... })`
+// (apps/api/src/routes/workspace.ts), which rejects null. type is always
+// sent explicitly, unlike todoId: TodayScreen's own radio group has always
+// resolved a concrete choice by the time this is called (defaulting to
+// "focus"), so there is no "absent" case to omit, and sending it
+// explicitly means this request never depends on an implicit default
+// agreeing between client and server.
+export async function startPomodoro(todoId: string | null, type: PomodoroSessionType = "focus"): Promise<StartPomodoroResult> {
   const res = await apiFetch("/api/pomodoro", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(todoId ? { todoId } : {}),
+    body: JSON.stringify({ ...(todoId ? { todoId } : {}), type }),
   });
   if (res.status === 201) return { status: "started", session: (await res.json()) as PomodoroSession };
   if (res.status === 409) return { status: "already-active", session: (await res.json()) as PomodoroSession };

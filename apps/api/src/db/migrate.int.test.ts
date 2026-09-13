@@ -86,4 +86,43 @@ describe("runMigrations", () => {
     );
     expect(deadlineRows).toEqual([{ id: "d1", document_id: "doc-1", user_id: "u1", date: "2026-03-20", label: "Contrôle", created_at: now }]);
   });
+
+  // M10 Phase 2, lot 3: adds a `type` column to `pomodoro_sessions`
+  // (packages/core/src/workspace/infra/schema.ts), not-null with a
+  // default of 'focus' — the same "replays cleanly from a real production
+  // database" shape as the 0006 test above, cut off one migration earlier
+  // (0011, the last one before this lot's own). A row inserted under the
+  // old schema, with no `type` column at all, must end up with `type =
+  // 'focus'` once this migration runs: every session ever created before
+  // this lot was one, and a NOT NULL column with a DEFAULT is exactly what
+  // SQLite's own ALTER TABLE ADD COLUMN backfills existing rows with.
+  it("replays cleanly from a database already at migration 0011, backfilling every pre-existing pomodoro_sessions row to type 'focus'", () => {
+    const dbPath = tempDbPath();
+    const journal = JSON.parse(readFileSync(path.join(migrationsFolder, "meta/_journal.json"), "utf8")) as {
+      entries: { tag: string; when: number }[];
+    };
+    const cutoffIndex = journal.entries.findIndex((entry) => entry.tag === "0011_smart_wild_child");
+    if (cutoffIndex === -1) throw new Error("migration 0011_smart_wild_child not found in the journal");
+    const migrationsUpTo0011 = journal.entries.slice(0, cutoffIndex + 1);
+    const lastApplied = journal.entries[cutoffIndex]!;
+
+    const sqlite = new Database(dbPath);
+    for (const entry of migrationsUpTo0011) {
+      sqlite.exec(readFileSync(path.join(migrationsFolder, `${entry.tag}.sql`), "utf8"));
+    }
+    sqlite.exec("CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)");
+    sqlite.prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run("seed-at-0011", lastApplied.when);
+
+    sqlite.prepare("INSERT INTO users (id, username, password_hash, session_version, created_at) VALUES (?, ?, ?, ?, ?)").run("u1", "alice", "x", 1, now);
+    sqlite
+      .prepare("INSERT INTO pomodoro_sessions (id, user_id, todo_id, started_at, ended_at, duration_seconds) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("p1", "u1", null, now, null, 1500);
+    sqlite.close();
+
+    const db = openDatabase(dbPath);
+    runMigrations(db);
+
+    const rows = db.all<{ id: string; user_id: string; type: string }>(sql`SELECT id, user_id, type FROM pomodoro_sessions`);
+    expect(rows).toEqual([{ id: "p1", user_id: "u1", type: "focus" }]);
+  });
 });

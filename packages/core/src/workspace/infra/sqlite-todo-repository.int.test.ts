@@ -279,8 +279,11 @@ describe("SqliteTodoRepository — pomodoro (M7)", () => {
     return { db, repo: new SqliteTodoRepository(db) };
   }
 
+  // type: "focus" added here (M10 Phase 2, lot 3): a mechanical fix for
+  // PomodoroSession's new required field — every test below round-trips a
+  // focus session exactly as it always did.
   function aPomodoroSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
-    return { id: "p1", userId: "u1", todoId: null, startedAt: now.toISOString(), endedAt: null, durationSeconds: 1500, ...overrides };
+    return { id: "p1", userId: "u1", todoId: null, startedAt: now.toISOString(), endedAt: null, durationSeconds: 1500, type: "focus", ...overrides };
   }
 
   it("createPomodoroSession then getLatestOpenPomodoroSession round-trips", async () => {
@@ -345,5 +348,36 @@ describe("SqliteTodoRepository — pomodoro (M7)", () => {
     await repo.deleteTodo("u1", "t1");
 
     expect((await repo.getLatestOpenPomodoroSession("u1"))?.todoId).toBeNull();
+  });
+
+  // M10 Phase 2, lot 3.
+  it("type round-trips for a short break and a long break, not just focus", async () => {
+    const { repo } = setup();
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-short", type: "shortBreak" }));
+    await repo.createPomodoroSession(aPomodoroSession({ id: "p-long", type: "longBreak" }));
+
+    expect((await repo.endPomodoroSession("u1", "p-short", now.toISOString()))?.type).toBe("shortBreak");
+    expect((await repo.endPomodoroSession("u1", "p-long", now.toISOString()))?.type).toBe("longBreak");
+  });
+
+  // The CHECK constraint is what actually enforces the three-value union at
+  // the database layer, not just TypeScript's own type — drizzle's own
+  // `{ enum: [...] }` column option is TypeScript-only (schema.ts's own
+  // comment) and emits no CHECK on its own; this proves the hand-edit to
+  // migration 0012 is real, not vacuous.
+  it("the CHECK constraint rejects a type outside the three-value union at the SQL layer", () => {
+    const { db } = setup();
+    let caught: unknown;
+    try {
+      db.run(
+        sql`INSERT INTO pomodoro_sessions (id, user_id, todo_id, started_at, ended_at, duration_seconds, type) VALUES ('p-bad', 'u1', NULL, ${now.toISOString()}, NULL, 1500, 'nonsense')`,
+      );
+    } catch (error) {
+      caught = error;
+    }
+    // drizzle-orm wraps better-sqlite3's own error ("CHECK constraint
+    // failed: pomodoro_sessions") behind a generic "Failed to run the
+    // query" message — the real one is on .cause.
+    expect((caught as { cause?: { message?: string } } | undefined)?.cause?.message).toMatch(/CHECK constraint failed/);
   });
 });

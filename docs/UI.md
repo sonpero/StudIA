@@ -1414,6 +1414,54 @@ Still out of scope for lot 2, unchanged from lot 1's own list: short and
 long breaks behind "Pause courte"/"Pause longue" (still purely
 decorative), and the study-sounds card below (still mock).
 
+**Lot 3 narrows "Pause courte/Pause longue are purely decorative," it
+does not drop the segmented control itself.** The three-segment selector
+is now a real `radiogroup` of radio buttons — Concentration checked by
+default, disabled for the whole time a session is running or finished
+(the same idle-vs-not split "Réinitialiser" already used), each option's
+own label a real 44px-tall touch target (measured live at 375px, not
+assumed: `309×52px` overall, each option `~100×44px`). What changes is
+which duration each type actually starts: `POST /api/pomodoro` now takes
+a `type` (`focus` | `shortBreak` | `longBreak`, defaulting to `focus`)
+instead of always meaning the one fixed 25-minute session — the server
+alone maps type to duration (`pomodoroDurationSeconds`,
+`packages/core/src/workspace/domain/pomodoro.ts`), never a client-supplied
+number, the same shape M9's own reversals and lot 2's zero-arrival state
+took: a scoped, argued exception to a rule this file stated plainly,
+recorded here rather than left to look stale. The countdown, the ring, and
+the zero-arrival state (lot 2) are all unchanged in themselves — a break
+runs through the exact same phases a focus session does, just with a
+5- or 15-minute window and its own vocabulary once it ends (below).
+
+**A finished break is not "a session."** Lot 2's "Séance terminée" reads
+correctly for a focus session reaching zero, but a pause running out
+isn't one — the card, the header widget, and the tab title all read
+"Pause terminée" instead once a `shortBreak`/`longBreak` session finishes
+(`pomodoroFinishedLabel`, `apps/web/src/lib/use-active-pomodoro.ts`),
+"Séance terminée" reserved for `focus`. The session counter ("N séance(s)
+de concentration") is scoped the same way: a closed break never
+increments it — the label already says what it counts, and a break
+counted there would silently overstate work done. The header widget also
+now names which type is running at all ("Pause courte · 04:12"), not just
+a bare countdown that cannot say whether the person is working or
+resting — read from the same session the countdown itself derives from,
+never a separate signal that could disagree with it.
+
+**One session at a time, breaks included — unchanged.** `POST /api/pomodoro`'s
+409-as-resync rule (this note, above) draws no distinction by type:
+starting a break while a focus session (or another break) is still
+active is refused exactly the same way. Switching from one type to
+another is manual and one step: end the current session, then start the
+next type from the now-idle radiogroup — no automatic hand-off, no
+"long break every four sessions" rule. That would need the server to
+count consecutive focus sessions itself, which is exactly what the new
+`type` column makes possible later, without another migration — not
+built now, since nothing today asks for it.
+
+Still out of scope for lot 3: the study-sounds card below (still mock),
+`sessionsCompleted` persisted server-side, and any automatic
+break-sequencing.
+
 **Aujourd'hui — Spotify (M7) has been removed entirely, not merely
 restyled.** Confirmed with the user (2026-09-06) as an intentional cut,
 not a bug: no card, no "Écouter" trigger,

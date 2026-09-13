@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { POMODORO_DURATION_SECONDS, type PomodoroSession } from "../domain/types.js";
+import { POMODORO_FOCUS_DURATION_SECONDS, type PomodoroSession } from "../domain/types.js";
 import { endPomodoro } from "./end-pomodoro.js";
 import { fakeTodoRepository } from "./fakes.js";
 
 const STARTED_AT = "2026-03-02T09:00:00.000Z";
 const NOW = new Date("2026-03-02T09:10:00.000Z");
 
+// type: "focus" added here (M10 Phase 2, lot 3): a mechanical fix for
+// PomodoroSession's new required field — endPomodoro itself is type-agnostic
+// and untouched, it ends any session regardless of type.
 function aSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
-  return { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: null, durationSeconds: POMODORO_DURATION_SECONDS, ...overrides };
+  return { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: null, durationSeconds: POMODORO_FOCUS_DURATION_SECONDS, type: "focus", ...overrides };
 }
 
 describe("endPomodoro", () => {
@@ -16,7 +19,10 @@ describe("endPomodoro", () => {
 
     const result = await endPomodoro({ repo }, "u1", "p1", NOW);
 
-    expect(result).toEqual({ ok: true, value: { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: NOW.toISOString(), durationSeconds: POMODORO_DURATION_SECONDS } });
+    expect(result).toEqual({
+      ok: true,
+      value: { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: NOW.toISOString(), durationSeconds: POMODORO_FOCUS_DURATION_SECONDS, type: "focus" },
+    });
     expect(repo.pomodoroSessions[0]!.endedAt).toBe(NOW.toISOString());
   });
 

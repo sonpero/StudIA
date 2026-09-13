@@ -57,6 +57,17 @@ export const pomodoroSessionsTable = sqliteTable(
     startedAt: text("started_at").notNull(),
     endedAt: text("ended_at"),
     durationSeconds: integer("duration_seconds").notNull(),
+    // M10 Phase 2, lot 3. Without this column, a break is indistinguishable
+    // from a focus session once stored — any counter or statistics screen
+    // built on this table would count a break as work. `{ enum: [...] }` is
+    // TypeScript-only (same as `source` above): it does not emit a CHECK
+    // constraint, so the generated migration is hand-edited to add one
+    // (same reasoning as migration 0011's `role` column). Existing rows
+    // default to 'focus' — every session ever created before this lot was
+    // one.
+    type: text("type", { enum: ["focus", "shortBreak", "longBreak"] })
+      .notNull()
+      .default("focus"),
   },
   (table) => [index("idx_pomodoro_sessions_user").on(table.userId, table.startedAt)],
 );

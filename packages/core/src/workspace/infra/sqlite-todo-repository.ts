@@ -39,6 +39,7 @@ function toPomodoroSession(row: typeof pomodoroSessionsTable.$inferSelect): Pomo
     startedAt: row.startedAt,
     endedAt: row.endedAt,
     durationSeconds: row.durationSeconds,
+    type: row.type,
   };
 }
 

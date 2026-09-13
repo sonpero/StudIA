@@ -58,7 +58,17 @@ const updateTodoBodySchema = z
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const startPomodoroBodySchema = z.object({ todoId: z.string().optional() });
+// type defaults to "focus": every caller before M10 Phase 2, lot 3 posted
+// no type at all and got a focus session, and still does. The three
+// literals here are the same ones domain/types.ts's PomodoroSessionType
+// names — CLAUDE.md rule 4 makes this schema, not a duplicate contract in
+// packages/contracts (which has no pomodoro schema at all, checked before
+// adding this), the single source of truth for the request body's shape.
+// Deliberately no durationSeconds field: the server always derives it from
+// type (packages/core/src/workspace/domain/pomodoro.ts's
+// pomodoroDurationSeconds), so a client-supplied duration has no field to
+// land in at all, let alone influence the created session.
+const startPomodoroBodySchema = z.object({ todoId: z.string().optional(), type: z.enum(["focus", "shortBreak", "longBreak"]).default("focus") });
 
 export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (app, opts, done) => {
   const deps = { repo: opts.repo, idGenerator: opts.idGenerator };
@@ -176,9 +186,10 @@ export const workspaceRoutes: FastifyPluginCallback<WorkspaceRoutesOptions> = (a
     "/api/pomodoro",
     { schema: { body: startPomodoroBodySchema } },
     async (request, reply) => {
-      const result = await startPomodoro(deps, request.user!.id, opts.clock.now(), request.body.todoId ?? null);
+      const result = await startPomodoro(deps, request.user!.id, opts.clock.now(), request.body.todoId ?? null, request.body.type);
       if (!result.ok) {
         if (result.error.kind === "todo-not-found") return reply.code(400).send({ error: "todo-not-found" });
+        if (result.error.kind === "todo-on-break") return reply.code(400).send({ error: "todo-on-break" });
         return reply.code(409).send(result.error.session);
       }
       return reply.code(201).send(result.value);

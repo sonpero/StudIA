@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { POMODORO_DURATION_SECONDS, type PomodoroSession } from "../domain/types.js";
+import { POMODORO_FOCUS_DURATION_SECONDS, type PomodoroSession } from "../domain/types.js";
 import { fakeTodoRepository } from "./fakes.js";
 import { getActivePomodoro } from "./get-active-pomodoro.js";
 
 const STARTED_AT = "2026-03-02T09:00:00.000Z";
 
+// type: "focus" added here (M10 Phase 2, lot 3): a mechanical fix for
+// PomodoroSession's new required field — getActivePomodoro is type-agnostic
+// and untouched.
 function aSession(overrides: Partial<PomodoroSession> = {}): PomodoroSession {
-  return { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: null, durationSeconds: POMODORO_DURATION_SECONDS, ...overrides };
+  return { id: "p1", userId: "u1", todoId: null, startedAt: STARTED_AT, endedAt: null, durationSeconds: POMODORO_FOCUS_DURATION_SECONDS, type: "focus", ...overrides };
 }
 
 describe("getActivePomodoro", () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { endPomodoro } from "./pomodoro-api.js";
+import { endPomodoro, startPomodoro } from "./pomodoro-api.js";
 
 // apps/api/src/routes/workspace.ts maps the domain's "not-found" close error
 // to HTTP 403 (not 404) — confirmed by reading the route directly, not
@@ -43,5 +43,56 @@ describe("endPomodoro", () => {
   it("still throws on a genuine failure (e.g. 500)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
     await expect(endPomodoro("s1")).rejects.toThrow();
+  });
+});
+
+// M10 Phase 2, lot 3: the route accepts a type, never a duration
+// (apps/api/src/routes/workspace.ts's startPomodoroBodySchema has no
+// durationSeconds field at all). Unlike todoId (omitted entirely when
+// absent, never sent as null — this file's own established convention),
+// type is always sent explicitly: by the time this function is called,
+// TodayScreen's own radio group has already resolved a concrete choice
+// (defaulting to "focus" client-side, same default the route itself
+// carries), so there is no "absent" case worth omitting — sending it
+// explicitly means this request never depends on the client and the
+// server happening to agree on an implicit default.
+describe("startPomodoro", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubStart(expected: { todoId?: string; type: string }, response: Response) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        expect(url).toBe("/api/pomodoro");
+        expect(JSON.parse(init!.body as string)).toEqual(expected);
+        return Promise.resolve(response);
+      }),
+    );
+  }
+
+  it("defaults to focus, sent explicitly, when called with no type argument", async () => {
+    stubStart({ type: "focus" }, new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: "now", endedAt: null, durationSeconds: 1500, type: "focus" }), { status: 201 }));
+
+    const result = await startPomodoro(null);
+
+    expect(result.status).toBe("started");
+  });
+
+  it("sends the given type explicitly", async () => {
+    stubStart(
+      { type: "shortBreak" },
+      new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt: "now", endedAt: null, durationSeconds: 300, type: "shortBreak" }), { status: 201 }),
+    );
+
+    await startPomodoro(null, "shortBreak");
+  });
+
+  it("still sends todoId alongside type when both are given", async () => {
+    stubStart(
+      { todoId: "t1", type: "focus" },
+      new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: "t1", startedAt: "now", endedAt: null, durationSeconds: 1500, type: "focus" }), { status: 201 }),
+    );
+
+    await startPomodoro("t1");
   });
 });

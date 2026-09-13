@@ -85,6 +85,13 @@
       "when": 1788602639449,
       "tag": "0011_smart_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789310704252,
+      "tag": "0012_wise_calypso",
+      "breakpoints": true
     }
   ]
 }

@@ -539,6 +539,73 @@ describe("workspace routes", () => {
     });
   });
 
+  // M10 Phase 2, lot 3: the route accepts a session type and derives the
+  // duration server-side from it — never a client-supplied duration.
+  describe("POST /api/pomodoro — session type (M10 Phase 2, lot 3)", () => {
+    it("a shortBreak session gets the short-break duration, not the focus one", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { type: "shortBreak" } });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json<PomodoroBody & { type: string }>();
+      expect(body).toMatchObject({ type: "shortBreak", durationSeconds: 300 });
+    });
+
+    it("a longBreak session gets the long-break duration", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { type: "longBreak" } });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json<PomodoroBody & { type: string }>()).toMatchObject({ type: "longBreak", durationSeconds: 900 });
+    });
+
+    it("defaults to focus, unchanged from before this lot, when no type is given", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json<PomodoroBody & { type: string }>()).toMatchObject({ type: "focus", durationSeconds: 1500 });
+    });
+
+    // The actual guarantee this lot exists to make: nothing the client
+    // sends can influence the stored duration, only `type` can. Without
+    // this, anyone could post a three-second or ten-hour pomodoro.
+    it("ignores a client-supplied durationSeconds entirely — the stored duration is always the type's own constant", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/pomodoro",
+        headers: { cookie: aliceCookie },
+        payload: { type: "shortBreak", durationSeconds: 36_000 },
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json<PomodoroBody>().durationSeconds).toBe(300);
+    });
+
+    it("rejects an unknown session type (400, Zod validation)", async () => {
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { type: "nonsense" } });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    // Décision 5: rejected, not silently dropped.
+    it("rejects a todoId on a break (400 todo-on-break), starting no session", async () => {
+      const todo = await createAliceTodo();
+
+      const res = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { todoId: todo.id, type: "shortBreak" } });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: "todo-on-break" });
+    });
+
+    it("still refuses a second concurrent session (409) when the second attempt is a break, same rule as focus", async () => {
+      const first = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });
+      const firstBody = first.json<PomodoroBody>();
+
+      const second = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: { type: "shortBreak" } });
+
+      expect(second.statusCode).toBe(409);
+      expect(second.json<PomodoroBody>().id).toBe(firstBody.id);
+    });
+  });
+
   describe("POST /api/pomodoro/:id/end (M7)", () => {
     it("ends the caller's own session (204), which then stops being active", async () => {
       const started = await app.inject({ method: "POST", url: "/api/pomodoro", headers: { cookie: aliceCookie }, payload: {} });

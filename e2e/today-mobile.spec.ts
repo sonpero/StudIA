@@ -178,4 +178,47 @@ test.describe("Aujourd'hui mobile (M10 Phase 1)", () => {
     await page.getByRole("button", { name: "Ajouter un todo" }).click({ position: { x: -10, y: -10 } });
     await expect(page.getByLabel("Nouveau todo")).toBeVisible();
   });
+
+  // M10 Phase 2, lot 3: the Pomodoro card's own three-segment selector is
+  // now a real radiogroup (docs/MILESTONES.md's own acceptance box), and
+  // this screen's own sidebar column is a fixed w-[300px] on desktop but
+  // full width below 768px — this is that measurement, not an assumption.
+  // Unlike the checkbox pattern elsewhere on this screen (an invisible
+  // pseudo-element halo added around a small real box), each radio's own
+  // label uses a real `min-h-11`: growing a real box can never overlap a
+  // neighbour the way an invisible margin could, so this reads the
+  // label's own boundingBox directly, not a derived zone.
+  test("ready state: the Pomodoro type radiogroup fits at 375px, and each option's own real touch target reaches 44px", async ({ page }) => {
+    await page.route(TODAY_ROUTE, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(EMPTY_TODAY_VIEW) }));
+    await page.goto("/");
+    await page.getByText(/rien à réviser pour l'instant/i).waitFor();
+
+    expect(await scrollWidth(page)).toBeLessThanOrEqual(375);
+
+    const group = page.getByRole("radiogroup");
+    await expect(group).toBeVisible();
+    const groupBox = await group.boundingBox();
+    if (!groupBox) throw new Error("expected the radiogroup to report a bounding box");
+    expect(groupBox.x).toBeGreaterThanOrEqual(0);
+    expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(375);
+
+    for (const name of ["Concentration", "Pause courte", "Pause longue"]) {
+      const radio = page.getByRole("radio", { name });
+      // The label wrapping the (visually hidden) input is the real,
+      // visible touch surface — the same relationship the todo checkbox
+      // above has with its own <label>, just sized with a real min-height
+      // here instead of a pseudo-element.
+      const label = radio.locator("..");
+      const box = await label.boundingBox();
+      if (!box) throw new Error(`expected the "${name}" option's own label to report a bounding box`);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+
+    // Real, not just present in the markup: clicking the visible label
+    // (not the hidden input, which real touch input never targets
+    // directly either) actually selects the option.
+    await page.getByText("Pause courte").click();
+    await expect(page.getByRole("radio", { name: "Pause courte" })).toBeChecked();
+  });
 });

@@ -91,4 +91,50 @@ test.describe("pomodoro", () => {
     // the title's own restoration still needs to be awaited in real time.
     await expect.poll(() => page.title(), { timeout: 10_000 }).toBe(originalTitle);
   });
+
+  // M10 Phase 2, lot 3: a focus session, closed, then a short break started
+  // from the same card — the composer's three-segment selector is now a
+  // real radiogroup (docs/MILESTONES.md's own M10 Phase 2 acceptance box),
+  // and the break's own duration (5 minutes, packages/core/src/workspace/
+  // domain/types.ts's POMODORO_SHORT_BREAK_DURATION_SECONDS) and label are
+  // both server-derived from the type alone, never client-supplied.
+  test("a focus session, closed, then a short break started from the same card shows its own duration and label", async ({ page }) => {
+    test.setTimeout(30_000);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Aujourd'hui" }).click();
+    await expect(page.getByRole("heading", { name: `Bonjour, ${TEST_USERNAME}` })).toBeVisible();
+
+    const pomodoroCard = page.getByTestId("pomodoro-card");
+    await expect(pomodoroCard.getByRole("radio", { name: "Concentration" })).toBeChecked();
+
+    await pomodoroCard.getByRole("button", { name: "Démarrer" }).click();
+    await expect(pomodoroCard.getByRole("button", { name: "Terminer" })).toBeVisible({ timeout: 10_000 });
+    await expect(pomodoroCard.getByRole("radio", { name: "Concentration" })).toBeDisabled();
+
+    await pomodoroCard.getByRole("button", { name: "Terminer" }).click();
+    await expect(pomodoroCard.getByRole("button", { name: "Démarrer" })).toBeVisible({ timeout: 10_000 });
+    await expect(pomodoroCard.getByText("1 séance de concentration")).toBeVisible();
+
+    // The radio input itself is visually hidden (sr-only) — its own
+    // styled <label> carries the pill's paint, exactly what a real click
+    // anywhere on the segment lands on and native label-for-control
+    // forwarding then checks. Playwright's own actionability check targets
+    // the accessible node's own (clipped) box for role locators, so the
+    // interaction itself goes through the label; assertions still read the
+    // real input's state via role.
+    await pomodoroCard.getByText("Pause courte").click();
+    await expect(pomodoroCard.getByRole("radio", { name: "Pause courte" })).toBeChecked();
+
+    await pomodoroCard.getByRole("button", { name: "Démarrer" }).click();
+
+    await expect(pomodoroCard.getByRole("button", { name: "Terminer" })).toBeVisible({ timeout: 10_000 });
+    await expect(pomodoroCard.getByText("05:00")).toBeVisible();
+    await expect(pomodoroCard.getByRole("radio", { name: "Pause courte" })).toBeChecked();
+
+    // A closed break must not be counted as a focus session (the spec's own
+    // explicit trap): the counter stays at 1 once this break ends too.
+    await pomodoroCard.getByRole("button", { name: "Terminer" }).click();
+    await expect(pomodoroCard.getByRole("button", { name: "Démarrer" })).toBeVisible({ timeout: 10_000 });
+    await expect(pomodoroCard.getByText("1 séance de concentration")).toBeVisible();
+  });
 });

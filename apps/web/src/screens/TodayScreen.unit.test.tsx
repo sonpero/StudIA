@@ -638,6 +638,145 @@ describe("TodayScreen (Aujourd'hui)", () => {
     expect(screen.getByRole("button", { name: "Réinitialiser" })).toBeDisabled();
   });
 
+  // M10 Phase 2, lot 3: the three-segment tab row becomes a real radiogroup
+  // (docs/MILESTONES.md's own M10 Phase 2 acceptance box), not three
+  // decorative <span>s — Concentration checked by default, matching the
+  // idle countdown ("25:00") it sits beside.
+  describe("pomodoro session type (M10 Phase 2, lot 3)", () => {
+    function stubIdlePomodoro() {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+          if (url === "/api/pomodoro/active") return Promise.resolve(new Response(null, { status: 404 }));
+          if (url === "/api/pomodoro" && init?.method === "POST") {
+            const body = JSON.parse(init.body as string) as { type: string };
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  id: "s1",
+                  userId: "u1",
+                  todoId: null,
+                  startedAt: new Date().toISOString(),
+                  endedAt: null,
+                  durationSeconds: body.type === "shortBreak" ? 300 : body.type === "longBreak" ? 900 : 1500,
+                  type: body.type,
+                }),
+                { status: 201 },
+              ),
+            );
+          }
+          if (typeof url === "string" && url.endsWith("/end") && init?.method === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+          return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+        }),
+      );
+    }
+
+    it("is a real radiogroup of three radio buttons, Concentration checked by default, interactive (not disabled) at rest", async () => {
+      stubIdlePomodoro();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      const group = screen.getByRole("radiogroup");
+      const focus = within(group).getByRole("radio", { name: "Concentration" });
+      const shortBreak = within(group).getByRole("radio", { name: "Pause courte" });
+      const longBreak = within(group).getByRole("radio", { name: "Pause longue" });
+
+      expect(focus).toBeChecked();
+      expect(shortBreak).not.toBeChecked();
+      expect(longBreak).not.toBeChecked();
+      expect(focus).not.toBeDisabled();
+      expect(shortBreak).not.toBeDisabled();
+      expect(longBreak).not.toBeDisabled();
+    });
+
+    it("selecting Pause courte before starting sends type shortBreak, and the resulting countdown/ring reflect its own duration", async () => {
+      stubIdlePomodoro();
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      await user.click(screen.getByRole("radio", { name: "Pause courte" }));
+      expect(screen.getByRole("radio", { name: "Pause courte" })).toBeChecked();
+
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+
+      await screen.findByRole("button", { name: "Terminer" });
+      expect(screen.getByText("05:00")).toBeInTheDocument();
+    });
+
+    it("disables every radio while a session is running, and re-enables them once idle again", async () => {
+      stubIdlePomodoro();
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+
+      expect(screen.getByRole("radio", { name: "Concentration" })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "Pause courte" })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "Pause longue" })).toBeDisabled();
+
+      await user.click(screen.getByRole("button", { name: "Terminer" }));
+      await screen.findByRole("button", { name: "Démarrer" });
+
+      expect(screen.getByRole("radio", { name: "Concentration" })).not.toBeDisabled();
+    });
+
+    // The consequence the spec explicitly calls out: sessionsCompleted's own
+    // label says "de concentration" — a closed break must never move it.
+    it("a short break that ends (manually) does not increment the focus session counter", async () => {
+      stubIdlePomodoro();
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText(/rien à réviser pour l'instant/i);
+
+      await user.click(screen.getByRole("radio", { name: "Pause courte" }));
+      await user.click(screen.getByRole("button", { name: "Démarrer" }));
+      await screen.findByRole("button", { name: "Terminer" });
+
+      await user.click(screen.getByRole("button", { name: "Terminer" }));
+      await screen.findByRole("button", { name: "Démarrer" });
+
+      expect(screen.getByText("0 séance de concentration")).toBeInTheDocument();
+    });
+
+    // A short break reaching zero on its own must not count either — the
+    // same "finished" auto-count path lot 2 added, now type-gated.
+    it("a short break that reaches zero on its own does not increment the focus session counter, and reads 'Pause terminée', not 'Séance terminée'", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          if (typeof url === "string" && url.startsWith("/api/documents")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+          if (url === "/api/pomodoro/active") {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  id: "s1",
+                  userId: "u1",
+                  todoId: null,
+                  startedAt: new Date(Date.now() - 5000).toISOString(),
+                  endedAt: null,
+                  durationSeconds: 1,
+                  type: "shortBreak",
+                }),
+                { status: 200 },
+              ),
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify(emptyView), { status: 200 }));
+        }),
+      );
+      renderScreen();
+
+      expect(await screen.findByText("00:00")).toBeInTheDocument();
+      expect(screen.getByText("Pause terminée !")).toBeInTheDocument();
+      expect(screen.queryByText("Séance terminée !")).not.toBeInTheDocument();
+      expect(screen.getByText("0 séance de concentration")).toBeInTheDocument();
+    });
+  });
+
   it("renders the study sounds card (still mock)", async () => {
     stubFetch(emptyView);
     renderScreen();

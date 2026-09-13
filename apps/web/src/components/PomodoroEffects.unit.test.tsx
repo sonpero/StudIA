@@ -108,6 +108,25 @@ describe("PomodoroEffects", () => {
     await waitFor(() => expect(document.title).toBe("StudIA"), { timeout: 3000 });
   });
 
+  // M10 Phase 2, lot 3: a finished break is not "a session" — the tab title
+  // gets the same type-aware adaptation as PomodoroCard's own finished text.
+  it("shows a break-specific finished title, not the focus one, for a short break reaching zero", async () => {
+    document.title = "StudIA";
+    const startedAt = new Date(Date.now() - 900).toISOString();
+    stubFetch((url, init) => {
+      if (url === "/api/pomodoro/active") {
+        return new Response(JSON.stringify({ id: "s1", userId: "u1", todoId: null, startedAt, endedAt: null, durationSeconds: 1, type: "shortBreak" }), { status: 200 });
+      }
+      if (url === "/api/pomodoro/s1/end" && init?.method === "POST") return new Response(null, { status: 204 });
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<PomodoroEffects />, { wrapper: wrapper(queryClient) });
+
+    await waitFor(() => expect(document.title).toBe("Pause terminée · StudIA"), { timeout: 3000 });
+    await waitFor(() => expect(document.title).toBe("StudIA"), { timeout: 3000 });
+  });
+
   it("restores the original title on unmount, even mid-session", async () => {
     document.title = "StudIA";
     const startedAt = new Date().toISOString();
