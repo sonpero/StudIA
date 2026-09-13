@@ -2353,12 +2353,57 @@ Content's own scale is `text-lg`/`text-base`/`text-sm` (18/16/14px) for
 `h1`/`h2`/`h3` — every level strictly under `--text-title` (20px), the
 smallest heading the chrome itself ever shows, so no content heading can
 ever equal or outrank it, whatever the source document's own structure
-looks like. `h3` lands at the same 14px as ordinary body text; weight
-(extrabold) and typeface (`--font-display` vs. `--font-body`) still carry
-the "this is a heading" signal on their own, the same two channels every
-heading in this app already relies on. The `mt-8`/`mt-6`/`mt-4` rhythm
-between levels is unchanged from the original calibration, checked on a
-static mockup at the time.
+looks like. This ceiling is a deliberate, assumed choice, not an
+oversight to lift later — read `Layout and responsiveness`'s own note
+above before assuming it should move.
+
+**A typography pass (still M10 Phase 1's "more polish on an already-
+redesigned screen" permission, not a new milestone) found this scale's
+own starting point misdescribed here, and rewrites it for what a real
+375px-and-desktop measurement actually showed, not what a source read
+alone suggested.** The body's own `<p>` carried no font-size class at
+all — this file previously assumed that meant the chrome's own 14px
+`--text-body`; a live measurement instead found the browser's own 16px
+default, since `tokens.css`'s `body {}` rule sets colour, background and
+family but never a size. 16px is kept — it already reads better than 14px
+would for continuous prose — but is now written explicitly (`text-base`
+on `p`/`ul`/`ol`/`blockquote`) rather than left an accident nothing
+protected from an ancestor someday setting something smaller. This is a
+deliberate divergence from `--text-body` (14px): the reading surface has
+its own scale, the same idiom this note already applied to headings.
+
+With a 16px body and the 20px ceiling unchanged, exactly one size step
+remains above it (`text-lg`, 18px) — three visually distinct heading
+levels can no longer come from size alone. `h1` keeps that one step.
+`h2` necessarily lands at the body's own 16px: weight (`extrabold`) and
+typeface (`--font-display` vs. `--font-body`) alone were measured as not
+enough to read as a heading distinct from body at the same size — the
+space *above* `h2` (`mt-6`), made markedly greater than the space below
+it (see the container's own tight-after-heading rule, next), is what
+actually carries that distinction now, not a size step this scale no
+longer has to spend on it. `h3` stays at 14px — *smaller* than the 16px
+body it introduces, which a first pass shipped uncritically: read plainly,
+a heading smaller than its own body text reads as a caption underneath
+what it introduces, not a heading above it, exactly what a real heading
+reading "RAG" produced once measured against real content. Rewritten as a
+deliberate **kicker** (eyebrow) idiom instead — `uppercase`, wide
+tracking, `--text-muted`'s own "secondary text, labels, metadata" role —
+a named, argued typographic register, not a demoted `h2`. The
+alternative (raising `h3` to the same 16px as body and `h2`) was
+considered and set aside: it would leave three same-size elements needing
+pairwise differentiation from each other instead of two.
+
+**Whitespace is now the primary hierarchy signal, not a secondary one.**
+The space above a heading (`mt-8`/`mt-6`/`mt-4` for `h1`/`h2`/`h3`,
+unchanged from the original calibration) is markedly greater than the
+space below it — the block immediately following a heading sits close to
+it, on the sanctioned spacing scale's own `mt-2`. Targeted on the reading
+container itself via an arbitrary sibling variant (`[&>h3+*]:mt-2` and
+so on for `h4`/`h5`) rather than a prop on each renderer: react-markdown
+renders its own output with no wrapper of its own (confirmed live), so
+every heading and the block that follows it land as plain siblings of
+the same parent, and no individual renderer has access to what precedes
+it to condition its own margin on.
 
 **Renders the course's extracted markdown, never its notions strung
 together, and this is a deliberate distinction, not an oversight.** A
@@ -2370,21 +2415,56 @@ as written or photographed; that is what "read the course" means here.
 `react-markdown` renders it through this app's own token classes (headings,
 lists, emphasis), not `@tailwindcss/typography`, which would bring its own
 spacing and colour scale to reconcile against `tokens.css` for a job this app
-already does by hand on every other screen. The reading card caps at
-`max-w-2xl`, narrower than the rest of the app's 1152px content width — a
-deliberately shorter line length for continuous prose, the same "cap it
-instead of stretching it" principle as Shape and depth's form-width rule.
+already does by hand on every other screen.
 
-**The reading card and the "Étudier ce cours" panel sit side by side on
-`--canvas`, each its own `Card` (`--surface`, bordered) — the mockup's own
-layout, superseding this file's former one deliberate `--canvas`
-deviation** (a full-page `--surface` reading surface). That exception is
-gone: Lecteur now follows the same "content area on `--canvas`, cards on
-`--surface`" default every other M9 screen already uses, not a special
-case of its own. On narrow viewports the panel stacks beneath the reading
-card (`flex-col` below `lg`), never beside it — there is no room for two
-280px-plus columns under the mobile/tablet breakpoints `Layout and
-responsiveness` already defines.
+**The reading column is capped at `max-w-[56ch]`, a text-relative unit,
+not a fixed pixel width** (the typography pass above, replacing
+`max-w-2xl`, 672px). 60 to 75 characters is the comfortable measure for
+continuous prose; `max-w-2xl` gave 85 to 90 at this file's own 16px body
+— too wide, and it would only have grown more wrong if the body size ever
+changed again, since a pixel cap tracks nothing about the text sitting
+inside it. `ch` is defined by the current font's own "0" glyph width, not
+the average width of a real sentence's actual letters, so writing the
+target character count directly does not produce it: `max-w-[65ch]`
+measured live, at this file's own 16px body/Inter, at an average of ~79
+real characters per line, past the comfortable range rather than at its
+edge. `56ch` is not a rounder, more defensible-looking number — it is the
+value that, measured the same way, actually lands the real average in
+65-70. Do not "correct" this back to 65 as a stray literal; that
+reintroduces the gap this pass exists to close. `w-full` still governs on
+narrow viewports, unaffected: 375px was already narrower than either
+value before this pass touched anything.
+
+**The reading card has no frame — no border, no card radius, no shadow —
+a reversal of this note's own former "each its own `Card` (`--surface`,
+bordered)" description, argued rather than merely retouched.** A reading
+surface does not need to look like a bordered card the way an action
+panel or a stat tile does: nothing on it is a separate, discrete object
+competing with neighbours for attention, it is the one continuous thing
+on the page being read. `--surface` stays — the text still needs to sit
+on white, not directly on `--canvas` — only the border/radius/shadow that
+made it *look* like a card are gone. `StudyPanel`'s own `Card`, beside it,
+is unchanged: it remains a distinct object offering two actions, exactly
+the kind of thing a frame is for. On narrow viewports the panel still
+stacks beneath the reading surface (`flex-col` below `lg`), never beside
+it — there is no room for two 280px-plus columns under the mobile/tablet
+breakpoints `Layout and responsiveness` already defines, and this pass
+changed nothing about that split.
+
+**The course's own subject colour dot and its title, both directly above
+the reading surface, repeated the pill already selected just above them
+— removed as a visual duplication, argued rather than merely retouched.**
+The dot is gone outright: nothing distinguishes it from the identical dot
+already painted on the active pill a few pixels above. The title is not
+deleted, only visually hidden (`sr-only`): it still carries this
+document's own heading structure — the anchor every markdown heading
+nests two levels under (`READER_COMPONENTS`'s own code comment) — and
+stays reachable by role and name in the accessibility tree, unchanged for
+anyone not seeing the page, exactly the audience the pill above it does
+not serve. This is the same shape as this file's other content-vs-chrome
+reversals: what looked assumed and permanent turned out to be a
+duplication once looked at again with the whole page in view, not a
+rediscovery that showing a title was wrong in general.
 
 **"Étudier ce cours"**: a title, one short sentence ("Exercice de
 mémorisation."), and two rounded-2xl buttons — "Réviser les notions"
@@ -2442,8 +2522,9 @@ skips the check must still land somewhere defined:
   Mes cours and this screen does not duplicate it
 - `done` with nothing readable (markdown null or blank): `idle`, "Ce cours
   ne contient pas encore de texte lisible."
-- `done` with real content: the reading card (course title and subject
-  colour dot, then the rendered markdown) plus the study panel beside it
+- `done` with real content: the reading surface (the course title present
+  but visually hidden — it repeats the pill already selected above — then
+  the rendered markdown) plus the study panel beside it
 
 **Tuteur** — Chat scoped to one course. `MessageCircle` in the nav (`Icons`'
 own note above). Redesigned from a user-supplied mockup in a later M9

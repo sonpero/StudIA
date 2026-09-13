@@ -230,21 +230,137 @@ describe("ReaderScreen", () => {
     expect(h3.className).toContain("text-sm");
   });
 
-  it("ready: shows the course's own subject colour dot beside its title", async () => {
+  // Typography/chrome polish pass (M10 Phase 1's own permission for more
+  // work on an already-redesigned screen): the coloured dot repeated the
+  // pill already selected just above it — a visual duplication, removed
+  // outright rather than kept as a fake signal.
+  it("ready: no longer shows the course's own subject colour dot — it duplicated the pill already selected just above", async () => {
     stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
     renderScreen({ documentId: "doc-1" });
 
-    const title = await screen.findByRole("heading", { name: "Biologie" });
-    const dot = title.parentElement?.querySelector("span[style]");
-    expect(dot).toHaveStyle({ backgroundColor: "#F87171" });
+    await screen.findByText("Contenu du cours.");
+    const title = screen.getByRole("heading", { name: "Biologie" });
+    expect(title.parentElement?.querySelector("span[style]")).not.toBeInTheDocument();
+    expect(document.querySelector("span[style]")).not.toBeInTheDocument();
   });
 
-  it("ready: the course title uses --text-title, the same token every other course-title instance uses (docs/UI.md's Type note)", async () => {
+  it("ready: the course title uses --text-title, the same token every other course-title instance uses (docs/UI.md's Type note), but is visually hidden — it repeats the pill already selected above, not deleted, since it still carries this document's own heading structure", async () => {
     stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
     renderScreen({ documentId: "doc-1" });
 
     const title = await screen.findByRole("heading", { name: "Biologie" });
     expect(title.className).toContain("text-[length:var(--text-title)]");
+    expect(title.className).toContain("sr-only");
+  });
+
+  // M10 Phase 2's own real-measurement discipline, extended here: a live
+  // 375x812 browser check found the reading surface's own <p> had no
+  // font-size class at all, inheriting the browser's own 16px default —
+  // not, as first assumed from a source read alone, the chrome's 14px
+  // --text-body. 16px is kept (it already reads better than 14px would),
+  // but written explicitly rather than left an accident of the browser's
+  // own default with nothing protecting it from a future ancestor setting
+  // a smaller size.
+  it("ready: the reading surface's own body text (paragraphs, lists, blockquotes) is explicitly 16px, not inherited by accident", async () => {
+    stubFetch({
+      documents: [docA],
+      detailsByDocument: { "doc-1": detail(docA, { markdown: "Paragraphe.\n\n- Item de liste\n\n> Citation." }) },
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    const p = await screen.findByText("Paragraphe.");
+    expect(p.className).toContain("text-base");
+    const li = screen.getByText("Item de liste").closest("li")!;
+    expect(li.closest("ul")!.className).toContain("text-base");
+    const blockquote = screen.getByText("Citation.").closest("blockquote")!;
+    expect(blockquote.className).toContain("text-base");
+  });
+
+  // The real defect the initial (source-only) diagnostic missed: level 3
+  // at 14px is *smaller* than the 16px body it introduces, which reads as
+  // a caption, not a heading. Kept at 14px anyway, deliberately, as an
+  // "eyebrow"/kicker idiom (uppercase, wide tracking, muted colour) — a
+  // named, argued typographic category, not a demoted body size: this is
+  // what keeps a smaller heading from reading as inferior to the text
+  // beneath it. docs/UI.md's own Lecteur note has the full reasoning for
+  // choosing this over bumping level 3 to body size instead.
+  it("ready: level 3 headings read as a distinct 'kicker' label — uppercase, wide tracking, muted colour — not a smaller, weaker body/caption", async () => {
+    stubFetch({
+      documents: [docA],
+      detailsByDocument: { "doc-1": detail(docA, { markdown: "### Un détail\n\nSuite." }) },
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    const h3 = await screen.findByRole("heading", { name: "Un détail" });
+    expect(h3.className).toContain("text-sm");
+    expect(h3.className).toContain("uppercase");
+    expect(h3.className).toMatch(/tracking-wide|tracking-wider/);
+    expect(h3.className).toContain("text-text-muted");
+  });
+
+  // The core of this pass, per the revised brief: with only one size step
+  // available above a 16px body and a 20px ceiling, headings 2 and 3 can no
+  // longer lean on size alone — whitespace above a heading, markedly
+  // greater than the space below it (before the block that belongs to it),
+  // is what actually carries the hierarchy now. Targeted via an arbitrary
+  // sibling variant on the prose container (react-markdown renders its own
+  // output with no wrapper of its own, confirmed live, so h3/h4/h5 land as
+  // direct children of the same element the title row does) rather than a
+  // per-renderer prop, since react-markdown gives no renderer access to its
+  // own preceding sibling.
+  it("ready: the block immediately following a heading sits closer to it than the heading sits to what came before — an asymmetry no test of individual class names alone would catch", async () => {
+    stubFetch({
+      documents: [docA],
+      detailsByDocument: { "doc-1": detail(docA, { markdown: "# Chapitre premier\n\nIntro.\n\n## Une section\n\nCorps.\n\n### Un détail\n\nSuite." }) },
+    });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Corps.");
+    const container = screen.getByRole("heading", { name: "Chapitre premier" }).parentElement!;
+    expect(container.className).toMatch(/\[&>h3\+\*\]:mt-\d/);
+    expect(container.className).toMatch(/\[&>h4\+\*\]:mt-\d/);
+    expect(container.className).toMatch(/\[&>h5\+\*\]:mt-\d/);
+  });
+
+  // M10 Phase 1 polish: 60-75 characters is the comfortable prose measure;
+  // max-w-2xl (672px) gave 85-90 at this file's own 16px body. ch is a
+  // text-relative unit (the current font's own "0" advance width), not a
+  // pixel value, so the column tracks the actual body size rather than a
+  // fixed viewport-independent guess. 56, not the rounder 65: measured
+  // live, 65ch renders at ~79 real characters per line at this file's own
+  // 16px body/Inter (ch tracks the "0" glyph, not real prose width), and
+  // 56ch is the value whose measured average lands in 65-70.
+  it("ready: the reading column is capped at 56 characters (a text-relative unit chosen to measure 65-70 real characters), not a fixed pixel width", async () => {
+    stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Contenu du cours.");
+    const card = screen.getByText("Contenu du cours.").closest('[class*="max-w"]');
+    expect(card?.className).toContain("max-w-[56ch]");
+    expect(card?.className).not.toContain("max-w-2xl");
+    expect(card?.className).not.toContain("max-w-[65ch]");
+  });
+
+  // Decision 4a: a reading surface doesn't need to look like a bordered
+  // card — the frame is gone, but the surface background stays so the text
+  // doesn't sit directly on --canvas.
+  it("ready: the reading surface has no card frame (no border, no card radius, no shadow), but keeps its surface background", async () => {
+    stubFetch({ documents: [docA], detailsByDocument: { "doc-1": detail(docA, { markdown: "Contenu du cours." }) } });
+    renderScreen({ documentId: "doc-1" });
+
+    await screen.findByText("Contenu du cours.");
+    const card = screen.getByText("Contenu du cours.").closest('[class*="max-w"]')!;
+    // border-0 zeroes the border's own width regardless of border-border's
+    // colour utility still being present in the merged string (twMerge
+    // only dedupes within the same property group, and colour/width are
+    // separate ones) — a zero-width border renders nothing, whatever
+    // colour it's given, so this checks specifically for the bare `border`
+    // *width* utility (Tailwind's un-suffixed one), not any border-* class.
+    expect(card.className).not.toMatch(/(^|\s)border(\s|$)/);
+    expect(card.className).toContain("border-0");
+    expect(card.className).not.toContain("rounded-[var(--radius-card)]");
+    expect(card.className).not.toMatch(/shadow-\[/);
+    expect(card.className).toContain("bg-surface");
   });
 
   it("ready: shows an 'Étudier ce cours' panel offering the notions and the tutor, each a rounded button with its own icon", async () => {
