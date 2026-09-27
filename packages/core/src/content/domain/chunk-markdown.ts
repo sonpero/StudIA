@@ -1,3 +1,7 @@
+// Superseded by chunk-by-size.ts: handleSplitJob no longer uses this (a
+// flat PDF's only `#` lines can be code comments, giving one huge chunk).
+// Kept with its tests as a cleanup candidate (docs/modules/content.md).
+//
 // A long course exceeds a comfortable context: split on top-level headings
 // first, call the splitter per chunk, then renumber positions globally
 // (docs/modules/content.md). Chunk boundaries follow the document's own

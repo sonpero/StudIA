@@ -9,7 +9,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createLanguageModel } from "../../shared/index.js";
-import { ClaudeNotionSplitter } from "./claude-notion-splitter.js";
+import { ClaudeNotionSplitter, SPLITTER_MAX_TOKENS } from "./claude-notion-splitter.js";
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 
@@ -126,4 +126,117 @@ describe("ClaudeNotionSplitter (transport level, via MSW)", () => {
     expect(callCount).toBe(1);
     expect(result).toEqual({ ok: true, value: [] });
   });
+
+  it("avoidTitles: lists the titles earlier chunks already used in the prompt", async () => {
+    const requestBodies: string[] = [];
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+        requestBodies.push(await request.clone().text());
+        return anthropicToolUseResponse([{ title: "Photosynthèse", body: "Corps.", difficulty: "medium" }]);
+      }),
+    );
+
+    const splitter = new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" }));
+    await splitter.split({ markdown: "# Cours", avoidTitles: ["Agent Card", "Cycle de vie des tâches"] });
+    await splitter.split({ markdown: "# Cours" });
+
+    expect(requestBodies[0]).toContain("Agent Card");
+    expect(requestBodies[0]).toContain("Cycle de vie des tâches");
+    expect(requestBodies[0]).toContain("Titres déjà utilisés");
+    expect(requestBodies[1]).not.toContain("Titres déjà utilisés");
+  });
+
+  describe("truncation (stop_reason max_tokens): terminal, never retried", () => {
+    function cutAtMaxTokens(input: unknown) {
+      return HttpResponse.json({
+        id: "msg_test",
+        type: "message",
+        role: "assistant",
+        model: "claude-sonnet-4-5",
+        content: [{ type: "tool_use", id: "toolu_1", name: "json", input }],
+        stop_reason: "max_tokens",
+        usage: { input_tokens: 10, output_tokens: SPLITTER_MAX_TOKENS },
+      });
+    }
+
+    it("sends an explicit max_tokens instead of the provider's 4096 default", async () => {
+      const requestBodies: string[] = [];
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+          requestBodies.push(await request.clone().text());
+          return anthropicToolUseResponse([{ title: "Photosynthèse", body: "Corps.", difficulty: "medium" }]);
+        }),
+      );
+
+      await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect((JSON.parse(requestBodies[0] ?? "{}") as { max_tokens?: number }).max_tokens).toBe(SPLITTER_MAX_TOKENS);
+    });
+
+    it("a tool call cut mid-object fails as 'truncated' after exactly one call", async () => {
+      let callCount = 0;
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, () => {
+          callCount += 1;
+          return cutAtMaxTokens({ elements: [{ title: "Photosynthèse" }] });
+        }),
+      );
+
+      const result = await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(callCount).toBe(1);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe("truncated");
+        expect(result.error.message).toContain(String(SPLITTER_MAX_TOKENS));
+      }
+    });
+
+    it("a schema-valid list that still hit max_tokens is truncated too: later notions were lost", async () => {
+      let callCount = 0;
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, () => {
+          callCount += 1;
+          return cutAtMaxTokens({ elements: [{ title: "Photosynthèse", body: "Corps.", difficulty: "medium" }] });
+        }),
+      );
+
+      const result = await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(callCount).toBe(1);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe("truncated");
+    });
+
+    it("truncation on the schema retry is reported as truncation, not as a schema failure", async () => {
+      let callCount = 0;
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, () => {
+          callCount += 1;
+          if (callCount === 1) return anthropicToolUseResponse([{ title: "T", body: "B", difficulty: "impossible" }]);
+          return cutAtMaxTokens({ elements: [{ title: "Photo" }] });
+        }),
+      );
+
+      const result = await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(callCount).toBe(2);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe("truncated");
+    });
+
+    it("any other API failure stays a plain model-error (retryable by the job)", async () => {
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, () =>
+          HttpResponse.json({ type: "error", error: { type: "invalid_request_error", message: "bad request" } }, { status: 400 }),
+        ),
+      );
+
+      const result = await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe("model-error");
+    });
+  });
 });
+

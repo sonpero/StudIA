@@ -65,9 +65,37 @@ Two adapters implement `DocumentExtractor`:
 telling them to retake the photo with more light, per `docs/UI.md`.
 
 **Extraction output is Markdown with a heading hierarchy preserved.** Headings are
-the signal `content` uses to split notions. An extractor that returns flat text
+a signal `content` uses to choose where to cut its chunks (preferred, no longer
+mandatory: `content` chunks by size). An extractor that returns flat text
 has failed even if it returned text, and the contract test asserts heading
 presence on a structured fixture.
+
+### Cleaning officeparser's text (`cleanExtractedText`)
+
+`OfficeParserExtractor` runs `cleanExtractedText` (`domain/clean-extracted-text.ts`)
+on officeparser's raw text **before** `promoteHeadings`, which would otherwise
+promote layout noise to `##` (a 43-page PDF: 861 promoted lines, 43 running
+headers, 43 `Page N of 43`, 56 lone commas). Every rule matches a whole line
+(trimmed), never a fragment inside a sentence ("1/2 tasse", "voir p. 3" stay):
+
+- **Pagination**: `Page N`, `Page N of|sur|de|/ M`, `p. N`, `N / M`, `N of M`,
+  `N sur M` (only when N ≤ M: "5 / 3" is a ratio), `- N -`, `— N —`.
+- **Punctuation-only lines** (Unicode punctuation and spaces), except lines
+  containing `{ } [ ]`, which close code/JSON structures.
+- **Running headers/footers**: a multi-word line repeated identically at least
+  `max(3, ceil(0.4 × pageCount))` times. officeparser@4.2.0 flattens all PDF
+  pages into one stream (no option exposes page boundaries), so `pageCount` is
+  estimated from the pagination markers: the largest declared total (`of M`),
+  else the number of markers. No pagination, no header removal (no evidence).
+  40%, not 50%: alternating book-style headers each cover about half the pages.
+  Multi-word only: a single repeated token (`taskId` ×17 in the A2A course) is
+  content. Known misses: a header with a varying number in it ("Chapitre 3 —
+  p. 12"), and a table cell "3 / 4" alone on its line is dropped as pagination.
+
+`promoteHeadings` also stops promoting obvious non-headings: a line ending
+with a comma, starting with a lowercase letter or a continuation mark
+(`, . ; : ) ] }`), or containing no letter. On the A2A course: 861 → 299
+promoted lines (still many table cells: officeparser gives no style signal).
 
 ## Use cases
 
@@ -189,6 +217,14 @@ does. Editing extracted text (M3 decides whether that is needed).
 
 - Unit: MIME detection including a `.pdf` that is actually a PNG; size limits;
   page ordering; duplicate-page rejection
+- Unit: `cleanExtractedText` — each pagination form, whole-line only, N ≤ M;
+  punctuation-only lines but not code brackets; running headers at 40% of the
+  pages, minimum 3, multi-word, declared total vs marker count, nothing
+  without pagination (`clean-extracted-text.unit.test.ts`); `promoteHeadings`'
+  non-heading shapes (`promote-headings.unit.test.ts`)
+- Contract: the 43-page A2A PDF (`tests/fixtures/ingestion/a2a-course.pdf`,
+  1.5 MB) extracts with no `Page N of 43`, no running header and no
+  punctuation-only line (`office-parser-extractor-long-pdf.contract.test.ts`)
 - Contract: officeparser on a docx fixture returns headings; vision fixture
   returns Markdown; an illegible fixture returns `legible: false` and a reason;
   a schema-violating response triggers exactly one retry then fails the job

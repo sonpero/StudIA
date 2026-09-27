@@ -36,4 +36,20 @@ describe("FixtureNotionSplitter", () => {
     const result = await splitter.split({ markdown: "# Cours" });
     expect(result.ok).toBe(false);
   });
+
+  it("valid: never returns a title listed in avoidTitles, case-insensitively, so every chunk of a course gets distinct titles", async () => {
+    const splitter = new FixtureNotionSplitter("valid");
+    const first = await splitter.split({ markdown: "# Partie 1" });
+    if (!first.ok) throw new Error("expected ok");
+    const avoidTitles = first.value.map((n) => n.title.toUpperCase());
+
+    const second = await splitter.split({ markdown: "# Partie 2", avoidTitles });
+
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.value).toHaveLength(5);
+    const avoided = new Set(avoidTitles.map((t) => t.toLowerCase()));
+    expect(second.value.filter((n) => avoided.has(n.title.toLowerCase()))).toEqual([]);
+  });
 });
+

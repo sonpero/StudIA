@@ -3,10 +3,23 @@ import type { Difficulty, Notion, SplitNotion } from "./types.js";
 
 export type SplitError =
   | { kind: "model-error"; message: string }
-  | { kind: "invalid-notion-count"; message: string };
+  | { kind: "invalid-notion-count"; message: string }
+  // The model's output hit its token limit. Deterministic for a given
+  // input: retrying the same chunk would truncate again and bill again, so
+  // this is terminal (never retried, by the splitter or by the job).
+  | { kind: "truncated"; message: string };
+
+export type SplitInput = {
+  markdown: string;
+  hint?: { subject?: string; level?: string };
+  // Titles earlier chunks of the same document already produced: the model
+  // is asked not to reuse them, since titles must be unique per document.
+  // disambiguate-titles.ts remains the safety net when it does anyway.
+  avoidTitles?: string[];
+};
 
 export interface NotionSplitter {
-  split(input: { markdown: string; hint?: { subject?: string; level?: string } }): Promise<Result<SplitNotion[], SplitError>>;
+  split(input: SplitInput): Promise<Result<SplitNotion[], SplitError>>;
 }
 
 // Not in docs/modules/content.md's Ports section (only NotionSplitter is

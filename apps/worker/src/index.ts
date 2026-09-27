@@ -41,6 +41,7 @@ import {
 import { z } from "zod";
 import { openDatabase } from "./db/connection.js";
 import { runMigrations } from "./db/migrate.js";
+import { recordTerminalFailures, TerminalAwareJobQueue, TerminalFailureRegistry } from "./terminal-failures.js";
 
 const dataDir = process.env.DATA_DIR ?? path.resolve(process.cwd(), ".data");
 if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
@@ -49,6 +50,10 @@ const db = openDatabase(path.join(dataDir, "studia.db"));
 runMigrations(db);
 
 const jobQueue = new SqliteJobQueue(db, uuidV7Generator);
+// Only the worker loop's own fail() calls need to honour a handler's
+// terminal flag (see terminal-failures.ts); handlers keep the plain queue.
+const terminalFailures = new TerminalFailureRegistry();
+const workerJobQueue = new TerminalAwareJobQueue(jobQueue, terminalFailures);
 const repo = new SqliteDocumentRepository(db);
 const fileStore = new LocalFileStore(dataDir);
 const notionRepo = new SqliteNotionRepository(db);
@@ -83,7 +88,9 @@ const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
 const splitNotionsHandler: JobHandler<SplitDocumentPayload> = {
   type: "split-notions",
   payloadSchema: z.object({ documentId: z.string() }),
-  handle: (payload, ctx) => handleSplitJob({ notionRepo, documentRepo: repo, splitter, idGenerator: uuidV7Generator }, payload, ctx),
+  handle: recordTerminalFailures(terminalFailures, (payload: SplitDocumentPayload, ctx) =>
+    handleSplitJob({ notionRepo, documentRepo: repo, splitter, idGenerator: uuidV7Generator }, payload, ctx),
+  ),
 };
 
 const generateCardsHandler: JobHandler<GenerateCardsPayload> = {
@@ -134,7 +141,7 @@ function scheduleCleanupFanOut(): void {
 scheduleCleanupFanOut();
 setInterval(scheduleCleanupFanOut, CLEANUP_FAN_OUT_INTERVAL_MS);
 
-runWorkerLoop({ jobQueue, handlers, clock: systemClock }, signal).catch((err: unknown) => {
+runWorkerLoop({ jobQueue: workerJobQueue, handlers, clock: systemClock }, signal).catch((err: unknown) => {
   console.error("[worker] fatal error", err);
   process.exit(1);
 });

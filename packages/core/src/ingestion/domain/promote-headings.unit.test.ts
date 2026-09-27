@@ -38,4 +38,33 @@ describe("promoteHeadings", () => {
 
     expect(promoteHeadings(input)).toBe("## Titre\n\nUn paragraphe assez long qui suit le titre sans souci particulier.");
   });
+
+  // PDF extraction breaks sentences, table cells and inline code across
+  // lines; these fragments are short and often unpunctuated, but a heading
+  // never has any of the shapes below.
+  const LONGER = "Une ligne suivante nettement plus longue que le fragment qui la précède.";
+
+  it.each([
+    ["ends with a comma: a sentence continues on the next line", "A2A est le standard ouvert,"],
+    ["starts with a lowercase letter: the tail of a broken sentence", "construits par des équipes"],
+    ["starts with a lowercase accented letter", "équivalents fonctionnellement"],
+    ["is a code identifier", "taskId"],
+    ["starts with a closing or continuation punctuation mark", ", opaque pour le client"],
+    ["starts with a period", ". Une tâche en"],
+    ["starts with a closing parenthesis", ") sur chaque requête"],
+    ["starts with a colon", ": le client choisit"],
+    ["contains no letter at all", "{"],
+    ["contains no letter at all (a version number)", "1.0"],
+  ])("does not promote a line that %s", (_why, line) => {
+    expect(promoteHeadings(`${line}\n${LONGER}`)).not.toContain("##");
+  });
+
+  it("still promotes a numbered section title", () => {
+    expect(promoteHeadings(`2. Concepts fondamentaux\n${LONGER}`)).toBe(`## 2. Concepts fondamentaux\n\n${LONGER}`);
+  });
+
+  it("still promotes a title starting with an uppercase accented letter or an opening parenthesis", () => {
+    expect(promoteHeadings(`État des lieux\n${LONGER}`)).toContain("## État des lieux");
+    expect(promoteHeadings(`(A2A) en bref\n${LONGER}`)).toContain("## (A2A) en bref");
+  });
 });
