@@ -97,6 +97,9 @@ export function buildApp(opts: BuildAppOptions) {
   void app.register(notionsRoutes, {
     repo: contentDeps.repo,
     markNotionStale: (userId: string, notionId: string) => markStale({ repo: generationDeps.repo }, userId, notionId),
+    documentRepo: ingestionDeps.repo,
+    jobQueue,
+    clock: systemClock,
   });
   void app.register(cardsRoutes, {
     cardRepo: generationDeps.repo,
