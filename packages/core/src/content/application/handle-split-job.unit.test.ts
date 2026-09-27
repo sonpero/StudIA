@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { err, ok } from "../../shared/index.js";
 import { uuidV7Generator } from "../../shared/index.js";
+import type { NotionSplitter } from "../domain/ports.js";
 import { fakeDocumentRepositoryForContent, fakeNotionRepository, fakeNotionSplitter } from "./fakes.js";
 import { handleSplitJob } from "./handle-split-job.js";
 
@@ -67,7 +68,7 @@ describe("handleSplitJob", () => {
     });
 
     await handleSplitJob(
-      { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+      { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator, chunking: { targetChars: 20, maxChars: 30 } },
       { documentId: "doc-1" },
       { jobId: "job-1", userId: "u1", attempt: 1, now },
     );
@@ -144,7 +145,7 @@ describe("handleSplitJob", () => {
     expect(await notionRepo.listNotions("u1", "doc-1")).toHaveLength(0);
   });
 
-  it("fails the job when two chunks independently produce the same title, without writing anything", async () => {
+  it("writes every notion, titles made unique, when two chunks independently produce the same titles", async () => {
     const notionRepo = fakeNotionRepository();
     const documentRepo = fakeDocumentRepositoryForContent({
       documentId: "doc-1",
@@ -154,12 +155,163 @@ describe("handleSplitJob", () => {
     const splitter = fakeNotionSplitter(() => Promise.resolve(ok(manyNotions(5, "Introduction"))));
 
     const result = await handleSplitJob(
-      { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+      { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator, chunking: { targetChars: 20, maxChars: 30 } },
       { documentId: "doc-1" },
       { jobId: "job-1", userId: "u1", attempt: 1, now },
     );
 
-    expect(result.ok).toBe(false);
-    expect(await notionRepo.listNotions("u1", "doc-1")).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    const titles = (await notionRepo.listNotions("u1", "doc-1")).map((n) => n.title);
+    expect(titles).toHaveLength(10);
+    expect(new Set(titles.map((t) => t.toLowerCase())).size).toBe(10);
+  });
+
+  describe("long documents", () => {
+    // 30 paragraphs of 1 000 characters and not a single `#` heading: the
+    // shape of a flat PDF extraction.
+    const longFlatMarkdown = Array.from({ length: 30 }, (_, i) => `P${String(i)} ${"x".repeat(996)}`).join("\n\n");
+
+    it("splits by size, not by top-level heading: no chunk above the 15 000-character hard max", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: longFlatMarkdown, extractedAt: now.toISOString() });
+      const seen: string[] = [];
+      let call = 0;
+      const splitter = fakeNotionSplitter((markdown) => {
+        seen.push(markdown);
+        call += 1;
+        return Promise.resolve(ok(manyNotions(5, `Partie ${String(call)}`)));
+      });
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(seen.length).toBeGreaterThanOrEqual(2);
+      expect(seen.every((chunk) => chunk.length <= 15_000)).toBe(true);
+    });
+
+    it("tells the splitter which titles earlier chunks already produced", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: longFlatMarkdown, extractedAt: now.toISOString() });
+      const avoidTitlesSeen: (string[] | undefined)[] = [];
+      let call = 0;
+      const splitter: NotionSplitter = {
+        split: (input) => {
+          avoidTitlesSeen.push(input.avoidTitles);
+          call += 1;
+          return Promise.resolve(ok(manyNotions(5, `Partie ${String(call)}`)));
+        },
+      };
+
+      await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(avoidTitlesSeen[0]).toEqual([]);
+      expect(avoidTitlesSeen[1]).toEqual(manyNotions(5, "Partie 1").map((n) => n.title));
+    });
+
+    it("accepts more than 60 notions from a long document, up to its length-proportional cap", async () => {
+      // 64 000 characters → cap max(60, 64 000 / 500) = 128.
+      const markdown = Array.from({ length: 64 }, (_, i) => `P${String(i)} ${"x".repeat(996)}`).join("\n\n").slice(0, 64_000);
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown, extractedAt: now.toISOString() });
+      let call = 0;
+      const splitter = fakeNotionSplitter(() => {
+        call += 1;
+        return Promise.resolve(ok(manyNotions(call === 1 ? 128 : 0, "Notion")));
+      });
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect(await notionRepo.listNotions("u1", "doc-1")).toHaveLength(128);
+    });
+
+    it("reports the actual bounds when the count is above the cap", async () => {
+      const markdown = Array.from({ length: 64 }, (_, i) => `P${String(i)} ${"x".repeat(996)}`).join("\n\n").slice(0, 64_000);
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown, extractedAt: now.toISOString() });
+      let call = 0;
+      const splitter = fakeNotionSplitter(() => {
+        call += 1;
+        return Promise.resolve(ok(manyNotions(call === 1 ? 129 : 0, "Notion")));
+      });
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: false, error: "Splitting produced 129 notions, expected 5 to 128" });
+      expect(await notionRepo.listNotions("u1", "doc-1")).toHaveLength(0);
+    });
+
+    it("qualifies a repeated title with its chunk's section instead of failing", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({
+        documentId: "doc-1",
+        markdown: "# Chapitre 1\n\nA.\n\n# Chapitre 2\n\nB.",
+        extractedAt: now.toISOString(),
+      });
+      let call = 0;
+      const splitter = fakeNotionSplitter(() => {
+        call += 1;
+        return Promise.resolve(ok([{ title: "Introduction", body: "Corps.", difficulty: "easy" as const }, ...manyNotions(2, `Ch${String(call)}`)]));
+      });
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator, chunking: { targetChars: 20, maxChars: 30 } },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result.ok).toBe(true);
+      const written = await notionRepo.listNotions("u1", "doc-1");
+      expect(written.map((n) => n.title)).toEqual(["Introduction", "Ch1 0", "Ch1 1", "Introduction (Chapitre 2)", "Ch2 0", "Ch2 1"]);
+    });
+  });
+
+  describe("truncated model output", () => {
+    it("fails terminally, writing nothing: retrying the same chunk would truncate again", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: "# Chapitre 1\n\nContenu.", extractedAt: now.toISOString() });
+      const splitter = fakeNotionSplitter(() => Promise.resolve(err({ kind: "truncated", message: "cut at 16000 tokens" })));
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: false, error: "cut at 16000 tokens", terminal: true });
+      expect(await notionRepo.listNotions("u1", "doc-1")).toHaveLength(0);
+    });
+
+    it("leaves any other splitter error retryable (no terminal flag)", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: "# Chapitre 1\n\nContenu.", extractedAt: now.toISOString() });
+      const splitter = fakeNotionSplitter(() => Promise.resolve(err({ kind: "model-error", message: "overloaded" })));
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result.ok).toBe(false);
+      expect("terminal" in result).toBe(false);
+    });
   });
 });
+

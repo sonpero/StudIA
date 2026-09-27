@@ -1,7 +1,7 @@
 export type { Difficulty, Notion, SplitNotion } from "./domain/types.js";
 export type { NotionRepository, NotionSplitter, SplitError, SplitInput } from "./domain/ports.js";
 
-export { handleSplitJob, type HandleSplitJobDeps, type SplitDocumentPayload } from "./application/handle-split-job.js";
+export { handleSplitJob, type HandleSplitJobDeps, type SplitDocumentPayload, type SplitJobResult } from "./application/handle-split-job.js";
 export { listNotions, type ListNotionsDeps } from "./application/list-notions.js";
 export { updateNotion, type UpdateNotionDeps, type UpdateNotionError, type UpdateNotionPatch } from "./application/update-notion.js";
 export { reorderNotions, type ReorderNotionsDeps } from "./application/reorder-notions.js";
