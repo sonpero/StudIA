@@ -2,7 +2,7 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import { err, ok, type Result } from "../../shared/index.js";
 import { hasDuplicateTitles } from "../domain/has-duplicate-titles.js";
-import type { NotionSplitter, SplitError } from "../domain/ports.js";
+import type { NotionSplitter, SplitError, SplitInput } from "../domain/ports.js";
 import type { SplitNotion } from "../domain/types.js";
 
 // Flat, one array of three-field objects: no nesting, no unions (CLAUDE.md).
@@ -48,11 +48,17 @@ const PROMPT_PREFIX =
 export class ClaudeNotionSplitter implements NotionSplitter {
   constructor(private readonly model: LanguageModel) {}
 
-  async split(input: { markdown: string; hint?: { subject?: string; level?: string } }): Promise<Result<SplitNotion[], SplitError>> {
+  async split(input: SplitInput): Promise<Result<SplitNotion[], SplitError>> {
     const hintLine = input.hint
       ? `\n\nContexte : ${[input.hint.subject, input.hint.level].filter(Boolean).join(", ")}.`
       : "";
-    const prompt = `${PROMPT_PREFIX}${hintLine}\n\n---\n\n${input.markdown}`;
+    // This chunk is one part of a longer course: titles must stay unique
+    // across the whole document, not just within this response.
+    const avoidLine =
+      input.avoidTitles && input.avoidTitles.length > 0
+        ? `\n\nTitres déjà utilisés par d'autres parties du même cours (n'en réutilise aucun, choisis un titre plus précis si l'idée est proche) :\n${input.avoidTitles.map((t) => `- ${t}`).join("\n")}`
+        : "";
+    const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}\n\n---\n\n${input.markdown}`;
 
     const attempt = async (extraContext?: string) => {
       const { object } = await generateObject({

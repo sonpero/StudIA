@@ -126,4 +126,24 @@ describe("ClaudeNotionSplitter (transport level, via MSW)", () => {
     expect(callCount).toBe(1);
     expect(result).toEqual({ ok: true, value: [] });
   });
+
+  it("avoidTitles: lists the titles earlier chunks already used in the prompt", async () => {
+    const requestBodies: string[] = [];
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+        requestBodies.push(await request.clone().text());
+        return anthropicToolUseResponse([{ title: "Photosynthèse", body: "Corps.", difficulty: "medium" }]);
+      }),
+    );
+
+    const splitter = new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" }));
+    await splitter.split({ markdown: "# Cours", avoidTitles: ["Agent Card", "Cycle de vie des tâches"] });
+    await splitter.split({ markdown: "# Cours" });
+
+    expect(requestBodies[0]).toContain("Agent Card");
+    expect(requestBodies[0]).toContain("Cycle de vie des tâches");
+    expect(requestBodies[0]).toContain("Titres déjà utilisés");
+    expect(requestBodies[1]).not.toContain("Titres déjà utilisés");
+  });
 });
+

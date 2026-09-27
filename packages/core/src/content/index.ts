@@ -1,5 +1,5 @@
 export type { Difficulty, Notion, SplitNotion } from "./domain/types.js";
-export type { NotionRepository, NotionSplitter, SplitError } from "./domain/ports.js";
+export type { NotionRepository, NotionSplitter, SplitError, SplitInput } from "./domain/ports.js";
 
 export { handleSplitJob, type HandleSplitJobDeps, type SplitDocumentPayload } from "./application/handle-split-job.js";
 export { listNotions, type ListNotionsDeps } from "./application/list-notions.js";
