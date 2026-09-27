@@ -90,17 +90,27 @@ async function scrollWidth(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth);
 }
 
+// Centred rather than scrollIntoViewIfNeeded(): that call counts a button
+// sitting under the fixed bottom nav as already in view.
 async function expectTouchTargetInViewport(page: Page, button: ReturnType<Page["getByRole"]>) {
-  await button.scrollIntoViewIfNeeded();
+  await button.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const box = await button.boundingBox();
   if (!box) throw new Error("expected the button to report a bounding box");
   expect(box.height).toBeGreaterThanOrEqual(44);
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(VIEWPORT_WIDTH);
+  // Nothing (the fixed nav bar, above all) covers its centre.
+  const onTop = await button.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return hit !== null && element.contains(hit);
+  });
+  expect(onTop).toBe(true);
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
+  // Transitions finished: a capture taken mid-fade shows states that never last.
+  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), animations: "disabled" });
 }
 
 test.describe("notion step at 375px", () => {
