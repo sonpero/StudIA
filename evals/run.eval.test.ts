@@ -5,6 +5,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { answerAmongOptions, areOptionsDistinct, ClaudeCardGenerator, ClaudeNotionSplitter, createLanguageModel, optionLengthsArePlausible } from "@studia/core";
 import { describe, expect, it } from "vitest";
+import { usageLine, withUsageTally } from "./usage.js";
 
 const GOLDEN_DIR = path.resolve(import.meta.dirname, "golden");
 const RESULTS_DIR = path.resolve(import.meta.dirname, "results");
@@ -65,7 +66,7 @@ describe("M3 golden-set eval", () => {
         );
       }
 
-      const model = createLanguageModel({ apiKey, model: process.env.LLM_MODEL });
+      const { model, tally } = withUsageTally(createLanguageModel({ apiKey, model: process.env.LLM_MODEL }));
       const splitter = new ClaudeNotionSplitter(model);
       const generator = new ClaudeCardGenerator(model);
 
@@ -144,7 +145,8 @@ describe("M3 golden-set eval", () => {
       const report = [
         `# M4 eval run — ${date}`,
         "",
-        "Model: claude-sonnet-4-5 (default, see packages/core/src/shared/model-client.ts)",
+        `Model: ${model.modelId} (LLM_MODEL, or the default in packages/core/src/shared/model-client.ts)`,
+        usageLine(tally),
         "",
         "| Case | Subject | Split schema valid | Notions | In expected range | Card schema valid | MCQ schema valid | MCQ cards | Distractor length ratio |",
         "|---|---|---|---|---|---|---|---|---|",
