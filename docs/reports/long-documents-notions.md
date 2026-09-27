@@ -603,6 +603,42 @@ Captures à 375 px (`docs/reports/long-documents-notions/`) :
     dans des fichiers existants, ou nouveaux fichiers.
 - **Dépense payante de la mission : 0,605 $ sur 2 *, en un seul passage.
 
+### Eval du 2026-09-27 (`pnpm eval`, `claude-sonnet-5`)
+
+Lancée à ta demande après la seconde mission. Résultats bruts :
+`evals/results/2026-09-27.md` et `evals/results/2026-09-27-tutor.md`.
+
+- **Libellés corrigés avant de lancer.** Les deux suites écrivaient
+  « Model: claude-sonnet-4-5 » en dur. Elles écrivent maintenant l'identifiant
+  réellement utilisé, et le nombre d'appels et de tokens du passage. Aucune
+  assertion n'a changé.
+- **Tuteur : 15/15.** 5/5 réponses ancrées dans le cours, 10/10 refus hors
+  sujet ; même score que la référence du 2026-09-05 sur `claude-sonnet-4-5`.
+- **Découpage et fiches : la suite échoue**, sur son assertion « schéma
+  valide pour tous les cas ».
+  - `04-anglais-slides` : découpage en échec, 0 notion. **Intermittent** :
+    rejoué deux fois seul, il donne 7 notions à chaque fois. L'eval
+    n'enregistre pas le message d'erreur. Piste plausible mais non prouvée :
+    un titre de plus de 80 caractères, deux fois de suite. Un titre du
+    rejeu faisait exactement 80 caractères.
+  - `05-cours-court` : 6 notions pour une fourchette attendue de 1 à 5.
+    `claude-sonnet-4-5` en faisait 5.
+  - Les 4 autres cas découpés ont des fiches (flashcards et QCM) valides.
+    Ratio moyen de longueur des distracteurs : 1,67.
+- **Limite de l'eval** : elle appelle le splitter directement. Le prompt
+  réel de production, avec la cible et le budget par chunk ajoutés par
+  `handleSplitJob`, n'est pas celui qu'elle mesure.
+- **Coût réel : environ 0,29 $.**
+  - Découpage et fiches : 15 appels, 18 847 tokens en entrée et 14 122 en
+    sortie, soit 0,18 $.
+  - Tuteur : 30 appels, 38 307 en entrée et 2 311 en sortie, soit 0,10 $.
+  - Rejeux du cas 04 : environ 0,01 $.
+- **Dépense payante cumulée depuis le début de la seconde mission :
+  environ 0,90 $.**
+- **À décider** : le splitter devrait journaliser la raison de son premier
+  échec. C'est le deuxième échec de schéma inexpliqué de la journée, après
+  le chunk 9 du passage réel.
+
 ## Ce qui reste ouvert
 
 Mis à jour à la fin de la seconde mission (voir « Suite du 2026-09-27 »).
@@ -625,8 +661,10 @@ vérification à 375 px sont faits, et ne figurent plus ici.
     peut désormais être coupée.
   - **Température.** Elle passe de 0 à 1 pour tous ces appels.
   
-  `pnpm eval` (payant, manuel) couvre les fiches, le splitter et le tuteur :
-  à lancer avant de déployer, avec ton accord.
+  `pnpm eval` a été lancé à ta demande (voir « Eval du 2026-09-27 »,
+  ci-dessous) : tuteur 15/15 ; fiches valides sur tous les cas découpés ;
+  un échec intermittent du découpage. La correction, la vision et les todos
+  ne sont couverts par aucune eval et restent non vérifiés.
 - **Déploiement** : branche non poussée. Au déploiement, ajouter la
   variable Railway `LLM_MODEL=claude-sonnet-5`. Elle est facultative : le
   code prend déjà ce défaut.
