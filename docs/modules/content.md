@@ -117,6 +117,34 @@ with a reversal of the full list.
 | `POST /api/documents/:id/notions/reorder` | Full ordered list of ids |
 | `DELETE /api/notions/:id` | Delete and renumber |
 | `GET /api/search?q=` | FTS5 across the user's notions |
+| `GET /api/notions/statuses` | Notion-step status per document: `[{ documentId, status }]` |
+| `POST /api/documents/:id/notions/retry` | Relaunch notion creation only. 202, 403 (another user's or unknown document), 409 (step not failed) |
+
+## Notion step status and retry
+
+A document's exposed `status` (ingestion, `packages/contracts`) only covers
+extraction. Whether its notions were created is this module's own fact,
+served separately — not as a new ingestion status value: contracts are
+frozen, and ingestion cannot depend on content (content already depends on
+ingestion).
+
+- `listNotionStatuses(userId)` derives, per document, the status of its
+  **latest** `split-notions` job (`JobQueue.listJobs`, newest first), via the
+  pure `domain/notion-step-status.ts`: `pending`/`running` → `pending` (a job
+  waiting out a retry backoff is still in progress), `done` → `ready`,
+  `failed` → `failed`. A document with no split job gets no entry: its
+  extraction is not done yet. Never derived from the job's error text, and
+  `lastError` is never sent to the client (the route's response schema
+  strips it).
+- `retryNotionSplit(userId, documentId, now)` enqueues a new `split-notions`
+  job (`{ documentId }`) only when the document belongs to the caller
+  (`not-found` otherwise) and its latest split job is `failed` (`not-failed`
+  otherwise) — mirrors ingestion's `retryExtraction`, never re-runs
+  extraction.
+- Mes cours and Notions show the step in progress, and on failure a plain
+  sentence plus "Réessayer" (this route). A failed latest split never hides
+  notions a document already has: the retry is only offered when it has
+  none.
 
 ## Out of scope
 
