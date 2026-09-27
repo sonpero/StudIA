@@ -43,7 +43,16 @@ type Notion = {
   dense pages, what the original fixed 60 implicitly assumed) and grows with
   the document beyond: the 43-page A2A course (~65 400 characters after
   cleaning) gets 131. Outside the range, the job fails with a message naming
-  the actual bounds rather than writing garbage.
+  the actual bounds rather than writing garbage. Above the cap the failure is
+  **terminal** (every chunk is already paid for, and a full re-split of the
+  same text overshoots again); below the floor it stays retryable.
+- The splitter is told how many notions to aim for per chunk
+  (`notionCountTarget`): one per 600 to 1 000 characters of the chunk, and
+  never fewer than 5 when the chunk is the whole document. 600 stays coarser
+  than the cap's 500, so a model that follows the target is never rejected.
+  Why: the first real run on A2A (2026-09-27, 9 chunks of ~7 300 characters,
+  no target in the prompt) produced 315 notions, one per ~208 characters —
+  2.4x the cap (`docs/reports/long-documents-notions.md`).
 
 `difficulty` is a **label**, not a schedule. It is an input to `progress`'s pure
 function. Nothing in this module decides when anything is studied.
@@ -56,6 +65,7 @@ interface NotionSplitter {
     markdown: string;
     hint?: { subject?: string; level?: string };
     avoidTitles?: string[]; // titles earlier chunks of the document produced
+    targetNotions?: { min: number; max: number }; // notions to aim for in this chunk
   }): Promise<Result<SplitNotion[], SplitError>>;
 }
 
@@ -229,15 +239,18 @@ Cards, questions, quizzes. Scheduling.
   (`disambiguate-titles.unit.test.ts`)
 - Unit: `handleSplitJob` — size chunking, `avoidTitles` forwarded, a
   repeated title qualified instead of failing, the length-proportional cap
-  and its message, `truncated` returned with `terminal: true`
+  and its message, `truncated` returned with `terminal: true`, a count above
+  the cap terminal and one below the floor retryable, `targetNotions`
+  forwarded per chunk (floor of 5 only for a single-chunk document)
+- Unit: `notionCountTarget` (`notion-count-target.unit.test.ts`)
 - Contract: the 43-page A2A PDF (`tests/fixtures/ingestion/a2a-course.pdf`)
   through the real extractor and chunker: 5 to 12 chunks, none above the hard
   max, no pagination, running header or punctuation-only line
   (`long-pdf-chunking.contract.test.ts`)
 - Contract (MSW): explicit `max_tokens`; `stop_reason: "max_tokens"` →
   `truncated` after one call, also when the cut list still parses and when it
-  happens on the schema retry; a 400 stays `model-error`; `avoidTitles` in
-  the prompt
+  happens on the schema retry; a 400 stays `model-error`; `avoidTitles` and
+  `targetNotions` in the prompt
 - Worker: a terminal split failure goes straight to `failed` through the real
   `runWorkerTick` and `SqliteJobQueue`, any other back to `pending`
   (`apps/worker/src/terminal-failures.{unit,int}.test.ts`)
@@ -253,7 +266,9 @@ Cards, questions, quizzes. Scheduling.
 
 - The 5-to-60 bounds were a guess; the upper one is now length-proportional
   (see Invariants), the 500-characters-per-notion granularity is itself a
-  calibration to check against real long courses. Revisit against the M3 eval set: if real
+  calibration to check against real long courses. The 600–1 000 per-chunk
+  target added after the first real A2A run has not been through a paid run
+  yet: whether the model follows it is unverified. Revisit against the M3 eval set: if real
   lessons regularly produce 4 notions, the lower bound is wrong, not the lesson.
   First real data point (M3 eval run, 2026-08-27, `evals/results/2026-08-27.md`):
   a deliberately very short, single-theorem lesson (`evals/golden/05-cours-court`)

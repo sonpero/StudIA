@@ -5,6 +5,7 @@ import { chunkBySize, DEFAULT_CHUNKING, type ChunkingOptions } from "../domain/c
 import { disambiguateTitles, sectionLabel, type TitleSource } from "../domain/disambiguate-titles.js";
 import { isValidNotionCount, maxNotionCount, MIN_NOTIONS } from "../domain/is-valid-notion-count.js";
 import { isValidTitle } from "../domain/is-valid-title.js";
+import { notionCountTarget } from "../domain/notion-count-target.js";
 import type { NotionRepository, NotionSplitter } from "../domain/ports.js";
 import type { Notion, SplitNotion } from "../domain/types.js";
 
@@ -49,7 +50,11 @@ export async function handleSplitJob(deps: HandleSplitJobDeps, payload: SplitDoc
   const splitNotions: SplitNotion[] = [];
   const sources: TitleSource[] = [];
   for (const [index, chunk] of chunks.entries()) {
-    const result = await deps.splitter.split({ markdown: chunk, avoidTitles: splitNotions.map((n) => n.title) });
+    const result = await deps.splitter.split({
+      markdown: chunk,
+      avoidTitles: splitNotions.map((n) => n.title),
+      targetNotions: notionCountTarget(chunk.length, { onlyChunk: chunks.length === 1 }),
+    });
     if (!result.ok) {
       return result.error.kind === "truncated" ? { ok: false, error: result.error.message, terminal: true } : { ok: false, error: result.error.message };
     }
@@ -62,10 +67,12 @@ export async function handleSplitJob(deps: HandleSplitJobDeps, payload: SplitDoc
 
   const markdownLength = extraction.markdown.length;
   if (!isValidNotionCount(splitNotions.length, markdownLength)) {
-    return {
-      ok: false,
-      error: `Splitting produced ${String(splitNotions.length)} notions, expected ${String(MIN_NOTIONS)} to ${String(maxNotionCount(markdownLength))}`,
-    };
+    const error = `Splitting produced ${String(splitNotions.length)} notions, expected ${String(MIN_NOTIONS)} to ${String(maxNotionCount(markdownLength))}`;
+    // Too many is terminal: every chunk has already been paid for, and a
+    // full re-split of the same text overshoots again (A2A: 315 for a cap of
+    // 131). Too few stays retryable: that is where a model that mostly
+    // failed to split can do better on a second attempt.
+    return splitNotions.length > maxNotionCount(markdownLength) ? { ok: false, error, terminal: true } : { ok: false, error };
   }
   const invalidTitle = splitNotions.find((n) => !isValidTitle(n.title));
   if (invalidTitle) return { ok: false, error: `Invalid notion title: "${invalidTitle.title}"` };

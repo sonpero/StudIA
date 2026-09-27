@@ -146,6 +146,23 @@ describe("ClaudeNotionSplitter (transport level, via MSW)", () => {
     expect(requestBodies[1]).not.toContain("Titres déjà utilisés");
   });
 
+  it("targetNotions: names the notion count to aim for in the prompt", async () => {
+    const requestBodies: string[] = [];
+    server.use(
+      http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+        requestBodies.push(await request.clone().text());
+        return anthropicToolUseResponse([{ title: "Photosynthèse", body: "Corps.", difficulty: "medium" }]);
+      }),
+    );
+
+    const splitter = new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" }));
+    await splitter.split({ markdown: "# Cours", targetNotions: { min: 8, max: 13 } });
+    await splitter.split({ markdown: "# Cours" });
+
+    expect(requestBodies[0]).toContain("entre 8 et 13 notions");
+    expect(requestBodies[1]).not.toContain("notions pour cette partie");
+  });
+
   describe("truncation (stop_reason max_tokens): terminal, never retried", () => {
     function cutAtMaxTokens(input: unknown) {
       return HttpResponse.json({

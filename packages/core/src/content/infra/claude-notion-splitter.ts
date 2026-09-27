@@ -79,7 +79,12 @@ export class ClaudeNotionSplitter implements NotionSplitter {
       input.avoidTitles && input.avoidTitles.length > 0
         ? `\n\nTitres déjà utilisés par d'autres parties du même cours (n'en réutilise aucun, choisis un titre plus précis si l'idée est proche) :\n${input.avoidTitles.map((t) => `- ${t}`).join("\n")}`
         : "";
-    const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}\n\n---\n\n${input.markdown}`;
+    // Without a count to aim for, the model split A2A's ~7 300-character
+    // chunks into ~35 sentence-sized notions each (notion-count-target.ts).
+    const targetLine = input.targetNotions
+      ? `\n\nVise entre ${String(input.targetNotions.min)} et ${String(input.targetNotions.max)} notions pour cette partie. Une notion regroupe une idée complète avec ses détails, exemples et nuances : ne fais pas une notion par phrase, par champ ou par ligne de tableau.`
+      : "";
+    const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}${targetLine}\n\n---\n\n${input.markdown}`;
 
     const attempt = async (extraContext?: string) => {
       let generated;

@@ -16,6 +16,9 @@ export type SplitInput = {
   // is asked not to reuse them, since titles must be unique per document.
   // disambiguate-titles.ts remains the safety net when it does anyway.
   avoidTitles?: string[];
+  // How many notions this chunk should yield (notion-count-target.ts):
+  // left unguided, the model split the A2A course four times too finely.
+  targetNotions?: { min: number; max: number };
 };
 
 export interface NotionSplitter {
