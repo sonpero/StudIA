@@ -103,4 +103,24 @@ describe("NotionsScreen — notion step", () => {
     expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
     expect(screen.queryByText(/n'ont pas pu être créées/i)).not.toBeInTheDocument();
   });
+
+  // See DocumentsScreen's twin test: a 409 means this screen is stale.
+  it("a retry refused because notions now exist shows them instead of blaming the connection", async () => {
+    let notions: (typeof aNotion)[] = [];
+    stubFetch({
+      statuses: () => [{ documentId: "doc-1", status: "failed" }],
+      notions: () => notions,
+      retry: () => {
+        notions = [aNotion];
+        return new Response(JSON.stringify({ error: "has-notions" }), { status: 409 });
+      },
+    });
+
+    renderScreen();
+    await userEvent.click(await screen.findByRole("button", { name: "Réessayer" }));
+
+    expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
+

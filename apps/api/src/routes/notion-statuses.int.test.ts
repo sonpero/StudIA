@@ -125,6 +125,17 @@ describe("notion step status and retry routes", () => {
     expect(splitJobsFor("doc-done")).toHaveLength(1);
   });
 
+  it("POST .../notions/retry is refused when the document already has notions, even after a failed split (409)", async () => {
+    seedDb.run(sql`INSERT INTO notions (id, document_id, user_id, title, body, difficulty, position, created_at)
+        VALUES ('n1', 'doc-failed', (SELECT id FROM users WHERE username='alice'), 'Notion', 'Corps.', 'medium', 0, ${now.toISOString()})`);
+
+    const res = await app.inject({ method: "POST", url: "/api/documents/doc-failed/notions/retry", headers: { cookie: aliceCookie } });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: "has-notions" });
+    expect(splitJobsFor("doc-failed")).toHaveLength(1);
+  });
+
   it("POST .../notions/retry requires authentication (401)", async () => {
     const res = await app.inject({ method: "POST", url: "/api/documents/doc-failed/notions/retry" });
     expect(res.statusCode).toBe(401);

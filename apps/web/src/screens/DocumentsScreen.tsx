@@ -83,7 +83,13 @@ function DocumentCard({
 
   function handleNotionRetry() {
     setNotionRetryError(false);
-    retryNotionSplit(document.id).then(onNotionStepChanged, () => setNotionRetryError(true));
+    retryNotionSplit(document.id).then(
+      () => {
+        onNotionStepChanged();
+        void queryClient.invalidateQueries({ queryKey: ["document-progress", document.id] });
+      },
+      () => setNotionRetryError(true),
+    );
   }
 
   const MaterialIcon = document.sourceType === "photo" ? ImageIcon : FileText;

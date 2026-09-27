@@ -132,4 +132,29 @@ describe("DocumentsScreen — notion step", () => {
     expect(within(card).queryByText(/n'ont pas pu être créées/i)).not.toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: "Réessayer" })).not.toBeInTheDocument();
   });
+
+  // The server refuses a retry over existing notions (409 has-notions). The
+  // screen only offers it when it believes there are none, so a 409 means
+  // its data is stale (another tab): refresh and show the notions, never a
+  // connection error.
+  it("a retry refused because notions now exist refreshes the card instead of blaming the connection", async () => {
+    let total = 0;
+    stubFetch({
+      statuses: () => [{ documentId: "d1", status: "failed" }],
+      progressTotal: () => total,
+      retry: () => {
+        total = 4;
+        return new Response(JSON.stringify({ error: "has-notions" }), { status: 409 });
+      },
+    });
+
+    renderScreen();
+    const card = await screen.findByTestId("document-card");
+    await userEvent.click(await within(card).findByRole("button", { name: "Réessayer" }));
+
+    expect(await within(card).findByText(/4 notions/)).toBeInTheDocument();
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Réessayer" })).not.toBeInTheDocument();
+  });
 });
+

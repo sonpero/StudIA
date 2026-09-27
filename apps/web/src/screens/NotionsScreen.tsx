@@ -321,7 +321,10 @@ function NotionsCourseScreen({
   function handleNotionRetry() {
     setNotionRetryError(false);
     retryNotionSplit(documentId).then(
-      () => void queryClient.invalidateQueries({ queryKey: ["notion-statuses"] }),
+      () => {
+        void queryClient.invalidateQueries({ queryKey: ["notion-statuses"] });
+        void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
+      },
       () => setNotionRetryError(true),
     );
   }

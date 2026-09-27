@@ -193,7 +193,7 @@ with a reversal of the full list.
 | `DELETE /api/notions/:id` | Delete and renumber |
 | `GET /api/search?q=` | FTS5 across the user's notions |
 | `GET /api/notions/statuses` | Notion-step status per document: `[{ documentId, status }]` |
-| `POST /api/documents/:id/notions/retry` | Relaunch notion creation only. 202, 403 (another user's or unknown document), 409 (step not failed) |
+| `POST /api/documents/:id/notions/retry` | Relaunch notion creation only. 202, 403 (another user's or unknown document), 409 (step not failed, or the document already has notions) |
 
 ## Notion step status and retry
 
@@ -213,13 +213,15 @@ ingestion).
   strips it).
 - `retryNotionSplit(userId, documentId, now)` enqueues a new `split-notions`
   job (`{ documentId }`) only when the document belongs to the caller
-  (`not-found` otherwise) and its latest split job is `failed` (`not-failed`
-  otherwise) — mirrors ingestion's `retryExtraction`, never re-runs
-  extraction.
+  (`not-found` otherwise), its latest split job is `failed` (`not-failed`
+  otherwise) and it has no notions (`has-notions` otherwise: a new split
+  would replace them with their cards and review history) — mirrors
+  ingestion's `retryExtraction`, never re-runs extraction.
 - Mes cours and Notions show the step in progress, and on failure a plain
   sentence plus "Réessayer" (this route). A failed latest split never hides
   notions a document already has: the retry is only offered when it has
-  none.
+  none, and the server enforces it. A 409 on retry means the screen is
+  stale: it refreshes instead of showing an error.
 
 ## Out of scope
 

@@ -52,10 +52,10 @@ export const notionsRoutes: FastifyPluginCallback<NotionsRoutesOptions> = (app, 
 
   // 403 for another user's or an unknown document, 409 when the notion step
   // has not failed — the same mapping as ingestion's own POST
-  // /api/documents/:id/retry.
+  // /api/documents/:id/retry — or when the document already has notions.
   app.post("/api/documents/:id/notions/retry", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const result = await retryNotionSplit({ documentRepo: opts.documentRepo, jobQueue: opts.jobQueue }, request.user!.id, id, opts.clock.now());
+    const result = await retryNotionSplit({ documentRepo: opts.documentRepo, jobQueue: opts.jobQueue, notionRepo: opts.repo }, request.user!.id, id, opts.clock.now());
     if (!result.ok) {
       return reply.code(result.error === "not-found" ? 403 : 409).send({ error: result.error });
     }

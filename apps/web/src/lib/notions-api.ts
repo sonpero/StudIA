@@ -39,10 +39,12 @@ export async function listNotionStatuses(): Promise<Map<string, NotionStepStatus
 }
 
 // Relaunches notion creation only — never the extraction (documents-api's
-// retryExtraction is that one).
+// retryExtraction is that one). A 409 (step no longer failed, or notions
+// already there) is not a failure to send: the caller's view is stale and
+// only needs refreshing, so it resolves like a success.
 export async function retryNotionSplit(documentId: string): Promise<void> {
   const res = await apiFetch(`/api/documents/${documentId}/notions/retry`, { method: "POST" });
-  if (!res.ok) throw new Error("Impossible de relancer la création des notions.");
+  if (!res.ok && res.status !== 409) throw new Error("Impossible de relancer la création des notions.");
 }
 
 export type CardType = "flashcard" | "mcq" | "open";
