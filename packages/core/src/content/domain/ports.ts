@@ -3,7 +3,11 @@ import type { Difficulty, Notion, SplitNotion } from "./types.js";
 
 export type SplitError =
   | { kind: "model-error"; message: string }
-  | { kind: "invalid-notion-count"; message: string };
+  | { kind: "invalid-notion-count"; message: string }
+  // The model's output hit its token limit. Deterministic for a given
+  // input: retrying the same chunk would truncate again and bill again, so
+  // this is terminal (never retried, by the splitter or by the job).
+  | { kind: "truncated"; message: string };
 
 export type SplitInput = {
   markdown: string;

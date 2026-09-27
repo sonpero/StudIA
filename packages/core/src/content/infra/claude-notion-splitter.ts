@@ -1,4 +1,4 @@
-import { generateObject, type LanguageModel } from "ai";
+import { generateObject, NoObjectGeneratedError, type LanguageModel } from "ai";
 import { z } from "zod";
 import { err, ok, type Result } from "../../shared/index.js";
 import { hasDuplicateTitles } from "../domain/has-duplicate-titles.js";
@@ -19,6 +19,27 @@ const splitNotionSchema = z.object({
     ),
   difficulty: z.enum(["easy", "medium", "hard"]).describe("How hard this idea is to memorise and recall."),
 });
+
+// Output budget per call. Without it, @ai-sdk/anthropic@1.2.12 sends
+// max_tokens 4096, which a 45 000-character chunk blew through.
+//
+// Sized against content's chunking hard max (chunk-by-size.ts,
+// DEFAULT_CHUNKING.maxChars = 15 000 characters):
+// - input: French course text runs ~3.5 characters per token on Claude's
+//   tokenizer, code and identifiers denser; at a conservative 3, a
+//   15 000-character chunk is ~5 000 tokens.
+// - output: each notion's body must be self-contained, so it restates
+//   context the source only gives once; assume the bodies total up to 1.5x
+//   the input, plus ~15% of JSON overhead (keys, escaped quotes and
+//   newlines, titles, difficulty): 5 000 x 1.5 x 1.15 ≈ 8 600 tokens.
+// - headroom: 16 000 is ~1.85x that, and well under claude-sonnet-4-5's
+//   64K output limit (platform.claude.com model page, checked 2026-09-27).
+//   Not higher: generateObject makes a non-streamed request, and ~16 000 is
+//   the documented comfortable ceiling for a non-streamed call before HTTP
+//   timeouts become a risk.
+export const SPLITTER_MAX_TOKENS = 16_000;
+
+class TruncatedOutputError extends Error {}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -61,19 +82,38 @@ export class ClaudeNotionSplitter implements NotionSplitter {
     const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}\n\n---\n\n${input.markdown}`;
 
     const attempt = async (extraContext?: string) => {
-      const { object } = await generateObject({
-        model: this.model,
-        output: "array",
-        schema: splitNotionSchema,
-        prompt: extraContext ? `${prompt}\n\n${extraContext}` : prompt,
-      });
-      assertDistinctTitles(object);
-      return object;
+      let generated;
+      try {
+        generated = await generateObject({
+          model: this.model,
+          output: "array",
+          schema: splitNotionSchema,
+          prompt: extraContext ? `${prompt}\n\n${extraContext}` : prompt,
+          maxTokens: SPLITTER_MAX_TOKENS,
+        });
+      } catch (error) {
+        // A cut-off tool call surfaces as a parse or schema failure, but the
+        // SDK keeps the provider's finish reason on the error: "length" is
+        // Anthropic's stop_reason "max_tokens".
+        if (NoObjectGeneratedError.isInstance(error) && error.finishReason === "length") throw new TruncatedOutputError();
+        throw error;
+      }
+      // A list that happens to parse at the cut is still missing its tail.
+      if (generated.finishReason === "length") throw new TruncatedOutputError();
+      assertDistinctTitles(generated.object);
+      return generated.object;
     };
+    const truncated = (): Result<SplitNotion[], SplitError> =>
+      err({
+        kind: "truncated",
+        message: `Model output truncated at the ${String(SPLITTER_MAX_TOKENS)}-token limit while splitting a ${String(input.markdown.length)}-character chunk; the same input would truncate again`,
+      });
 
     try {
       return ok(await attempt());
     } catch (firstError) {
+      // Retrying a truncation with feedback would only truncate again.
+      if (firstError instanceof TruncatedOutputError) return truncated();
       // Retry once with the validation error fed back to the model, then
       // fail (CLAUDE.md rule 4).
       try {
@@ -81,6 +121,7 @@ export class ClaudeNotionSplitter implements NotionSplitter {
           await attempt(`Ta réponse précédente n'a pas respecté le format attendu : ${describeError(firstError)}. Corrige et réessaie.`),
         );
       } catch (secondError) {
+        if (secondError instanceof TruncatedOutputError) return truncated();
         return err({ kind: "model-error", message: describeError(secondError) });
       }
     }
