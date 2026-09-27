@@ -1,7 +1,7 @@
 import type { DocumentSummary, ExtractionStatus } from "@studia/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, BookOpen, BookOpenText, FileText, Image as ImageIcon, Layers, RotateCw, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Reading } from "../components/mascot/Reading.js";
 import { Card } from "../components/ui/card.js";
@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button.js";
 import { UploadCard } from "../components/UploadCard.js";
 import { deleteDocument, listDocuments, retryExtraction } from "../lib/documents-api.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
-import { getProgress } from "../lib/notions-api.js";
+import { getProgress, listNotionStatuses, retryNotionSplit, type NotionStepStatus } from "../lib/notions-api.js";
 import { EXPAND_TAP_TARGET_44 } from "../lib/tap-target.js";
 import { getToday } from "../lib/today-api.js";
 import { countdownLabel } from "./TodayScreen.js";
@@ -24,6 +24,11 @@ const STATUS_LABEL: Record<ExtractionStatus, string> = {
 function isActive(status: ExtractionStatus): boolean {
   return status === "pending" || status === "running";
 }
+
+// Shared word-for-word with NotionsScreen: the same failure, said the same
+// way on both screens. Never the job's own error text (developer-facing).
+export const NOTION_STEP_FAILED_MESSAGE = "Les notions de ce cours n'ont pas pu être créées. Ton cours est bien lu : tu peux relancer la création.";
+export const NOTION_STEP_RETRY_ERROR = "Impossible de relancer la création des notions. Vérifie ta connexion et réessaie.";
 
 // Redesigned per a "Mes cours" mockup, ignoring docs/UI.md per the user.
 // A course card's subject icon sits in a tinted circle (a document.colour
@@ -43,14 +48,18 @@ function DocumentCard({
   document,
   dueCount,
   deadlineDaysAway,
+  notionStep,
   onChanged,
+  onNotionStepChanged,
   onOpenReader,
   onReviewCourse,
 }: {
   document: DocumentSummary;
   dueCount: number;
   deadlineDaysAway: number | null;
+  notionStep: NotionStepStatus | undefined;
   onChanged: () => void;
+  onNotionStepChanged: () => void;
   onOpenReader: (documentId: string) => void;
   onReviewCourse: (documentId: string) => void;
 }) {
@@ -59,6 +68,24 @@ function DocumentCard({
     queryFn: () => getProgress(document.id),
     enabled: document.status === "done",
   });
+  const queryClient = useQueryClient();
+  const [notionRetryError, setNotionRetryError] = useState(false);
+  // Counts go from 0 to N when the notion step finishes: refetch them then,
+  // rather than polling progress too.
+  useEffect(() => {
+    if (notionStep === "ready") void queryClient.invalidateQueries({ queryKey: ["document-progress", document.id] });
+  }, [notionStep, document.id, queryClient]);
+  const notionsPending = document.status === "done" && notionStep === "pending";
+  // A failed latest split never removes notions a previous one wrote
+  // (handleSplitJob only writes on success): when the course already has
+  // some, they stay usable and no retry is offered over them.
+  const notionsFailed = document.status === "done" && notionStep === "failed" && progressQuery.status === "success" && progressQuery.data.total === 0;
+
+  function handleNotionRetry() {
+    setNotionRetryError(false);
+    retryNotionSplit(document.id).then(onNotionStepChanged, () => setNotionRetryError(true));
+  }
+
   const MaterialIcon = document.sourceType === "photo" ? ImageIcon : FileText;
 
   return (
@@ -95,7 +122,13 @@ function DocumentCard({
         </p>
       ) : (
         <>
-          {progressQuery.data && (
+          {notionsPending && (
+            <p aria-live="polite" className="text-sm text-text-muted">
+              Création des notions…
+            </p>
+          )}
+          {notionsFailed && <p className="text-sm">{NOTION_STEP_FAILED_MESSAGE}</p>}
+          {progressQuery.data && !notionsPending && !notionsFailed && (
             <div data-testid="course-stats" className="flex items-center gap-1.5 text-sm text-text-muted">
               <Layers aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
               <p>
@@ -119,6 +152,18 @@ function DocumentCard({
           <RotateCw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
           Réessayer
         </Button>
+      )}
+
+      {notionsFailed && (
+        <Button variant="secondary" className="rounded-2xl" onClick={handleNotionRetry}>
+          <RotateCw aria-hidden="true" focusable="false" size={ICON_SIZE_INLINE} strokeWidth={ICON_STROKE_WIDTH} />
+          Réessayer
+        </Button>
+      )}
+      {notionRetryError && (
+        <p role="alert" className="text-sm">
+          {NOTION_STEP_RETRY_ERROR}
+        </p>
       )}
 
       {document.status === "done" && (
@@ -174,6 +219,27 @@ export function DocumentsScreen({
   // deadline, per course" — no separate read of this screen's own invented
   // shape needed.
   const todayQuery = useQuery({ queryKey: ["today"], queryFn: getToday });
+  // The notion step (content module) runs after extraction: keep polling
+  // while any course is still being read, so its split job is seen as soon
+  // as it exists, and while any notion step is still running. A failure to
+  // load it is not an error state of this screen: cards then simply show
+  // what extraction alone says, as before.
+  const notionPollStartedAt = useRef<number | null>(null);
+  const extractionActive = query.data?.some((d) => isActive(d.status)) ?? false;
+  const notionStatusesQuery = useQuery({
+    queryKey: ["notion-statuses"],
+    queryFn: listNotionStatuses,
+    refetchInterval: (q) => {
+      const anyPending = [...(q.state.data?.values() ?? [])].some((s) => s === "pending");
+      if (!anyPending && !extractionActive) {
+        notionPollStartedAt.current = null;
+        return false;
+      }
+      notionPollStartedAt.current ??= Date.now();
+      return Date.now() - notionPollStartedAt.current > 30_000 ? 10_000 : 2_000;
+    },
+  });
+  const refreshNotionStatuses = () => void queryClient.invalidateQueries({ queryKey: ["notion-statuses"] });
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["documents"] });
 
@@ -223,7 +289,9 @@ export function DocumentsScreen({
                     document={document}
                     dueCount={dueCountByDocumentId.get(document.id) ?? 0}
                     deadlineDaysAway={deadlineByDocumentId.get(document.id) ?? null}
+                    notionStep={notionStatusesQuery.data?.get(document.id)}
                     onChanged={refresh}
+                    onNotionStepChanged={refreshNotionStatuses}
                     onOpenReader={onOpenReader}
                     onReviewCourse={onReviewCourse}
                   />

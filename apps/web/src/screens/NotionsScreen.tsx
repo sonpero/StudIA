@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { Confused } from "../components/mascot/Confused.js";
 import { Idle } from "../components/mascot/Idle.js";
+import { Reading } from "../components/mascot/Reading.js";
 import { Button } from "../components/ui/button.js";
 import { Card } from "../components/ui/card.js";
 import { listDocuments } from "../lib/documents-api.js";
@@ -16,10 +17,13 @@ import {
   getGenerationStatus,
   getNotionsProgress,
   getProgress,
+  listNotionStatuses,
   listNotions,
+  retryNotionSplit,
   type CardType,
   type NotionProgress,
 } from "../lib/notions-api.js";
+import { NOTION_STEP_FAILED_MESSAGE, NOTION_STEP_RETRY_ERROR } from "./DocumentsScreen.js";
 
 // Generation is much faster than extraction (a handful of small LLM calls,
 // not a whole document read), so a fixed short interval is enough — no need
@@ -35,9 +39,9 @@ const ALL_CARD_TYPES: CardType[] = ["flashcard", "mcq", "open"];
 // (docs/modules/content.md), asynchronously — never block the UI on a job
 // (docs/UI.md). Poll while there is nothing to show yet, backing off after
 // 30 seconds like DocumentsScreen's extraction poll, and give up after 2
-// minutes: content has no split-status endpoint to say "still running" vs.
-// "genuinely produced nothing", so an unbounded poll would never stop for a
-// document whose split job actually failed.
+// minutes unless the notion step (GET /api/notions/statuses) says it is
+// still running: a long course can take longer than that to split, and a
+// failed split is now reported as such instead of polled forever.
 const POLL_GIVE_UP_MS = 120_000;
 
 // Same token classes as the reader's own markdown mapping (docs/UI.md's
@@ -272,6 +276,22 @@ function NotionsCourseScreen({
     });
   }
 
+  const notionStepPollStartedAt = useRef<number | null>(null);
+  const notionStatusesQuery = useQuery({
+    queryKey: ["notion-statuses"],
+    queryFn: listNotionStatuses,
+    refetchInterval: (q) => {
+      if (q.state.data?.get(documentId) !== "pending") {
+        notionStepPollStartedAt.current = null;
+        return false;
+      }
+      notionStepPollStartedAt.current ??= Date.now();
+      return Date.now() - notionStepPollStartedAt.current > 30_000 ? 10_000 : 2_000;
+    },
+  });
+  const notionStep = notionStatusesQuery.data?.get(documentId);
+  const [notionRetryError, setNotionRetryError] = useState(false);
+
   const notionsQuery = useQuery({
     queryKey: ["notions", documentId],
     queryFn: () => listNotions(documentId),
@@ -283,10 +303,28 @@ function NotionsCourseScreen({
       }
       pollStartedAt.current ??= Date.now();
       const elapsed = Date.now() - pollStartedAt.current;
-      if (elapsed > POLL_GIVE_UP_MS) return false;
+      if (elapsed > POLL_GIVE_UP_MS && notionStep !== "pending") return false;
       return elapsed > 30_000 ? 10_000 : 2_000;
     },
   });
+
+  // The notions exist as soon as the step is done: fetch them then, instead
+  // of waiting for the next tick of the notions poll (or for nothing, if it
+  // already gave up).
+  useEffect(() => {
+    if (notionStep !== "ready") return;
+    void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
+    void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
+    void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
+  }, [notionStep, documentId, queryClient]);
+
+  function handleNotionRetry() {
+    setNotionRetryError(false);
+    retryNotionSplit(documentId).then(
+      () => void queryClient.invalidateQueries({ queryKey: ["notion-statuses"] }),
+      () => setNotionRetryError(true),
+    );
+  }
   const notionsProgressQuery = useQuery({ queryKey: ["notions-progress", documentId], queryFn: () => getNotionsProgress(documentId) });
 
   const generationStatusQuery = useQuery({
@@ -373,7 +411,25 @@ function NotionsCourseScreen({
         </div>
       )}
 
-      {notionsQuery.status === "success" && notionsQuery.data.length === 0 && (
+      {notionsQuery.status === "success" && notionsQuery.data.length === 0 && notionStep === "failed" && (
+        <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+          <Confused />
+          <p>{NOTION_STEP_FAILED_MESSAGE}</p>
+          <Button className="rounded-2xl" onClick={handleNotionRetry}>
+            Réessayer
+          </Button>
+          {notionRetryError && <p role="alert">{NOTION_STEP_RETRY_ERROR}</p>}
+        </div>
+      )}
+
+      {notionsQuery.status === "success" && notionsQuery.data.length === 0 && notionStep === "pending" && (
+        <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
+          <Reading />
+          <p aria-live="polite">Création des notions en cours… Elles apparaîtront ici dès qu'elles seront prêtes.</p>
+        </div>
+      )}
+
+      {notionsQuery.status === "success" && notionsQuery.data.length === 0 && notionStep !== "failed" && notionStep !== "pending" && (
         <div className="flex flex-col items-center gap-[var(--space-section)] p-8 text-center">
           <Idle />
           <p>Les notions de ce cours n'ont pas encore été créées. Reviens un peu plus tard.</p>

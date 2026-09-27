@@ -20,6 +20,31 @@ export async function listNotions(documentId: string): Promise<Notion[]> {
   return res.json() as Promise<Notion[]>;
 }
 
+// The notion-creation step's own status per course (content module, derived
+// from its latest split-notions job). A course with no entry has not reached
+// that step yet: its extraction status already says what is happening.
+export type NotionStepStatus = "pending" | "ready" | "failed";
+
+export async function listNotionStatuses(): Promise<Map<string, NotionStepStatus>> {
+  const res = await apiFetch("/api/notions/statuses");
+  if (!res.ok) throw new Error("Impossible de charger l'état des notions.");
+  const rows = (await res.json()) as { documentId?: unknown; status?: unknown }[];
+  const statuses = new Map<string, NotionStepStatus>();
+  for (const row of rows) {
+    if (typeof row.documentId === "string" && (row.status === "pending" || row.status === "ready" || row.status === "failed")) {
+      statuses.set(row.documentId, row.status);
+    }
+  }
+  return statuses;
+}
+
+// Relaunches notion creation only — never the extraction (documents-api's
+// retryExtraction is that one).
+export async function retryNotionSplit(documentId: string): Promise<void> {
+  const res = await apiFetch(`/api/documents/${documentId}/notions/retry`, { method: "POST" });
+  if (!res.ok) throw new Error("Impossible de relancer la création des notions.");
+}
+
 export type CardType = "flashcard" | "mcq" | "open";
 
 // types is optional: omitting it keeps the server's flashcard-only default
