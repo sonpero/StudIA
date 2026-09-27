@@ -35,6 +35,7 @@ export interface BuildAppOptions {
   cookieSecure: boolean;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -55,13 +56,14 @@ export function buildApp(opts: BuildAppOptions) {
     dataDir: opts.dataDir,
     llmAdapter: opts.llmAdapter,
     anthropicApiKey: opts.anthropicApiKey,
+    anthropicModel: opts.anthropicModel,
   });
-  const contentDeps = buildContentDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
+  const contentDeps = buildContentDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey, anthropicModel: opts.anthropicModel });
   const generationDeps = buildGenerationDeps(db);
-  const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
+  const reviewDeps = buildReviewDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey, anthropicModel: opts.anthropicModel });
   const progressDeps = buildProgressDeps(db);
-  const workspaceDeps = buildWorkspaceDeps({ db, dataDir: opts.dataDir, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
-  const tutorDeps = buildTutorDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey });
+  const workspaceDeps = buildWorkspaceDeps({ db, dataDir: opts.dataDir, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey, anthropicModel: opts.anthropicModel });
+  const tutorDeps = buildTutorDeps({ db, llmAdapter: opts.llmAdapter, anthropicApiKey: opts.anthropicApiKey, anthropicModel: opts.anthropicModel });
 
   const app = Fastify({ logger: true });
 

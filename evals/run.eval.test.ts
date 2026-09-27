@@ -65,7 +65,7 @@ describe("M3 golden-set eval", () => {
         );
       }
 
-      const model = createLanguageModel({ apiKey });
+      const model = createLanguageModel({ apiKey, model: process.env.LLM_MODEL });
       const splitter = new ClaudeNotionSplitter(model);
       const generator = new ClaudeCardGenerator(model);
 

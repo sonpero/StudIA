@@ -61,23 +61,24 @@ const cardRepo = new SqliteCardRepository(db);
 const todoRepo = new SqliteTodoRepository(db);
 
 const llmAdapter = process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real";
+const modelConfig = { apiKey: process.env.ANTHROPIC_API_KEY ?? "", model: process.env.LLM_MODEL };
 const extractors: DocumentExtractor[] =
   llmAdapter === "fixture"
     ? [new FixtureDocumentExtractor("valid"), new OfficeParserExtractor()]
-    : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }))];
+    : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel(modelConfig))];
 
 const splitter: NotionSplitter =
   llmAdapter === "fixture"
     ? new FixtureNotionSplitter("valid")
-    : new ClaudeNotionSplitter(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+    : new ClaudeNotionSplitter(createLanguageModel(modelConfig));
 
 const cardGenerator: CardGenerator =
   llmAdapter === "fixture"
     ? new FixtureCardGenerator("valid")
-    : new ClaudeCardGenerator(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+    : new ClaudeCardGenerator(createLanguageModel(modelConfig));
 
 const todoExtractor: TodoExtractor =
-  llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }));
+  llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel(modelConfig));
 
 const extractDocumentHandler: JobHandler<ExtractDocumentPayload> = {
   type: "extract-document",

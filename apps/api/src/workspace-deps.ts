@@ -20,10 +20,11 @@ export interface BuildWorkspaceDepsOptions {
   dataDir: string;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export function buildWorkspaceDeps(opts: BuildWorkspaceDepsOptions): WorkspaceDeps {
-  const extractor = opts.llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }));
+  const extractor = opts.llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "", model: opts.anthropicModel }));
 
   return { repo: new SqliteTodoRepository(opts.db), fileStore: new LocalFileStore(opts.dataDir), extractor };
 }

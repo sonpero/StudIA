@@ -15,3 +15,20 @@ describe("createLanguageModel", () => {
     expect(model.modelId.length).toBeGreaterThan(0);
   });
 });
+
+describe("createLanguageModel model selection", () => {
+  it("defaults to claude-sonnet-5", () => {
+    expect(createLanguageModel({ apiKey: "test-key" }).modelId).toBe("claude-sonnet-5");
+  });
+
+  // Railway and .env files set a variable to "" rather than leaving it
+  // unset; a blank LLM_MODEL must mean "use the default", not model "".
+  it("falls back to the default when the configured model is blank", () => {
+    expect(createLanguageModel({ apiKey: "test-key", model: "" }).modelId).toBe("claude-sonnet-5");
+    expect(createLanguageModel({ apiKey: "test-key", model: "   " }).modelId).toBe("claude-sonnet-5");
+  });
+
+  it("trims a configured model id", () => {
+    expect(createLanguageModel({ apiKey: "test-key", model: " claude-sonnet-4-6 " }).modelId).toBe("claude-sonnet-4-6");
+  });
+});

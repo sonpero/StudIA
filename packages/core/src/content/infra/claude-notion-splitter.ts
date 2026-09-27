@@ -25,15 +25,17 @@ const splitNotionSchema = z.object({
 //
 // Sized against content's chunking hard max (chunk-by-size.ts,
 // DEFAULT_CHUNKING.maxChars = 15 000 characters):
-// - input: French course text runs ~3.5 characters per token on Claude's
-//   tokenizer, code and identifiers denser; at a conservative 3, a
-//   15 000-character chunk is ~5 000 tokens.
+// - input: French course text ran ~3.5 characters per token on the
+//   Sonnet 4.5 tokenizer; claude-sonnet-5's produces ~30% more tokens for
+//   the same text, so at a conservative 2.5 a 15 000-character chunk is
+//   ~6 000 tokens.
 // - output: each notion's body must be self-contained, so it restates
 //   context the source only gives once; assume the bodies total up to 1.5x
 //   the input, plus ~15% of JSON overhead (keys, escaped quotes and
-//   newlines, titles, difficulty): 5 000 x 1.5 x 1.15 ≈ 8 600 tokens.
-// - headroom: 16 000 is ~1.85x that, and well under claude-sonnet-4-5's
-//   64K output limit (platform.claude.com model page, checked 2026-09-27).
+//   newlines, titles, difficulty): 6 000 x 1.5 x 1.15 ≈ 10 400 tokens.
+// - headroom: 16 000 is ~1.55x that, and far under claude-sonnet-5's 128K
+//   output limit. Its thinking (adaptive when not configured) counts
+//   against the same limit: the real run records output tokens per chunk.
 //   Not higher: generateObject makes a non-streamed request, and ~16 000 is
 //   the documented comfortable ceiling for a non-streamed call before HTTP
 //   timeouts become a risk.

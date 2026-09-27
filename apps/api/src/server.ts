@@ -26,6 +26,7 @@ const app = buildApp({
   cookieSecure: process.env.COOKIE_SECURE === "true",
   llmAdapter: process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  anthropicModel: process.env.LLM_MODEL,
 });
 
 const port = Number(process.env.PORT ?? 3000);

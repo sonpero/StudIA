@@ -10,13 +10,14 @@ export interface BuildReviewDepsOptions {
   db: Db;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export function buildReviewDeps(opts: BuildReviewDepsOptions): ReviewDeps {
   const grader: AnswerGrader =
     opts.llmAdapter === "fixture"
       ? new FixtureAnswerGrader("correct")
-      : new ClaudeAnswerGrader(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }));
+      : new ClaudeAnswerGrader(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "", model: opts.anthropicModel }));
 
   return { repo: new SqliteReviewRepository(opts.db), grader };
 }

@@ -17,6 +17,7 @@ export interface BuildContentDepsOptions {
   db: Db;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export function buildContentDeps(opts: BuildContentDepsOptions): ContentDeps {
@@ -24,7 +25,7 @@ export function buildContentDeps(opts: BuildContentDepsOptions): ContentDeps {
   const splitter: NotionSplitter =
     opts.llmAdapter === "fixture"
       ? new FixtureNotionSplitter("valid")
-      : new ClaudeNotionSplitter(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }));
+      : new ClaudeNotionSplitter(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "", model: opts.anthropicModel }));
 
   return { repo, splitter };
 }

@@ -107,12 +107,13 @@ longer used and kept with its tests as a cleanup candidate.
 
 **`maxTokens` = 16 000** (`infra/claude-notion-splitter.ts`,
 `SPLITTER_MAX_TOKENS`), sized against the 15 000-character hard max: French
-course text is ~3.5 characters per token on Claude's tokenizer, code
-denser, so at a conservative 3 a chunk is ≤ ~5 000 input tokens; the
-self-contained bodies restate context, so assume output up to 1.5× the input
-plus ~15% JSON overhead (keys, escaping, titles, difficulty): ≈ 8 600 tokens;
-16 000 leaves ~1.85× headroom, stays far under `claude-sonnet-4-5`'s 64K
-output limit, and is the documented comfortable ceiling for a non-streamed
+course text was ~3.5 characters per token on the Sonnet 4.5 tokenizer and
+`claude-sonnet-5`'s counts ~30% more, so at a conservative 2.5 a chunk is
+≤ ~6 000 input tokens; the self-contained bodies restate context, so assume
+output up to 1.5× the input plus ~15% JSON overhead (keys, escaping, titles,
+difficulty): ≈ 10 400 tokens; 16 000 leaves ~1.55× headroom, stays far under
+`claude-sonnet-5`'s 128K output limit (thinking, adaptive by default on that
+model, counts against the same limit), and is the documented comfortable ceiling for a non-streamed
 request (`generateObject` does not stream). Without it the provider default
 was 4 096.
 

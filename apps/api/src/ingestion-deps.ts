@@ -22,6 +22,7 @@ export interface BuildIngestionDepsOptions {
   dataDir: string;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export function buildIngestionDeps(opts: BuildIngestionDepsOptions): IngestionDeps {
@@ -31,7 +32,7 @@ export function buildIngestionDeps(opts: BuildIngestionDepsOptions): IngestionDe
   const extractors: DocumentExtractor[] =
     opts.llmAdapter === "fixture"
       ? [new FixtureDocumentExtractor("valid"), new OfficeParserExtractor()]
-      : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }))];
+      : [new OfficeParserExtractor(), new VisionExtractor(createLanguageModel({ apiKey: opts.anthropicApiKey ?? "", model: opts.anthropicModel }))];
 
   return { repo, fileStore, extractors, idGenerator: uuidV7Generator };
 }

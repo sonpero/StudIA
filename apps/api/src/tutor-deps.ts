@@ -21,10 +21,11 @@ export interface BuildTutorDepsOptions {
   db: Db;
   llmAdapter: "fixture" | "real";
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export function buildTutorDeps(opts: BuildTutorDepsOptions): TutorDeps {
-  const model = opts.llmAdapter === "real" ? createLanguageModel({ apiKey: opts.anthropicApiKey ?? "" }) : undefined;
+  const model = opts.llmAdapter === "real" ? createLanguageModel({ apiKey: opts.anthropicApiKey ?? "", model: opts.anthropicModel }) : undefined;
 
   return {
     conversationRepo: new SqliteConversationRepository(opts.db),

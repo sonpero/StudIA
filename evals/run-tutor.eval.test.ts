@@ -96,7 +96,7 @@ describe("M8 tutor golden-set eval", () => {
         );
       }
 
-      const model = createLanguageModel({ apiKey });
+      const model = createLanguageModel({ apiKey, model: process.env.LLM_MODEL });
       const chatModel = new ClaudeChatModel(model);
       const citationExtractor = new ClaudeCitationExtractor(model);
 
