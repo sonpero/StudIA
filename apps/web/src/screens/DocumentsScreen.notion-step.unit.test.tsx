@@ -156,5 +156,19 @@ describe("DocumentsScreen — notion step", () => {
     expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: "Réessayer" })).not.toBeInTheDocument();
   });
+
+  // At 375px the Notions screen wrapped "lu :" so that the colon opened the
+  // next line (seen on the mission's screenshot). French puts a space before
+  // ":", and it must not be a place to break.
+  it("the failure message never lets its colon start a line", async () => {
+    stubFetch({ statuses: () => [{ documentId: "d1", status: "failed" }] });
+
+    renderScreen();
+
+    const card = await screen.findByTestId("document-card");
+    const message = await within(card).findByText(/les notions de ce cours n'ont pas pu être créées/i);
+    expect(message.textContent).toContain("lu\u00a0: tu peux");
+    expect(message.textContent).not.toMatch(/ :/);
+  });
 });
 

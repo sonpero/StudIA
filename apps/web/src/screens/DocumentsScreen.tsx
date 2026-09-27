@@ -27,7 +27,8 @@ function isActive(status: ExtractionStatus): boolean {
 
 // Shared word-for-word with NotionsScreen: the same failure, said the same
 // way on both screens. Never the job's own error text (developer-facing).
-export const NOTION_STEP_FAILED_MESSAGE = "Les notions de ce cours n'ont pas pu être créées. Ton cours est bien lu : tu peux relancer la création.";
+// U+00A0 before ":": at 375px a plain space let the colon open a line.
+export const NOTION_STEP_FAILED_MESSAGE = "Les notions de ce cours n'ont pas pu être créées. Ton cours est bien lu\u00a0: tu peux relancer la création.";
 export const NOTION_STEP_RETRY_ERROR = "Impossible de relancer la création des notions. Vérifie ta connexion et réessaie.";
 
 // Redesigned per a "Mes cours" mockup, ignoring docs/UI.md per the user.
