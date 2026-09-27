@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { err, ok } from "../../shared/index.js";
 import { uuidV7Generator } from "../../shared/index.js";
+import { maxNotionCount } from "../domain/is-valid-notion-count.js";
+import { notionBudgets } from "../domain/notion-budget.js";
 import { notionCountTarget } from "../domain/notion-count-target.js";
 import type { NotionSplitter, SplitInput } from "../domain/ports.js";
 import { fakeDocumentRepositoryForContent, fakeNotionRepository, fakeNotionSplitter } from "./fakes.js";
@@ -387,6 +389,31 @@ describe("handleSplitJob", () => {
         { min: 1, max: 1 },
         { min: 1, max: 1 },
       ]);
+    });
+
+    it("gives each chunk a notion budget from its share of the text, summing to the document's cap", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: longFlatMarkdown, extractedAt: now.toISOString() });
+      const seen: { length: number; budget: SplitInput["maxNotions"]; target: SplitInput["targetNotions"] }[] = [];
+      let call = 0;
+      const splitter: NotionSplitter = {
+        split: (input) => {
+          seen.push({ length: input.markdown.length, budget: input.maxNotions, target: input.targetNotions });
+          call += 1;
+          return Promise.resolve(ok(manyNotions(5, `Partie ${String(call)}`)));
+        },
+      };
+
+      await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(seen.length).toBeGreaterThanOrEqual(2);
+      expect(seen.map((s) => s.budget)).toEqual(notionBudgets(seen.map((s) => s.length), maxNotionCount(longFlatMarkdown.length)));
+      expect(seen.reduce((total, s) => total + (s.budget ?? 0), 0)).toBe(maxNotionCount(longFlatMarkdown.length));
+      for (const { budget, target } of seen) expect(target?.max).toBeLessThanOrEqual(budget ?? 0);
     });
 
     it("fails terminally when the count is above the cap: a full paid re-split would overshoot again", async () => {

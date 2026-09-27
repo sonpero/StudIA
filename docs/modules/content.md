@@ -53,6 +53,14 @@ type Notion = {
   Why: the first real run on A2A (2026-09-27, 9 chunks of ~7 300 characters,
   no target in the prompt) produced 315 notions, one per ~208 characters —
   2.4x the cap (`docs/reports/long-documents-notions.md`).
+- Each chunk also gets a **notion budget** (`notionBudgets`,
+  `domain/notion-budget.ts`), named in the prompt as a ceiling ("jamais plus
+  de N notions"): the document's cap shared out by largest remainder in
+  proportion to each chunk's length, one notion reserved per chunk when the
+  cap covers them. The budgets sum to exactly the cap, never more, so a
+  model that respects every ceiling cannot fail the cap. The 600-to-1 000
+  target stays as the density to aim for, bounded by the budget. A2A: nine
+  budgets of 14 or 15.
 
 `difficulty` is a **label**, not a schedule. It is an input to `progress`'s pure
 function. Nothing in this module decides when anything is studied.
@@ -66,6 +74,7 @@ interface NotionSplitter {
     hint?: { subject?: string; level?: string };
     avoidTitles?: string[]; // titles earlier chunks of the document produced
     targetNotions?: { min: number; max: number }; // notions to aim for in this chunk
+    maxNotions?: number; // this chunk's share of the document's cap, a ceiling
   }): Promise<Result<SplitNotion[], SplitError>>;
 }
 
@@ -244,16 +253,18 @@ Cards, questions, quizzes. Scheduling.
   repeated title qualified instead of failing, the length-proportional cap
   and its message, `truncated` returned with `terminal: true`, a count above
   the cap terminal and one below the floor retryable, `targetNotions`
-  forwarded per chunk (floor of 5 only for a single-chunk document)
-- Unit: `notionCountTarget` (`notion-count-target.unit.test.ts`)
+  forwarded per chunk (floor of 5 only for a single-chunk document),
+  `maxNotions` per chunk summing to the cap
+- Unit: `notionCountTarget` (`notion-count-target.unit.test.ts`), bounded by
+  the budget; `notionBudgets` (`notion-budget.unit.test.ts`), mutation-tested
 - Contract: the 43-page A2A PDF (`tests/fixtures/ingestion/a2a-course.pdf`)
   through the real extractor and chunker: 5 to 12 chunks, none above the hard
   max, no pagination, running header or punctuation-only line
   (`long-pdf-chunking.contract.test.ts`)
 - Contract (MSW): explicit `max_tokens`; `stop_reason: "max_tokens"` →
   `truncated` after one call, also when the cut list still parses and when it
-  happens on the schema retry; a 400 stays `model-error`; `avoidTitles` and
-  `targetNotions` in the prompt
+  happens on the schema retry; a 400 stays `model-error`; `avoidTitles`,
+  `targetNotions` and `maxNotions` in the prompt
 - Worker: a terminal split failure goes straight to `failed` through the real
   `runWorkerTick` and `SqliteJobQueue`, any other back to `pending`
   (`apps/worker/src/terminal-failures.{unit,int}.test.ts`)

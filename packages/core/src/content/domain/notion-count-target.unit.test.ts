@@ -28,3 +28,14 @@ describe("notionCountTarget — how many notions the model is asked to aim for i
     expect(summedMax).toBeLessThanOrEqual(maxNotionCount(9 * 7_300));
   });
 });
+
+describe("notionCountTarget — bounded by the chunk's notion budget", () => {
+  it("never aims above the chunk's budget", () => {
+    expect(notionCountTarget(10_000, { onlyChunk: false, budget: 12 })).toEqual({ min: 10, max: 12 });
+    expect(notionCountTarget(10_000, { onlyChunk: false, budget: 6 })).toEqual({ min: 6, max: 6 });
+  });
+
+  it("is unchanged when the budget is above the 600-character end", () => {
+    expect(notionCountTarget(7_300, { onlyChunk: false, budget: 14 })).toEqual({ min: 8, max: 13 });
+  });
+});

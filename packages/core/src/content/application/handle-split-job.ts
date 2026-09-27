@@ -5,6 +5,7 @@ import { chunkBySize, DEFAULT_CHUNKING, type ChunkingOptions } from "../domain/c
 import { disambiguateTitles, sectionLabel, type TitleSource } from "../domain/disambiguate-titles.js";
 import { isValidNotionCount, maxNotionCount, MIN_NOTIONS } from "../domain/is-valid-notion-count.js";
 import { isValidTitle } from "../domain/is-valid-title.js";
+import { notionBudgets } from "../domain/notion-budget.js";
 import { notionCountTarget } from "../domain/notion-count-target.js";
 import type { NotionRepository, NotionSplitter } from "../domain/ports.js";
 import type { Notion, SplitNotion } from "../domain/types.js";
@@ -47,13 +48,19 @@ export async function handleSplitJob(deps: HandleSplitJobDeps, payload: SplitDoc
   const chunks = chunkBySize(extraction.markdown, deps.chunking ?? DEFAULT_CHUNKING);
   if (chunks.length === 0) return { ok: false, error: "Extraction is empty, nothing to split" };
 
+  const budgets = notionBudgets(
+    chunks.map((chunk) => chunk.length),
+    maxNotionCount(extraction.markdown.length),
+  );
   const splitNotions: SplitNotion[] = [];
   const sources: TitleSource[] = [];
   for (const [index, chunk] of chunks.entries()) {
+    const budget = budgets[index];
     const result = await deps.splitter.split({
       markdown: chunk,
       avoidTitles: splitNotions.map((n) => n.title),
-      targetNotions: notionCountTarget(chunk.length, { onlyChunk: chunks.length === 1 }),
+      targetNotions: notionCountTarget(chunk.length, { onlyChunk: chunks.length === 1, budget }),
+      maxNotions: budget,
     });
     if (!result.ok) {
       return result.error.kind === "truncated" ? { ok: false, error: result.error.message, terminal: true } : { ok: false, error: result.error.message };

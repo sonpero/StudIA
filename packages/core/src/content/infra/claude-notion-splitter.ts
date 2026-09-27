@@ -86,7 +86,13 @@ export class ClaudeNotionSplitter implements NotionSplitter {
     const targetLine = input.targetNotions
       ? `\n\nVise entre ${String(input.targetNotions.min)} et ${String(input.targetNotions.max)} notions pour cette partie. Une notion regroupe une idée complète avec ses détails, exemples et nuances : ne fais pas une notion par phrase, par champ ou par ligne de tableau.`
       : "";
-    const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}${targetLine}\n\n---\n\n${input.markdown}`;
+    // The chunk's share of the document's cap (notion-budget.ts): the one
+    // line that keeps the chunks' sum under the cap the job validates.
+    const budgetLine =
+      input.maxNotions !== undefined
+        ? `\n\nPour cette partie, ne produis jamais plus de ${String(input.maxNotions)} notions : le cours entier a une limite, partagée entre ses parties.`
+        : "";
+    const prompt = `${PROMPT_PREFIX}${hintLine}${avoidLine}${targetLine}${budgetLine}\n\n---\n\n${input.markdown}`;
 
     const attempt = async (extraContext?: string) => {
       let generated;

@@ -15,10 +15,13 @@ const CHARS_PER_NOTION_FINEST = 600;
 
 // `onlyChunk`: the chunk is the whole document, so it alone must reach the
 // document's floor of 5 notions. A chunk among several only contributes to
-// that floor.
-export function notionCountTarget(chunkLength: number, options: { onlyChunk: boolean }): NotionCountTarget {
+// that floor. `budget` (notion-budget.ts) is the chunk's hard ceiling: the
+// range never asks for more, so the two instructions never contradict.
+export function notionCountTarget(chunkLength: number, options: { onlyChunk: boolean; budget?: number }): NotionCountTarget {
   const coarsest = Math.ceil(chunkLength / CHARS_PER_NOTION_COARSEST);
-  const min = options.onlyChunk ? Math.max(coarsest, MIN_NOTIONS) : coarsest;
-  const max = Math.max(min, Math.ceil(chunkLength / CHARS_PER_NOTION_FINEST));
+  const floor = options.onlyChunk ? Math.max(coarsest, MIN_NOTIONS) : coarsest;
+  const ceiling = options.budget ?? Number.POSITIVE_INFINITY;
+  const min = Math.min(floor, ceiling);
+  const max = Math.min(Math.max(floor, Math.ceil(chunkLength / CHARS_PER_NOTION_FINEST)), ceiling);
   return { min, max };
 }

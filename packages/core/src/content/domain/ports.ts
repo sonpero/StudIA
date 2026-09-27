@@ -19,6 +19,9 @@ export type SplitInput = {
   // How many notions this chunk should yield (notion-count-target.ts):
   // left unguided, the model split the A2A course four times too finely.
   targetNotions?: { min: number; max: number };
+  // This chunk's share of the document's notion cap (notion-budget.ts): a
+  // ceiling, where targetNotions is the density to aim for under it.
+  maxNotions?: number;
 };
 
 export interface NotionSplitter {
