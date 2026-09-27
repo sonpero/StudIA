@@ -16,6 +16,10 @@ import { E2E_DATA_DIR } from "./support/env.js";
 // viewport. Each state is also saved as a screenshot for the mission report
 // (docs/reports/long-documents-notions.md).
 //
+// Course titles never contain a screen's name ("Mes cours", "Notions"...):
+// the e2e account is shared by every spec, and a card heading holding one
+// breaks other specs' getByRole("heading", { name }) lookups.
+//
 // The helpers below repeat e2e/notion-split-failure.spec.ts's own rather than
 // moving them to support/: that spec stays untouched.
 const FAILURE_MESSAGE = "Les notions de ce cours n'ont pas pu être créées.";
@@ -104,7 +108,7 @@ test.describe("notion step at 375px", () => {
 
   test("Mes cours: in progress, failed with Réessayer, then ready", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
-    const title = "Notions mobile Mes cours";
+    const title = "Étape mobile premier";
     await createCourse(page, title);
     const documentId = documentIdByTitle(title);
     await failNotionSplit(documentId);
@@ -136,7 +140,7 @@ test.describe("notion step at 375px", () => {
 
   test("Notions: in progress, failed with Réessayer, then ready", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
-    const title = "Notions mobile écran";
+    const title = "Étape mobile second";
     await createCourse(page, title);
     const documentId = documentIdByTitle(title);
     await failNotionSplit(documentId);
