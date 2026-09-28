@@ -444,4 +444,87 @@ describe("handleSplitJob", () => {
       expect(result).toEqual({ ok: false, error: "Splitting produced 3 notions, expected 5 to 60" });
     });
   });
+
+  // A2A in production (2026-09-27): one 82-character title failed the whole
+  // document after every chunk, three times over. 80 is now an instruction
+  // to the model, tolerated up to 100 and repaired beyond, never a rejection.
+  describe("titles over the 80 characters the model is asked for", () => {
+    const productionTitle = "Inconvénients d'A2A : sécurité à la charge de l'implémenteur et webhooks exigeants";
+    const securityTitle = "Sécurité d'A2A : authentification des agents, jetons à portée réduite, échange de jetons (RFC 8693)";
+
+    it("writes the real 82-character production title unchanged", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: "# Chapitre 1\n\nContenu.", extractedAt: now.toISOString() });
+      const splitter = fakeNotionSplitter(() =>
+        Promise.resolve(ok([{ title: productionTitle, body: "Corps.", difficulty: "medium" as const }, ...manyNotions(4)])),
+      );
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect((await notionRepo.listNotions("u1", "doc-1"))[0]?.title).toBe(productionTitle);
+    });
+
+    it("shortens a title over 100 characters instead of failing the job", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: "# Chapitre 1\n\nContenu.", extractedAt: now.toISOString() });
+      const splitter = fakeNotionSplitter(() =>
+        Promise.resolve(ok([{ title: `${securityTitle} et audience restreinte`, body: "Corps.", difficulty: "hard" as const }, ...manyNotions(4)])),
+      );
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect((await notionRepo.listNotions("u1", "doc-1"))[0]?.title).toBe(securityTitle);
+    });
+
+    it("resolves a collision created by shortening, through the usual section qualifier", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({
+        documentId: "doc-1",
+        markdown: "# Chapitre 1\n\nA.\n\n# Chapitre 2\n\nB.",
+        extractedAt: now.toISOString(),
+      });
+      let call = 0;
+      const splitter = fakeNotionSplitter(() => {
+        call += 1;
+        const tail = call === 1 ? "et audience restreinte" : "et durée de vie courte";
+        return Promise.resolve(ok([{ title: `${securityTitle} ${tail}`, body: "Corps.", difficulty: "hard" as const }, ...manyNotions(2, `Ch${String(call)}`)]));
+      });
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator, chunking: { targetChars: 20, maxChars: 30 } },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result.ok).toBe(true);
+      const titles = (await notionRepo.listNotions("u1", "doc-1")).map((n) => n.title);
+      expect(titles[0]).toBe(securityTitle);
+      expect(titles[3]).toBe("Sécurité d'A2A : authentification des agents, jetons à portée rédui (Chapitre 2)");
+    });
+
+    it("still fails the job, retryably, on a title under 3 characters", async () => {
+      const notionRepo = fakeNotionRepository();
+      const documentRepo = fakeDocumentRepositoryForContent({ documentId: "doc-1", markdown: "# Chapitre 1\n\nContenu.", extractedAt: now.toISOString() });
+      const splitter = fakeNotionSplitter(() => Promise.resolve(ok([{ title: "Hi", body: "Corps.", difficulty: "easy" as const }, ...manyNotions(4)])));
+
+      const result = await handleSplitJob(
+        { notionRepo, documentRepo, splitter, idGenerator: uuidV7Generator },
+        { documentId: "doc-1" },
+        { jobId: "job-1", userId: "u1", attempt: 1, now },
+      );
+
+      expect(result).toEqual({ ok: false, error: 'Invalid notion title: "Hi"' });
+      expect(await notionRepo.listNotions("u1", "doc-1")).toEqual([]);
+    });
+  });
 });

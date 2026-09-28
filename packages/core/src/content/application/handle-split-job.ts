@@ -4,7 +4,8 @@ import { ok, type IdGenerator } from "../../shared/index.js";
 import { chunkBySize, DEFAULT_CHUNKING, type ChunkingOptions } from "../domain/chunk-by-size.js";
 import { disambiguateTitles, sectionLabel, type TitleSource } from "../domain/disambiguate-titles.js";
 import { isValidNotionCount, maxNotionCount, MIN_NOTIONS } from "../domain/is-valid-notion-count.js";
-import { isValidTitle } from "../domain/is-valid-title.js";
+import { fitTitle } from "../domain/fit-title.js";
+import { isTitleTooShort } from "../domain/is-valid-title.js";
 import { notionBudgets } from "../domain/notion-budget.js";
 import { notionCountTarget } from "../domain/notion-count-target.js";
 import type { NotionRepository, NotionSplitter } from "../domain/ports.js";
@@ -67,8 +68,10 @@ export async function handleSplitJob(deps: HandleSplitJobDeps, payload: SplitDoc
     }
     const section = sectionLabel(chunk);
     for (const notion of result.value) {
-      splitNotions.push(notion);
-      sources.push({ title: notion.title, section, part: index + 1 });
+      // Before disambiguateTitles: shortening can make two titles equal.
+      const title = fitTitle(notion.title);
+      splitNotions.push({ ...notion, title });
+      sources.push({ title, section, part: index + 1 });
     }
   }
 
@@ -81,7 +84,9 @@ export async function handleSplitJob(deps: HandleSplitJobDeps, payload: SplitDoc
     // failed to split can do better on a second attempt.
     return splitNotions.length > maxNotionCount(markdownLength) ? { ok: false, error, terminal: true } : { ok: false, error };
   }
-  const invalidTitle = splitNotions.find((n) => !isValidTitle(n.title));
+  // Length above 80 never fails a document (fitTitle); only an empty-ish
+  // title still does.
+  const invalidTitle = splitNotions.find((n) => isTitleTooShort(n.title));
   if (invalidTitle) return { ok: false, error: `Invalid notion title: "${invalidTitle.title}"` };
   const titles = disambiguateTitles(sources);
 

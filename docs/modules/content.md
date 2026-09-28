@@ -19,7 +19,7 @@ type Notion = {
   id: string;
   documentId: string;
   userId: string;
-  title: string;          // 3 to 80 chars, a noun phrase, not a question
+  title: string;          // asked 3 to 80 chars, a noun phrase, not a question (see Title length)
   body: string;           // Markdown, self-contained
   difficulty: Difficulty; // model-suggested, user-editable
   position: number;       // order in the course, contiguous from 0
@@ -35,6 +35,9 @@ type Notion = {
 - Titles are unique within a document, case-insensitive after trimming. A
   title repeated across chunks is resolved deterministically, never by failing
   the document (see [Duplicate titles across chunks](#duplicate-titles-across-chunks))
+- A generated title never fails a document for being too long: 80 characters
+  is an instruction to the model, tolerated up to 100 and repaired beyond
+  (see [Title length](#title-length)). Under 3 characters still fails the job
 - 5 to `max(60, ceil(markdownLength / 500))` notions per document
   (`maxNotionCount`). Below 5, splitting probably failed. Above the cap, the
   granularity is too fine and the plan becomes unusable: one notion per 500
@@ -150,6 +153,34 @@ used when the section says the same as the title), then `Titre (Section 2)`,
 exceeds 80 characters (title truncated first, section label capped at 40).
 The fixture adapter's `valid` case honours `avoidTitles` too.
 
+### Title length
+
+The prompt and the schema's `.describe()` ask for 3 to 80 characters. That
+is an instruction, not a rejection: the model overshoots now and then, and a
+title over 80 used to fail the whole document after every chunk had been
+paid for, then re-split it up to three times (A2A in production, 2026-09-27:
+one 82-character title, three full passes).
+
+`handleSplitJob` now runs every generated title through `fitTitle`
+(`domain/fit-title.ts`) before `disambiguateTitles`, since shortening can
+make two titles equal:
+
+- up to 100 characters (`TITLE_LENGTH_TOLERANCE`), the title is kept as is.
+  100, not more: at 375px the Notions card wraps a 100-character title on
+  seven lines against six at 80;
+- beyond, it is cut at the last space within 100 characters (a hard cut at
+  100 when there is none), then trailing punctuation, trailing linking words
+  (French and English, whole words, any case) and a bracket or `«` the cut
+  left open are removed, repeatedly. A title that would end up under 3
+  characters keeps the plain cut instead.
+
+The only length check left in the job is a title under 3 characters, which
+fails it (retryable), as before. A qualified duplicate still never exceeds 80
+(`disambiguateTitles`, unchanged).
+
+A manual edit (`updateNotion`, `PATCH /api/notions/:id`) still enforces 3 to
+80 through `isValidTitle`, unchanged.
+
 ## Use cases
 
 - `handleSplitJob(payload, ctx)` — enqueued by `ingestion` on extraction success.
@@ -254,7 +285,11 @@ Cards, questions, quizzes. Scheduling.
   and its message, `truncated` returned with `terminal: true`, a count above
   the cap terminal and one below the floor retryable, `targetNotions`
   forwarded per chunk (floor of 5 only for a single-chunk document),
-  `maxNotions` per chunk summing to the cap
+  `maxNotions` per chunk summing to the cap, a title up to 100 characters
+  written unchanged, one beyond shortened, a collision created by shortening
+  qualified, a title under 3 characters still failing
+- Unit: `fitTitle` (`fit-title.unit.test.ts`) and `isTitleTooShort`
+  (`is-title-too-short.unit.test.ts`), mutation-tested
 - Unit: `notionCountTarget` (`notion-count-target.unit.test.ts`), bounded by
   the budget; `notionBudgets` (`notion-budget.unit.test.ts`), mutation-tested
 - Contract: the 43-page A2A PDF (`tests/fixtures/ingestion/a2a-course.pdf`)
