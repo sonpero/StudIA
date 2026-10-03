@@ -56,7 +56,10 @@ export async function handleGenerationJob(
   const leaking = result.value.find((c) => questionLeaksAnswer(c.question, c.answer));
   if (leaking) return { ok: false, error: `Question leaks its answer: "${leaking.question}"` };
 
-  const existing = await deps.cardRepo.listCards(ctx.userId, payload.notionId);
+  // Only the types being generated take part in the diff: a card of any
+  // other type is not in the generated set, so the diff would delete it,
+  // and its reviews with it.
+  const existing = (await deps.cardRepo.listCards(ctx.userId, payload.notionId)).filter((c) => payload.types.includes(c.type));
   const { actions, deleteIds } = diffCards(existing, result.value);
 
   const nowIso = ctx.now.toISOString();

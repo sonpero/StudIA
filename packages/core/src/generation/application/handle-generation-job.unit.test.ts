@@ -98,6 +98,49 @@ describe("handleGenerationJob", () => {
     expect(cards).toHaveLength(2);
   });
 
+  // Regression (2026-10-03 diagnosis): the diff ran over every existing card
+  // of the notion, so generating only mcq deleted its flashcards, and their
+  // review history with them (reviews cascade on card delete).
+  it("generating one type never deletes the notion's cards of another type", async () => {
+    const cardRepo = fakeCardRepository([aCard({ id: "old-flashcard", type: "flashcard", question: "Flashcard existante ?" })]);
+    const notionRepo = fakeNotionRepositoryForGeneration(aNotion());
+    const generator = fakeCardGenerator(() =>
+      Promise.resolve(ok([{ type: "mcq", question: "Quel gaz ?", answer: "O2", options: ["O2", "CO2", "N2", "H2"] }])),
+    );
+
+    const result = await handleGenerationJob(
+      { cardRepo, notionRepo, generator, idGenerator: uuidV7Generator },
+      { notionId: "n1", types: ["mcq"] },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    expect(result.ok).toBe(true);
+    const cards = await cardRepo.listCards("u1", "n1");
+    expect(cards.find((c) => c.id === "old-flashcard")).toMatchObject({ type: "flashcard", question: "Flashcard existante ?" });
+    expect(cards.filter((c) => c.type === "mcq")).toHaveLength(1);
+  });
+
+  it("still replaces stale cards of the type being generated", async () => {
+    const cardRepo = fakeCardRepository([
+      aCard({ id: "old-mcq", type: "mcq", question: "Ancien QCM ?", options: ["a", "b", "c", "d"], answer: "a" }),
+      aCard({ id: "old-open", type: "open", question: "Question libre ?" }),
+    ]);
+    const notionRepo = fakeNotionRepositoryForGeneration(aNotion());
+    const generator = fakeCardGenerator(() =>
+      Promise.resolve(ok([{ type: "mcq", question: "Nouveau QCM ?", answer: "O2", options: ["O2", "CO2", "N2", "H2"] }])),
+    );
+
+    await handleGenerationJob(
+      { cardRepo, notionRepo, generator, idGenerator: uuidV7Generator },
+      { notionId: "n1", types: ["mcq"] },
+      { jobId: "j1", userId: "u1", attempt: 1, now },
+    );
+
+    const ids = (await cardRepo.listCards("u1", "n1")).map((c) => c.id);
+    expect(ids).not.toContain("old-mcq");
+    expect(ids).toContain("old-open");
+  });
+
   it("fails the job, without writing anything, when a question leaks its answer", async () => {
     const cardRepo = fakeCardRepository();
     const notionRepo = fakeNotionRepositoryForGeneration(aNotion());
