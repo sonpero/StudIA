@@ -185,3 +185,38 @@ Les entrées marquées **[à relire]** méritent une relecture prioritaire.
 - **Limite connue** : si une fusion retire la seule notion clé d'une
   partie, cette partie devient non couverte. Le code ne le rattrape pas,
   et l'eval le mesurerait.
+
+## D14. Evals : sources, mesures et blocage de facturation [à relire]
+
+- **Cours** :
+  - A2A découpé à l'exécution dans ton PDF, non versionné : chapitres 1–2
+    (8 173 caractères, 5,4 pages) et chapitres 1–6 (36 248 caractères,
+    24,2 pages). Le texte du PDF n'est jamais copié dans le dépôt.
+  - Troisième cours : l'article « Révolution française » de Wikipédia,
+    révision figée, de l'introduction à « Première République » (100 174
+    caractères, 66,8 pages). Licence CC BY-SA, attribution dans
+    `evals/golden-key-notions/SOURCES.md`.
+  - A2A complet ne fait que 43 pages : l'assembler avec un autre cours
+    aurait donné un « cours » sans unité, d'où un sujet distinct et long.
+- **« Avant »** : la formule du diagnostic (notions de lecture × 3 types ×
+  1 à 5, environ 3,5 en moyenne), appliquée au nombre réel de notions de
+  lecture que l'eval obtient. Aucune génération par l'ancien flux, comme
+  demandé.
+- **Couverture** : la vérification indépendante compare les parties
+  déclarées par le modèle à une liste de parties écrite à la main (D2).
+- **Garde-fou de dépense** : `evals/spend-guard.ts` tient un registre
+  persistant entre les passages. Il refuse tout appel dont le pire cas
+  (entrée estimée, plus la totalité de son `max_tokens` en sortie) ferait
+  dépasser 10 $. Tarifs : claude-sonnet-5 à 2 $ / 10 $ par million de
+  tokens, vérifiés le 2026-10-03.
+- **Blocage** : le premier passage payant (a2a-5p) a été refusé dès le
+  premier appel : « Your credit balance is too low to access the Anthropic
+  API ». Rien n'a été dépensé (0 $). Il n'y a pas d'autre clé ni d'autre
+  source d'identifiants configurée pour ce projet. L'essai à blanc
+  (`DRY=1`, adaptateurs fixture) a validé toute la chaîne.
+- **Commande pour relancer** une fois le compte crédité :
+  `set -a; . ./.env; set +a; SPEND_LEDGER=<fichier> pnpm vitest run --config vitest.eval.config.ts evals/run-key-notions.eval.test.ts`,
+  avec `CASE=a2a-5p` pour commencer petit.
+- **Estimation** pour les trois cours : environ 2 à 3 $ au total. Le
+  découpage en est la plus grosse part (environ 1,3 $). L'extraction et
+  la génération coûtent chacune moins de 0,7 $.
