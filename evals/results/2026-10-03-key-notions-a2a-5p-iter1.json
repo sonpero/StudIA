@@ -1,0 +1,197 @@
+[
+  {
+    "name": "a2a-5p",
+    "label": "A2A, chapitres 1–2 (~5 pages)",
+    "chars": 8173,
+    "pages": 5.4,
+    "readingNotions": 14,
+    "before": {
+      "min": 42,
+      "typical": 147,
+      "max": 210
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 16,
+        "max": 26
+      },
+      "mcq": {
+        "min": 6,
+        "max": 10
+      },
+      "open": {
+        "min": 2,
+        "max": 4
+      }
+    },
+    "keyNotions": 19,
+    "essentials": 9,
+    "synthesis": 3,
+    "cards": {
+      "flashcard": 19,
+      "mcq": 9,
+      "open": 3,
+      "total": 31
+    },
+    "inBounds": {
+      "flashcard": true,
+      "mcq": true,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "1. Introduction : pourquoi A2A",
+      "2. Concepts fondamentaux"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [],
+    "readingNotionsCovered": 14,
+    "nearDuplicateQuestions": [],
+    "mcqAnswerPositions": [
+      4,
+      1,
+      4,
+      0
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 7,
+    "phases": {
+      "découpage": {
+        "calls": 1,
+        "inputTokens": 4525,
+        "outputTokens": 5046,
+        "usd": 0.05951000000000001
+      },
+      "notions clés": {
+        "calls": 1,
+        "inputTokens": 5377,
+        "outputTokens": 2399,
+        "usd": 0.034744
+      },
+      "génération des cartes": {
+        "calls": 4,
+        "inputTokens": 19893,
+        "outputTokens": 4722,
+        "usd": 0.08700600000000001
+      }
+    },
+    "keyNotionList": [
+      {
+        "title": "Problème de l'intégration N×N",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Exécution opaque",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Objectifs et principes de conception d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Gouvernance et adoption d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Nouveautés normatives de la v1.0",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Les six objets du modèle A2A",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Acteurs du protocole : utilisateur, client, serveur",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Agent Card : carte d'identité de l'agent",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Structure du Message",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Part : unité de contenu minimale",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Task : cycle de vie d'une unité de travail",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Artifact : résultat livré par une tâche",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Contexte et regroupement logique",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règle d'or : Message pour communiquer, Artifact pour livrer",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Choix entre Message direct et Task",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Poursuivre une conversation multi-tour",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règles de génération des identifiants",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Tâche en état terminal",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Démarche générale d'A2A : de l'intégration au protocole",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "1. Introduction : pourquoi A2A"
+      }
+    ]
+  }
+]

@@ -1,103 +1,184 @@
 # Rapport — notions clés et budget de cartes (M11)
 
-Branche `feat/key-notions-card-budget`, non poussée, rien de déployé.
-Journal des décisions : `notions-cles-decisions.md`. Conception :
-`notions-cles-conception.md`.
+Branche `feat/key-notions-card-budget`, poussée, non fusionnée dans `main`,
+rien de déployé. Journal des décisions : `notions-cles-decisions.md` (D1 à
+D21). Conception : `notions-cles-conception.md`. Résultats bruts :
+`evals/results/2026-10-03-key-notions-*.md|json`.
 
-## 1. Critères d'acceptation
+## 1. Données personnelles (étape 1)
 
-| Critère | État | Preuve |
-|---|---|---|
-| Volume dans les bornes pour les trois tailles | **Garanti en code pour le plafond, non mesuré sur le modèle réel** | `card-budget.unit.test.ts`, `key-notion-plan.unit.test.ts`, `handle-course-generation-job.unit.test.ts` (« caps the key notions… »). L'eval payante est bloquée (crédit API épuisé, D14) |
-| Couverture de toutes les sections | **Garanti en code pour les parties déclarées par le modèle, non mesuré contre la référence écrite à la main** | `claude-key-notion-extractor.contract.test.ts` (partie sans notion clé → relance, puis échec), `capKeyNotions` garde une notion par partie. La vérité de terrain de l'eval n'a pas tourné |
-| Aucun doublon de notion clé | **Garanti en code pour les titres identiques après normalisation ; quasi-doublons non mesurés** | `dedupeKeyNotions`, tests unitaires et mutations. Limite : D13 |
-| Cours existants intacts | **Fait** | Migration 0013 additive, rejeu depuis 0012 avec carte, planning et révision inchangés (vérifié par mutation). Le job refuse définitivement un cours qui a des cartes, sans aucun appel au modèle. La route répond 409 `has-cards` |
-| Eval avec chiffres avant / après | **Écrite et validée à blanc, pas exécutée** | `evals/run-key-notions.eval.test.ts`, bloquée par le solde de crédits API (D14) |
-| Playwright : créer les fiches d'un cours puis en réviser une | **Fait** | `e2e/course-cards.spec.ts`, observé rouge puis vert. Suite complète : 58/58 |
+- **Ton adresse gmail n'apparaît nulle part** : ni dans les fichiers, ni
+  dans le contenu des commits du dépôt, ni dans leurs métadonnées. Elle
+  n'avait été envoyée qu'une fois, dans l'en-tête d'une requête `curl`
+  lancée à la main vers Wikipédia, jamais versionnée.
+- **Une autre adresse personnelle a été trouvée** : l'adresse
+  professionnelle, en auteur et en committer de tous les
+  commits.
+  - Les 9 commits de la branche, jamais poussés, ont été réécrits avec
+    l'adresse noreply GitHub du compte. Le contenu est identique.
+  - Tous les commits suivants utilisent la même adresse noreply, sans
+    toucher à ta configuration git.
+- **Reste à décider par toi** : les 196 commits de `main` portent toujours
+  l'adresse professionnelle. Les réécrire obligerait à forcer le push de
+  `main`, ce qui sort du cadre de cette mission.
+- **Recommandations** :
+  - `git config user.email 44258422+sonpero@users.noreply.github.com`
+    dans ce dépôt ;
+  - « Keep my email addresses private » sur GitHub.
+- **Wikipédia** : `evals/golden-key-notions/SOURCES.md` explique comment
+  l'interroger sans donnée personnelle (D16).
 
-## 2. Chiffres de l'eval
+## 2. Résultats par cours (code final)
 
-Pas de chiffres réels : le premier appel payant a été refusé avec « Your
-credit balance is too low to access the Anthropic API ». Dépense de la
-mission : 0 $.
+| | A2A ch. 1–2 | A2A ch. 1–6 | Révolution française |
+|---|---|---|---|
+| Caractères ; pages | 8 173 ; 5,4 | 36 248 ; 24,2 | 100 174 ; 66,8 |
+| Notions de lecture | 11 | 64 | 164 |
+| **Avant** (formule du diagnostic : min / typique / max) | 33 / 116 / 165 | 192 / 672 / 960 | 492 / 1 722 / 2 460 |
+| Notions clés (essentielles, synthèses déclarées) | 20 (8, 5) | 56 (33, 16) | 90 (69, 31) |
+| **Flashcards** (borne) | 20 (16–26) ✓ | 56 (39–59) ✓ | 90 (70–90) ✓ |
+| **QCM** (borne) | 8 (6–10) ✓ | 29 (19–29) ✓ | 45 (35–45) ✓ |
+| **Questions libres** (borne) | 4 (2–4) ✓ | 12 (8–12) ✓ | 15 (12–15) ✓ |
+| **Total** (plafond 150) | 32 | 97 | 150 |
+| Parties déclarées / parties de référence retrouvées | 2 / 2 sur 2 | 7 / 6 sur 6 | 14 / 6 sur 6 |
+| Notions de lecture couvertes | 11 / 11 | 64 / 64 | 133 / 164 |
+| Doublons de titre | 0 | 0 | 0 |
+| Titres proches (Jaccard ≥ 0,5) | 0 | 1, distincts | 2, distincts |
+| Questions proches, même type (Jaccard ≥ 0,6) | 0 | 0 | 0 |
+| Position de la bonne réponse (1/2/3/4) | 2/0/4/2 | 8/12/3/6 | 12/11/11/11 |
+| Bonne réponse = option la plus longue (hasard : 25 %) | 3/8 | 9/29 | 25/45 |
+| Appels (découpage + notions clés + génération) | 1 + 1 + 5 | 6 + 1 + 11 | 14 + 1 + 17 |
+| Tokens d'entrée / de sortie | 25 000 / 10 300 | 112 400 / 47 200 | 236 500 / 89 300 |
+| Coût | 0,15 $ | 0,70 $ | 1,37 $ |
 
-La référence « avant » se calcule déjà sans le modèle, avec la formule du
-diagnostic et le budget « après » de ce lot :
+- **Position de la bonne réponse**, les trois cours réunis : 21 / 25 / 16 /
+  19. Le khi-deux vaut environ 2,1 (p ≈ 0,55) : la répartition est
+  uniforme.
+- **Coût hors découpage**, qui existait déjà :
+  - 0,10 $ pour 5 pages, 0,34 $ pour 25 pages, 0,61 $ pour 67 pages ;
+  - environ 12 appels pour un cours de 25 pages, contre environ 190 dans
+    l'ancien flux.
+- **Dépense totale de la mission** : 7,36 $ sur 10 $, échecs et itérations
+  compris.
 
-| Cours | Car. | Pages | Avant (formule, 3 types) | Après, bornes du budget (flashcards / QCM / libres) | Après, maximum total |
-|---|---|---|---|---|---|
-| A2A ch. 1–2 | 8 173 | 5,4 | environ 14 notions de lecture × 10,5 ≈ 147 (42 à 210) | 16–26 / 6–10 / 2–4 | 40 |
-| A2A ch. 1–6 | 36 248 | 24,2 | environ 61 × 10,5 ≈ 641 (183 à 915) | 39–59 / 19–29 / 8–12 | 100 |
-| Révolution française | 100 174 | 66,8 | environ 170 × 10,5 ≈ 1 785 (510 à 2 550) | 70–90 / 35–45 / 12–15 | 150 |
+## 3. Défauts de qualité constatés
 
-Le nombre de notions de lecture « avant » est estimé à la densité d'A2A
-(une notion pour environ 590 caractères, diagnostic du 2026-10-03). L'eval
-mesurera le nombre réel.
+J'ai relu 31 cartes. Toutes sont fidèles au texte source.
 
-Coût estimé du passage complet : environ 2 à 3 $.
+| Défaut | Exemple | Correction | État |
+|---|---|---|---|
+| Flashcards composées | « Qui a lancé A2A, **et** quelle gouvernance **et** quel soutien… ? » | Prompt : « une flashcard interroge un seul fait » | Corrigé |
+| Fausses synthèses | « Règles de génération des identifiants » : un tableau à réciter | Prompt : une synthèse relie des idées. « Un tableau à restituer n'en est pas une » | Corrigé |
+| Distracteurs absurdes | « Être à la fois Agent Card et Contexte » | Prompt : même forme, même niveau de détail, chaque distracteur « pourrait tromper » | Amélioré |
+| Bonne réponse repérable à sa longueur | 7 QCM sur 9 au départ, jusqu'à 1,5 fois le distracteur le plus long | Itération 1 : prompt, sans effet. Itération 2 : invariant en code qui rejette au-delà de 20 % | Partiel : la bonne réponse reste la plus longue dans 31 à 56 % des QCM, de peu, et parfois plus précise (« Monsieur Veto »). **Ouvert** |
+| Questions de mémorisation pure | « Selon quelle norme… ? RFC 8615 » | Aucune | Ouvert, mineur |
 
-| Phase | Appels pour un cours de 25 pages | Coût estimé |
-|---|---|---|
-| Découpage | inchangé, environ 4 | environ 0,35 $ |
-| Notions clés | 1 | environ 0,10 $ |
-| Génération | environ 10 (4 lots de flashcards, 3 de QCM, 2 de questions libres), au lieu d'environ 180 appels | environ 0,20 $ |
+Pannes techniques pendant l'eval, toutes corrigées :
+- **Champ `sections` omis** par le modèle : le prompt l'exige désormais
+  explicitement.
+- **Extraction tronquée** à 16 000 tokens sur le cours long : le prompt
+  demande de regrouper les notions et des sorties plus courtes. La sortie
+  tombe à 12 000 tokens.
+- **Job entier en échec pour un seul QCM** : après la relance, une carte de
+  QCM ou une question libre encore invalide est écartée. Seule une
+  flashcard manquante fait échouer l'appel.
+- **Tableau renvoyé sous forme de chaîne JSON** par le découpeur : la
+  sortie est réparée avant validation.
+- **Champ `difficulty` perdu à la relance** : le message de relance nomme
+  désormais le champ fautif.
 
-## 3. Décisions à relire en priorité
+## 4. Ajustements
 
-- **D2** : les sections viennent du modèle.
-- **D6** : libellé « Créer les fiches ».
-- **D7** : l'ancien flux reste côté API.
-- **D8** : règle « position » ajoutée, elle n'existait pas.
-- **D9** : écart TDD sur le handler.
-- **D15** : tests existants modifiés pour retirer l'ancienne interface.
-- **D14** : sources de l'eval et blocage.
+- **`CARD_BUDGET` : inchangé.** Les trois cours tombent dans les bornes du
+  milestone.
+- **Prompt d'extraction** :
+  - les deux champs sont obligatoires ;
+  - « jamais moins de N », « jamais plus de N » ;
+  - si le cours a peu de notions de lecture, le prompt demande de les
+    découper ; s'il en a beaucoup, de les regrouper ;
+  - la synthèse est définie strictement ;
+  - résumé de 120 caractères au plus, 3 références au plus.
+- **Relance sous le minimum** : une seule, puis le résultat le plus fourni
+  est gardé, sans échec du job. Cela amende D4.
+- **Prompt de génération** :
+  - un seul fait par flashcard ;
+  - la bonne réponse n'est ni plus longue ni plus précise que les
+    distracteurs.
+- **Code** :
+  - invariant `answerStandsOutByLength` (seuil de 20 %), traité comme un
+    défaut léger : le QCM est redemandé une fois, puis gardé ;
+  - abandon des QCM et questions libres encore invalides après la
+    relance ;
+  - `unwrapStringifiedJson` pour réparer les sorties.
+- Chaque changement répond à un défaut mesuré, avec au plus 2 itérations
+  par problème (D17, D18, D19).
 
-## 4. Points ouverts
+## 5. Critères d'acceptation de M11
 
-- **Règle de maîtrise** (stabilité ≥ 21 jours et 3 répétitions par carte,
-  `review/domain/mastery.ts`), à rediscuter séparément. Avec environ 100
-  cartes au lieu d'environ 1 000, la progression d'un cours devient
-  atteignable, mais elle compte toujours des cartes et non des notions
-  clés. Une notion clé à trois cartes pèse trois fois plus qu'une notion
-  clé à une seule.
-- **Citation multi-sources** : une carte ne pointe que vers sa première
-  notion de lecture (D11). Les autres sources sont stockées
-  (`key_notion_sources`) mais ne sont pas encore affichées dans le Lecteur.
-- **Suppression de l'ancien flux** (D7) : elle attend ton accord, puisqu'il
-  faudrait supprimer les tests associés.
-- **Quasi-doublons sémantiques** entre notions clés (D13) : ils ne sont
-  détectés que par le prompt, puis mesurés par l'eval.
-- **Le Tuteur n'a aucune limite de longueur de cours** (D5), un risque
-  existant non traité ici.
+| Critère | État |
+|---|---|
+| Volume dans les bornes pour les trois tailles | ✅ 20/8/4, 56/29/12, 90/45/15 |
+| Toutes les parties couvertes | ✅ toutes les parties de référence retrouvées, sur les trois cours |
+| Aucun doublon de notion clé | ✅ 0 titre identique. Les 3 paires de titres proches sont des notions distinctes |
+| Cours existants intacts | ✅ migration additive testée ; le job et la route refusent un cours qui a déjà des cartes ; les tests e2e de révision passent après la suppression de l'ancien flux |
+| Eval avec chiffres avant et après | ✅ ce rapport |
+| Playwright | ✅ `course-cards.spec.ts`, plus `mcq-option-wrap.spec.ts` ; suite complète 60/60 |
 
-## 5. Ce qu'impliquerait un bouton « Régénérer » (non implémenté)
+En plus des critères :
+- **Ancien flux supprimé** (D20).
+- **Débordement des options de QCM corrigé** avec `<Button multiline>`,
+  testé en 1 280 px et en 375 px.
 
-- **Historique** : les cartes d'un cours régénéré sont nouvelles. Leurs
-  identifiants changent, donc leur historique de révision repart de zéro,
-  sauf correspondance.
-  - `diffCards` sait conserver une carte dont la question est inchangée à
-    l'identique, mais un modèle reformule presque toujours.
-  - En pratique, régénérer efface l'historique de la plupart des cartes.
-- **Ce qu'il faudrait** :
-  1. **Choisir ce qui est régénéré** :
-     - seulement les cartes jamais révisées, en gardant celles qui ont un
-       historique ;
-     - ou tout, avec un avertissement explicite (« tes révisions de ce
-       cours repartiront de zéro »).
-  2. **Garder ou refaire les notions clés** : les refaire coûte un appel
-     d'extraction et change la liste. Les garder ne refait que les lots
-     (moins de 0,5 $ pour 25 pages).
-  3. **Supprimer les anciennes cartes dans la même transaction** que
-     l'écriture des nouvelles. La suppression cascade sur les révisions,
-     de façon irréversible : c'est le point qui demande ta décision.
-  4. **Lever le refus du job** pour un cours qui a des cartes. Il protège
-     aujourd'hui les cours existants, et la route renvoie `has-cards`.
-     Il faudrait un paramètre explicite, jamais un comportement par
-     défaut.
-  5. **Pour un cours de l'ancien flux** (1 000 cartes et plus), proposer
-     une migration :
-     - garder les cartes révisées au moins une fois ;
-     - ne générer que les notions clés qu'elles ne couvrent pas.
+## 6. Recommandation : prêt à fusionner
 
-     C'est plus complexe, car il faut rattacher les anciennes cartes à des
-     notions clés.
+Les six critères sont atteints sur le modèle réel. La suite complète passe :
+tests unitaires et d'intégration, typecheck, lint, dependency-cruiser, et 60
+tests e2e. Les cours existants ne sont jamais touchés.
+
+Trois réserves, aucune bloquante :
+1. **QCM** : la bonne réponse est plus souvent la plus longue que ne le
+   voudrait le hasard. C'est un défaut de qualité, pas de justesse.
+2. **Cours long** : le modèle surproduit les notions essentielles. Le
+   plafond garde les 45 premières dans l'ordre du cours, pas les 45 plus
+   importantes.
+3. **Une seule mesure par cours** sur le code final : un passage isolé dit
+   peu (docs/TESTING.md). Sur a2a-5p, le nombre de notions clés a varié de
+   15 à 20 d'un passage à l'autre.
+
+Au déploiement :
+- la migration 0013 s'applique ;
+- les jobs `generate-cards` encore en file échouent proprement, sans
+  toucher aux données.
+
+## 7. Points ouverts
+
+- **Règle de maîtrise** (stabilité de 21 jours ou plus, 3 répétitions par
+  carte) :
+  - avec environ 100 cartes au lieu d'environ 1 000 pour 25 pages, la
+    progression devient atteignable ;
+  - mais elle compte des cartes, pas des notions clés : une notion clé
+    essentielle et de synthèse (3 cartes) pèse trois fois plus qu'une
+    notion clé importante (1 carte).
+
+  À rediscuter séparément.
+- **Citation de plusieurs sources dans le Lecteur** : une carte pointe vers
+  sa première notion de lecture. Les autres sont stockées dans
+  `key_notion_sources`, mais pas encore affichées.
+- **Limite du Tuteur** : aucune limite de longueur de cours, alors que
+  l'extraction en a une (400 000 caractères).
+- **Bouton « Régénérer »** : non implémenté. Il effacerait l'historique de
+  révision de presque toutes les cartes. Il faudrait décider :
+  - quelles cartes garder (celles déjà révisées) ;
+  - si les notions clés sont refaites ;
+  - comment supprimer les anciennes cartes dans la même transaction ;
+  - comment migrer un cours de l'ancien flux.
+
+  Le détail est dans la version précédente de ce rapport, commit
+  `3b378cf`, § 5.
+- **QCM dont la bonne réponse se repère**, pistes non essayées :
+  - un seuil plus strict ;
+  - demander au modèle d'écrire les distracteurs avant la bonne réponse ;
+  - interdire un détail qui n'apparaît que dans la bonne réponse.
+- **Tri des notions essentielles au-delà du plafond**, sur les cours longs :
+  aujourd'hui l'ordre du cours, à terme peut-être un score de priorité.
+- **Historique de `main`** : il contient l'adresse professionnelle (§ 1).

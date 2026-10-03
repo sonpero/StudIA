@@ -1,0 +1,179 @@
+[
+  {
+    "name": "a2a-5p",
+    "label": "A2A, chapitres 1–2 (~5 pages)",
+    "chars": 8173,
+    "pages": 5.4,
+    "readingNotions": 11,
+    "before": {
+      "min": 33,
+      "typical": 116,
+      "max": 165
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 16,
+        "max": 26
+      },
+      "mcq": {
+        "min": 6,
+        "max": 10
+      },
+      "open": {
+        "min": 2,
+        "max": 4
+      }
+    },
+    "keyNotions": 16,
+    "essentials": 7,
+    "synthesis": 2,
+    "cards": {
+      "flashcard": 16,
+      "mcq": 7,
+      "open": 2,
+      "total": 25
+    },
+    "inBounds": {
+      "flashcard": true,
+      "mcq": true,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "1. Introduction : pourquoi A2A",
+      "2. Concepts fondamentaux"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [],
+    "readingNotionsCovered": 11,
+    "nearDuplicateQuestions": [],
+    "mcqAnswerPositions": [
+      1,
+      2,
+      2,
+      2
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 3,
+    "phases": {
+      "découpage": {
+        "calls": 1,
+        "inputTokens": 4525,
+        "outputTokens": 4201,
+        "usd": 0.05106000000000001
+      },
+      "notions clés": {
+        "calls": 1,
+        "inputTokens": 5410,
+        "outputTokens": 1909,
+        "usd": 0.029910000000000003
+      },
+      "génération des cartes": {
+        "calls": 5,
+        "inputTokens": 14975,
+        "outputTokens": 3478,
+        "usd": 0.06473000000000001
+      }
+    },
+    "keyNotionList": [
+      {
+        "title": "Problème N×N résolu par A2A",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Exécution opaque",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Objectifs de conception d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Principes directeurs du protocole",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Gouvernance et adoption d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Nouveautés clés de la v1.0.0",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Les trois acteurs d'A2A",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Les objets du modèle de données",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Structure d'une Part",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Exemple de Message JSON",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règle d'or Message vs Artifact",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Fiabilité des Messages et conséquence pratique",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Choix entre Message direct et Task",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Trois façons de poursuivre une conversation",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règles de génération des identifiants",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Tâche en état terminal",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      }
+    ]
+  }
+]

@@ -893,15 +893,21 @@ Design: `docs/reports/notions-cles-conception.md`; decisions:
   cards: no automatic regeneration, no regenerate button.
 
 **Acceptance**
-- [ ] Volume in bounds for three course sizes (~5, ~25, ~60 pages):
+- [x] Volume in bounds for three course sizes (~5, ~25, ~60 pages):
       15–25 / 6–10 / 2–4, 40–60 / 20–30 / 8–12, 70–90 / 35–45 / 12–15
       flashcards / MCQ / open questions; never more than 150 cards in total
-- [ ] Every section of the course has at least one key notion
-- [ ] No duplicate key notion
+      — real eval 2026-10-03: 20/8/4, 56/29/12, 90/45/15
+      (`evals/results/2026-10-03-key-notions-*.md`)
+- [x] Every section of the course has at least one key notion — every
+      hand-written reference section found on all three courses
+- [x] No duplicate key notion — 0 identical titles; the 4 near pairs
+      (Jaccard ≥ 0.5) read as distinct notions (decisions D21)
 - [x] Existing courses intact: the migration is additive only, and a
       course with cards is never regenerated — migration 0013 replay test
       from a 0012 database, the job's terminal refusal, the route's 409
-- [ ] An eval reports the figures before (the diagnosis formula) and after
+- [x] An eval reports the figures before (the diagnosis formula) and after
+      (`evals/run-key-notions.eval.test.ts`, report in
+      `docs/reports/notions-cles-rapport.md`)
 - [x] Playwright: create the cards of a course from Notions, then review one
       (`e2e/course-cards.spec.ts`)
 

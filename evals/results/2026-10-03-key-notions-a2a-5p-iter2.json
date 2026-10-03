@@ -1,0 +1,173 @@
+[
+  {
+    "name": "a2a-5p",
+    "label": "A2A, chapitres 1–2 (~5 pages)",
+    "chars": 8173,
+    "pages": 5.4,
+    "readingNotions": 12,
+    "before": {
+      "min": 36,
+      "typical": 126,
+      "max": 180
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 16,
+        "max": 26
+      },
+      "mcq": {
+        "min": 6,
+        "max": 10
+      },
+      "open": {
+        "min": 2,
+        "max": 4
+      }
+    },
+    "keyNotions": 15,
+    "essentials": 9,
+    "synthesis": 3,
+    "cards": {
+      "flashcard": 15,
+      "mcq": 9,
+      "open": 3,
+      "total": 27
+    },
+    "inBounds": {
+      "flashcard": false,
+      "mcq": true,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "1. Introduction : pourquoi A2A",
+      "2. Concepts fondamentaux"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [],
+    "readingNotionsCovered": 12,
+    "nearDuplicateQuestions": [],
+    "mcqAnswerPositions": [
+      3,
+      2,
+      1,
+      3
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 5,
+    "phases": {
+      "découpage": {
+        "calls": 1,
+        "inputTokens": 4525,
+        "outputTokens": 4657,
+        "usd": 0.05562
+      },
+      "notions clés": {
+        "calls": 1,
+        "inputTokens": 5401,
+        "outputTokens": 1819,
+        "usd": 0.028992
+      },
+      "génération des cartes": {
+        "calls": 4,
+        "inputTokens": 16075,
+        "outputTokens": 3650,
+        "usd": 0.06865
+      }
+    },
+    "keyNotionList": [
+      {
+        "title": "Problème de l'intégration N×N",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Définition d'A2A et exécution opaque",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Objectifs et principes de conception",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Principes directeurs d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Historique et gouvernance d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Nouveautés de la spécification v1.0",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Les trois acteurs d'A2A",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Les six objets du modèle de données",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Rôle de l'Agent Card",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Structure d'une Part",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règle d'or Message vs Artifact",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Choix entre Message direct et Task",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Relations entre contexte, tâche, message et artifact",
+        "importance": "important",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Poursuite d'une conversation multi-tour",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règles de génération des identifiants",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      }
+    ]
+  }
+]

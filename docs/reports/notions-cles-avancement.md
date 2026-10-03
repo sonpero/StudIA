@@ -29,15 +29,30 @@ compaction du contexte.
 
 - Étape 8 : rapport final (`notions-cles-rapport.md`).
 
-## Reste
+## Mission de finalisation (suite du 2026-10-03)
 
-- Relancer l'eval payante une fois le compte API crédité (commande dans
-  D14), puis cocher les trois critères de M11 qui en dépendent.
+### Fait
 
-## Ensuite
+- Étape 1, données personnelles : adresse gmail absente partout. Les
+  commits de la branche ont été réécrits avec l'adresse noreply GitHub
+  (D16), `d250e14`.
+- Étape 2, eval réelle :
+  - a2a-5p : dans les bornes (16 / 7 / 2) après 2 itérations (D17) ;
+  - a2a-25p : dans les bornes (57 / 29 / 12) ;
+  - cours de 67 pages : 3 échecs techniques corrigés (D18, D19).
+- Étape 3, ajustements : prompts, invariant de longueur des QCM, relance
+  sous le minimum, regroupement pour les cours longs, abandon des QCM et
+  questions libres invalides, réparation des sorties JSON.
+- Étape 4 : ancien flux supprimé (D20), `becae42`.
+- Étape 5 : débordement des options de QCM corrigé (`Button multiline`),
+  e2e en 1280 px et en 375 px, `f8e3fb3`. Suite e2e : 60/60.
 
-8. Rapport final.
+### En cours
 
-## Dépense
+- Passage du cours de 67 pages sur le code final.
+- Puis relance d'a2a-25p sur le code final, si le budget le permet.
 
-0 $ sur 10 $.
+### Ensuite
+
+- Relecture de 10 cartes du cours de 67 pages.
+- Rapport final, MILESTONES, poussée de la branche.

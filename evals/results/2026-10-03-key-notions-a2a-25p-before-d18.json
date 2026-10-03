@@ -1,0 +1,436 @@
+[
+  {
+    "name": "a2a-25p",
+    "label": "A2A, chapitres 1–6 (~25 pages)",
+    "chars": 36248,
+    "pages": 24.2,
+    "readingNotions": 61,
+    "before": {
+      "min": 183,
+      "typical": 641,
+      "max": 915
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 39,
+        "max": 59
+      },
+      "mcq": {
+        "min": 19,
+        "max": 29
+      },
+      "open": {
+        "min": 8,
+        "max": 12
+      }
+    },
+    "keyNotions": 57,
+    "essentials": 33,
+    "synthesis": 15,
+    "cards": {
+      "flashcard": 57,
+      "mcq": 29,
+      "open": 12,
+      "total": 98
+    },
+    "inBounds": {
+      "flashcard": true,
+      "mcq": true,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "1. Introduction : pourquoi A2A",
+      "2. Concepts fondamentaux",
+      "3. Architecture en couches et bindings",
+      "4. Cycle de vie des tâches, streaming et notifications push",
+      "4 bis. Résilience : crash serveur et coupure réseau",
+      "5. Découverte des agents et Agent Card",
+      "6. Sécurité : authentification, autorisation, confiance"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [
+      [
+        "Fonctionnement des notifications push",
+        "Fiabilité des notifications push",
+        0.5
+      ]
+    ],
+    "readingNotionsCovered": 61,
+    "nearDuplicateQuestions": [],
+    "mcqAnswerPositions": [
+      5,
+      12,
+      4,
+      8
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 11,
+    "phases": {
+      "découpage": {
+        "calls": 6,
+        "inputTokens": 27601,
+        "outputTokens": 28338,
+        "usd": 0.338582
+      },
+      "notions clés": {
+        "calls": 1,
+        "inputTokens": 18727,
+        "outputTokens": 6554,
+        "usd": 0.102994
+      },
+      "génération des cartes": {
+        "calls": 12,
+        "inputTokens": 71398,
+        "outputTokens": 15657,
+        "usd": 0.29936599999999997
+      }
+    },
+    "keyNotionList": [
+      {
+        "title": "Problème résolu par A2A",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Exécution opaque",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Objectifs et principes de conception",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Historique et gouvernance d'A2A",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Nouveautés clés de la v1.0",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1. Introduction : pourquoi A2A"
+      },
+      {
+        "title": "Rôles client, serveur et utilisateur",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Les six objets du modèle A2A",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Agent Card comme carte d'identité",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Structure d'une Part",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Task et Artifact",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Contexte comme regroupement logique",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règle d'or Message vs Artifact",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Choix entre Message direct et Task",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Identifiants et multi-tour",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Règles de génération des identifiants",
+        "importance": "important",
+        "synthesis": false,
+        "section": "2. Concepts fondamentaux"
+      },
+      {
+        "title": "Architecture en trois couches",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Les 11 opérations du protocole",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Correspondance des opérations entre bindings",
+        "importance": "important",
+        "synthesis": false,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Comparatif des trois bindings",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Versionnement du protocole",
+        "importance": "important",
+        "synthesis": false,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Modèle d'erreurs unifié",
+        "importance": "important",
+        "synthesis": false,
+        "section": "3. Architecture en couches et bindings"
+      },
+      {
+        "title": "Machine à états d'une Task",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "États terminaux",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Mode bloquant vs non bloquant",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Trois mécanismes de suivi d'une tâche",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Format du flux de streaming",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Découpage des artifacts en streaming",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Garanties du streaming",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Reconnexion via SubscribeToTask",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Fonctionnement des notifications push",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Fiabilité des notifications push",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Scénario multi-tour avec humain dans la boucle",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4. Cycle de vie des tâches, streaming et notifications push"
+      },
+      {
+        "title": "Principe de résilience : l'état serveur comme seule vérité",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Bonnes pratiques de résilience serveur et client",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Catalogue des incidents réseau",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Remèdes côté client face aux coupures réseau",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Mécanisme de reprise après coupure réseau",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Backoff exponentiel et disjoncteur",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Conséquences d'un crash serveur sans architecture résiliente",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Séparation des responsabilités pour encaisser un crash",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Composants d'une architecture résiliente",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Règle d'or de reprise après crash",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Stratégies face à un crash ou webhook injoignable",
+        "importance": "important",
+        "synthesis": false,
+        "section": "4 bis. Résilience : crash serveur et coupure réseau"
+      },
+      {
+        "title": "Rôle et publication de l'Agent Card",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Champs obligatoires de l'Agent Card v1.0",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Processus de vérification d'une carte par le client",
+        "importance": "important",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Trois méthodes de découverte",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Carte publique vs carte étendue",
+        "importance": "important",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Signature des Agent Cards",
+        "importance": "important",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Mise en cache de l'Agent Card",
+        "importance": "important",
+        "synthesis": false,
+        "section": "5. Découverte des agents et Agent Card"
+      },
+      {
+        "title": "Principe de sécurité : délégation aux standards web",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "Schémas d'authentification déclarables",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "Déroulement du flux d'authentification",
+        "importance": "important",
+        "synthesis": false,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "État AUTH_REQUIRED et consentement juste à temps",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "Obligations de sécurité côté serveur",
+        "importance": "important",
+        "synthesis": false,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "Menaces spécifiques et contre-mesures",
+        "importance": "important",
+        "synthesis": false,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      },
+      {
+        "title": "Limite sur la délégation d'identité de bout en bout",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "6. Sécurité : authentification, autorisation, confiance"
+      }
+    ]
+  }
+]

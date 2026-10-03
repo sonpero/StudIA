@@ -473,3 +473,25 @@ Corrections :
   premier test du retour était vide de sens : le corps de la requête
   contient toujours « difficulty » via le schéma de l'outil. Il ne lit
   plus que la phrase de retour.
+
+## D21. Eval finale et relecture qualitative
+
+Les trois cours ont été passés sur le code final (`2026-10-03-key-notions-<cas>.md|json`). Les itérations intermédiaires sont gardées à côté (`-iter0` à `-iter3`, `-before-d18`). Dépense totale de la mission, échecs compris : **7,36 $ sur 10 $**.
+
+- **Seuils de quasi-doublon** (similarité de Jaccard sur les mots normalisés, mots vides exclus) :
+  - 0,5 entre titres de notions clés : ce sont des groupes nominaux courts, donc partager la moitié de leurs mots est déjà suspect ;
+  - 0,6 entre questions du même type : elles sont plus longues et partagent leur tournure interrogative.
+- **Paires signalées, toutes relues : aucune n'est un doublon.**
+  - « Machine à états » / « États terminaux d'une Task » : deux aspects distincts.
+  - « Girondins » / « Montagnards » : deux factions.
+  - « Hébertistes » / « Dantonistes » : deux procès.
+  - Le seuil de 0,5 sur les titres signale donc des notions parallèles, pas des répétitions.
+- **Position de la bonne réponse**, sur les trois cours réunis : 21 / 25 / 16 / 19 sur 81 QCM.
+  - Le khi-deux vaut environ 2,1 pour 3 degrés de liberté (p ≈ 0,55) : la répartition est uniforme.
+  - Le mélange est déterministe : il dépend d'une empreinte de la question.
+- **Relecture** de 31 cartes au total : 11 sur a2a-5p (première itération), 10 sur a2a-25p, 10 sur le cours de 67 pages.
+  - Toutes sont fidèles au texte source.
+  - Après correction, les flashcards portent sur un seul fait et les questions libres sont de vraies synthèses (causes, comparaisons, choix).
+  - **Défaut restant** : dans certains QCM, la bonne réponse se repère encore parce qu'elle est un peu plus longue et plus précise que les distracteurs, tout en restant sous le seuil de 20 %. Exemples : Jeu de paume (76 caractères contre 65 au plus pour les distracteurs) ; « Monsieur Veto », où la bonne réponse ajoute un détail. Taux final de QCM dont la bonne réponse est l'option la plus longue : 3/8, 9/29 et 25/45, contre 25 % au hasard. Problème laissé ouvert après 2 itérations (D17).
+  - **Défaut mineur** : quelques questions de pure mémorisation (« Selon quelle norme… ? RFC 8615 »). Elles sont fidèles, mais apportent peu.
+- **Surproduction sur le cours long** : le modèle déclare 69 notions essentielles pour 35 à 45 demandées, et 31 synthèses pour 12 à 15. Les plafonds en code ramènent le volume à 45 QCM et 15 questions libres. Il n'y a pas de tri par importance au-delà de l'ordre du cours : ce sont les 45 premières essentielles qui gardent un QCM.

@@ -1,0 +1,646 @@
+[
+  {
+    "name": "revolution-60p",
+    "label": "Révolution française, Wikipédia (~67 pages)",
+    "chars": 100174,
+    "pages": 66.8,
+    "readingNotions": 164,
+    "before": {
+      "min": 492,
+      "typical": 1722,
+      "max": 2460
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 70,
+        "max": 90
+      },
+      "mcq": {
+        "min": 35,
+        "max": 45
+      },
+      "open": {
+        "min": 12,
+        "max": 15
+      }
+    },
+    "keyNotions": 90,
+    "essentials": 69,
+    "synthesis": 31,
+    "cards": {
+      "flashcard": 90,
+      "mcq": 45,
+      "open": 15,
+      "total": 150
+    },
+    "inBounds": {
+      "flashcard": true,
+      "mcq": true,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "Chronologie et périodisation",
+      "La France dans les années 1780",
+      "1789 : fin de la monarchie absolue et de l'Ancien Régime",
+      "Été 1789",
+      "Régénération de la France",
+      "Échec de la monarchie constitutionnelle",
+      "Chute de la monarchie, le 10 août 1792",
+      "Première République : Girondins et montagnards",
+      "La République en danger (1793)",
+      "Redressement",
+      "Stabilisation gouvernementale et crise populaire",
+      "Robespierre et la Terreur",
+      "La Convention thermidorienne",
+      "Directoire (26 octobre 1795-9 novembre 1799)"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [
+      [
+        "Girondins : composition et doctrine",
+        "Montagnards : composition et doctrine",
+        0.5
+      ],
+      [
+        "Procès et exécution des Hébertistes",
+        "Procès et exécution des Dantonistes",
+        0.5
+      ]
+    ],
+    "readingNotionsCovered": 133,
+    "nearDuplicateQuestions": [],
+    "mcqAnswerPositions": [
+      12,
+      11,
+      11,
+      11
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 25,
+    "phases": {
+      "découpage": {
+        "calls": 14,
+        "inputTokens": 94482,
+        "outputTokens": 56898,
+        "usd": 0.757944
+      },
+      "notions clés": {
+        "calls": 1,
+        "inputTokens": 45840,
+        "outputTokens": 12061,
+        "usd": 0.21229
+      },
+      "génération des cartes": {
+        "calls": 17,
+        "inputTokens": 96225,
+        "outputTokens": 20368,
+        "usd": 0.39613
+      }
+    },
+    "keyNotionList": [
+      {
+        "title": "Bornes chronologiques de la Révolution (1789-1799)",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Débats de périodisation",
+        "importance": "important",
+        "synthesis": true,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Héritages politiques et sociaux",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Violence révolutionnaire",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Diffusion européenne des idées révolutionnaires",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Réception historique controversée",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Instabilité institutionnelle post-révolutionnaire",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Chronologie et périodisation"
+      },
+      {
+        "title": "Société des trois ordres",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Essor de nouvelles catégories sociales urbaines",
+        "importance": "important",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Réaction seigneuriale et nobiliaire",
+        "importance": "important",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Crise frumentaire de 1788-1789",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Crise des finances publiques",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Monarchie absolue de droit divin",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Attachement populaire au roi avant 1789",
+        "importance": "important",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Rôle des Parlements et droit de remontrance",
+        "importance": "important",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Coup de Maupeou et parti patriote",
+        "importance": "important",
+        "synthesis": false,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Limites de la contestation pré-révolutionnaire",
+        "importance": "important",
+        "synthesis": true,
+        "section": "La France dans les années 1780"
+      },
+      {
+        "title": "Espoirs liés aux états généraux",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Querelle du doublement du tiers et du vote",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Affront protocolaire du tiers à l'ouverture",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Vérification des pouvoirs et motion de Sieyès",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Proclamation de l'Assemblée nationale",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Serment du Jeu de paume",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Séance royale du 23 juin et résistance des députés",
+        "importance": "important",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Assemblée nationale constituante et souveraineté nationale",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "1789 : fin de la monarchie absolue et de l'Ancien Régime"
+      },
+      {
+        "title": "Rassemblement de troupes royales (juillet 1789)",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Renvoi de Necker et agitation parisienne",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Prise de la Bastille (14 juillet 1789)",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Construction symbolique de la Bastille",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Reconnaissance royale de la municipalité parisienne",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Révolution municipale en province",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Première émigration nobiliaire",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Grande Peur dans les campagnes",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Abolition des privilèges (4 août 1789)",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Déclaration des droits de l'homme et du citoyen",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Marche des femmes sur Versailles",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Affaiblissement du pouvoir royal après octobre 1789",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Été 1789"
+      },
+      {
+        "title": "Programme réformateur de la Constituante",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Réforme administrative et création des départements",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Nationalisation des biens du clergé et assignats",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Suppression des ordres religieux",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Constitution civile du clergé",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Fracture religieuse et serment ecclésiastique",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Régénération de la France"
+      },
+      {
+        "title": "Fête de la Fédération",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Fuite à Varennes et ses conséquences",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Scission des Feuillants",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Fusillade du Champ-de-Mars",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Constitution de 1791",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Suffrage censitaire et citoyens actifs/passifs",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Émigrés de Coblence et pressions étrangères",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Décrets contre émigrés et réfractaires et veto royal",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Partis favorables à la guerre",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Déclaration de guerre à l'Autriche",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Décrets de précaution et vetos royaux de 1792",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Échec de la monarchie constitutionnelle"
+      },
+      {
+        "title": "Manifeste de Brunswick",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Journée du 10 août 1792",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Invasion prussienne et massacres de Septembre",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Élection de la Convention au suffrage universel",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Girondins : composition et doctrine",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Montagnards : composition et doctrine",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Victoire de Valmy et conquêtes de l'automne 1792",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Proclamation de la République",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Chute de la monarchie, le 10 août 1792"
+      },
+      {
+        "title": "Procès et exécution de Louis XVI",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Première République : Girondins et montagnards"
+      },
+      {
+        "title": "Insurrection vendéenne : causes et déclenchement",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Première République : Girondins et montagnards"
+      },
+      {
+        "title": "Clivage montagnards-girondins",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Première République : Girondins et montagnards"
+      },
+      {
+        "title": "Chute des Girondins",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Première République : Girondins et montagnards"
+      },
+      {
+        "title": "République en danger (printemps 1793)",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "La République en danger (1793)"
+      },
+      {
+        "title": "Constitution de l'an I et sa suspension",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "La République en danger (1793)"
+      },
+      {
+        "title": "Comité de salut public",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La République en danger (1793)"
+      },
+      {
+        "title": "Enragés et Hébertistes",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Redressement"
+      },
+      {
+        "title": "Levée en masse",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Redressement"
+      },
+      {
+        "title": "Journées de septembre et Maximum général",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Redressement"
+      },
+      {
+        "title": "Mise en place légale de la Terreur",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Redressement"
+      },
+      {
+        "title": "Défaite de l'Armée catholique et royale",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Redressement"
+      },
+      {
+        "title": "Répression de la Vendée",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Redressement"
+      },
+      {
+        "title": "Décret du 14 frimaire : gouvernement révolutionnaire",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Déchristianisation",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Factions hébertiste et dantoniste",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Abolition de l'esclavage (16 pluviôse an II)",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Procès et exécution des Hébertistes",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Procès et exécution des Dantonistes",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Bilan et conséquences de germinal",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Stabilisation gouvernementale et crise populaire"
+      },
+      {
+        "title": "Grande Terreur (loi de prairial)",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Robespierre et la Terreur"
+      },
+      {
+        "title": "Isolement et chute de Robespierre",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Robespierre et la Terreur"
+      },
+      {
+        "title": "Crise de subsistances et fin du Maximum",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "La Convention thermidorienne"
+      },
+      {
+        "title": "Constitution de l'an III et fin de la Convention",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "La Convention thermidorienne"
+      },
+      {
+        "title": "Cadre constitutionnel du Directoire",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Directoire (26 octobre 1795-9 novembre 1799)"
+      },
+      {
+        "title": "Instabilité politique du Directoire",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Directoire (26 octobre 1795-9 novembre 1799)"
+      },
+      {
+        "title": "Ascension de Bonaparte",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Directoire (26 octobre 1795-9 novembre 1799)"
+      },
+      {
+        "title": "Coup d'État du 18 brumaire",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Directoire (26 octobre 1795-9 novembre 1799)"
+      }
+    ]
+  }
+]
