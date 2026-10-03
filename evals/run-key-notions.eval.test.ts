@@ -7,6 +7,15 @@
 //   DRY=1                               fixture adapters, no network, no cost
 //   SPEND_LEDGER=path                   persistent spend ledger (mission limit)
 //   A2A_PDF=path                        the A2A course PDF (not versioned)
+//   DUMP_DIR=path                       where every card is written for the
+//                                       qualitative review (default: tmpdir).
+//                                       Never the repo: the A2A cards quote a
+//                                       course that is not versioned.
+//
+// Near-duplicate thresholds (token Jaccard on normalized text, stop words
+// removed): 0.5 between key-notion titles, which are short noun phrases, so
+// sharing half their words is already suspicious; 0.6 between questions of
+// the same type, which are longer and share interrogative scaffolding.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -120,8 +129,12 @@ type CaseResult = {
   duplicateTitles: number;
   nearDuplicatePairs: [string, string, number][];
   readingNotionsCovered: number;
+  nearDuplicateQuestions: [string, string, number][];
   mcqAnswerPositions: number[];
   mcqImplausibleLength: number;
+  // Share of MCQs whose correct answer is strictly the longest option: 25 %
+  // by chance with four options; well above it, length gives the answer away.
+  mcqAnswerLongest: number;
   phases: Record<string, PhaseTally>;
   keyNotionList: { title: string; importance: string; synthesis: boolean; section: string }[];
 };
@@ -177,7 +190,13 @@ async function runCase(evalCase: EvalCase): Promise<CaseResult> {
 
     const readingNotions = await notionRepo.listNotions("u1", "doc-1");
     const keyNotions = await keyNotionRepo.listKeyNotions("u1", "doc-1");
-    const cards = db.all<{ type: "flashcard" | "mcq" | "open"; answer: string; options_json: string | null }>(sql`SELECT type, answer, options_json FROM cards`);
+    const cards = db.all<{ type: "flashcard" | "mcq" | "open"; question: string; answer: string; options_json: string | null; key_title: string; sources: string }>(sql`
+      SELECT c.type, c.question, c.answer, c.options_json, k.title AS key_title,
+        (SELECT group_concat(n.title || char(10) || n.body, char(10) || '---' || char(10)) FROM key_notion_sources s JOIN notions n ON n.id = s.notion_id WHERE s.key_notion_id = k.id) AS sources
+      FROM cards c JOIN key_notion_cards kc ON kc.card_id = c.id JOIN key_notions k ON k.id = kc.key_notion_id
+      ORDER BY k.position, c.type`);
+    const dumpDir = process.env.DUMP_DIR ?? tmpdir();
+    writeFileSync(path.join(dumpDir, `key-notions-cards-${evalCase.name}.json`), JSON.stringify(cards, null, 2));
     const count = (type: string) => cards.filter((c) => c.type === type).length;
     const budget = cardBudget(markdown.length);
     const n = readingNotions.length;
@@ -189,6 +208,14 @@ async function runCase(evalCase: EvalCase): Promise<CaseResult> {
       for (let j = i + 1; j < titles.length; j++) {
         const score = jaccard(tokens(titles[i]!), tokens(titles[j]!));
         if (score >= 0.5) nearDuplicatePairs.push([titles[i]!, titles[j]!, Number(score.toFixed(2))]);
+      }
+    }
+    const nearDuplicateQuestions: [string, string, number][] = [];
+    for (let i = 0; i < cards.length; i++) {
+      for (let j = i + 1; j < cards.length; j++) {
+        if (cards[i]!.type !== cards[j]!.type) continue;
+        const score = jaccard(tokens(cards[i]!.question), tokens(cards[j]!.question));
+        if (score >= 0.6) nearDuplicateQuestions.push([cards[i]!.question, cards[j]!.question, Number(score.toFixed(2))]);
       }
     }
     const modelSections = [...new Set(keyNotions.map((k) => k.section))];
@@ -225,8 +252,10 @@ async function runCase(evalCase: EvalCase): Promise<CaseResult> {
       duplicateTitles: normalized.length - new Set(normalized).size,
       nearDuplicatePairs,
       readingNotionsCovered: covered.size,
+      nearDuplicateQuestions,
       mcqAnswerPositions: [0, 1, 2, 3].map((p) => mcqs.filter((m) => m.options.indexOf(m.answer) === p).length),
       mcqImplausibleLength: mcqs.filter((m) => !optionLengthsArePlausible(m.options)).length,
+      mcqAnswerLongest: mcqs.filter((m) => m.options.every((o) => o === m.answer || o.length < m.answer.length)).length,
       phases: Object.fromEntries(guard.phases),
       keyNotionList: keyNotions.map((k) => ({ title: k.title, importance: k.importance, synthesis: k.isSynthesis, section: k.section })),
     };
@@ -255,18 +284,21 @@ function report(results: CaseResult[], spentUsd: number): string {
     "",
     "## Couverture et doublons",
     "",
-    "| Cours | Parties déclarées | Parties déclarées sans notion clé | Parties de référence non retrouvées | Doublons de titre | Paires proches (Jaccard ≥ 0,5) | Notions de lecture couvertes |",
+    "| Cours | Parties déclarées | Parties de référence non retrouvées | Doublons de titre | Titres proches (Jaccard ≥ 0,5) | Questions proches, même type (Jaccard ≥ 0,6) | Notions de lecture couvertes |",
     "|---|---|---|---|---|---|---|",
     ...results.map(
       (r) =>
-        `| ${r.label} | ${String(r.modelSections.length)} | ${String(r.modelSectionsUncovered.length)} | ${r.groundTruthUnmatched.length === 0 ? "aucune" : r.groundTruthUnmatched.join(" ; ")} | ${String(r.duplicateTitles)} | ${String(r.nearDuplicatePairs.length)} | ${String(r.readingNotionsCovered)} / ${String(r.readingNotions)} |`,
+        `| ${r.label} | ${String(r.modelSections.length)} | ${r.groundTruthUnmatched.length === 0 ? "aucune" : r.groundTruthUnmatched.join(" ; ")} | ${String(r.duplicateTitles)} | ${String(r.nearDuplicatePairs.length)} | ${String(r.nearDuplicateQuestions.length)} | ${String(r.readingNotionsCovered)} / ${String(r.readingNotions)} |`,
     ),
     "",
     "## QCM",
     "",
-    "| Cours | Position de la bonne réponse (1 / 2 / 3 / 4) | Longueurs d'options hors heuristique |",
-    "|---|---|---|",
-    ...results.map((r) => `| ${r.label} | ${r.mcqAnswerPositions.join(" / ")} | ${String(r.mcqImplausibleLength)} |`),
+    "| Cours | Position de la bonne réponse (1 / 2 / 3 / 4) | Longueurs d'options hors heuristique | Bonne réponse = option la plus longue (hasard : 25 %) |",
+    "|---|---|---|---|",
+    ...results.map(
+      (r) =>
+        `| ${r.label} | ${r.mcqAnswerPositions.join(" / ")} | ${String(r.mcqImplausibleLength)} | ${String(r.mcqAnswerLongest)} / ${String(r.cards.mcq)} |`,
+    ),
     "",
     "## Coût et appels",
     "",
@@ -285,7 +317,9 @@ function report(results: CaseResult[], spentUsd: number): string {
       "",
       `Parties déclarées : ${r.modelSections.map((s) => `« ${s} »`).join(", ")}`,
       "",
-      r.nearDuplicatePairs.length > 0 ? `Paires proches : ${r.nearDuplicatePairs.map(([a, b, s]) => `« ${a} » / « ${b} » (${String(s)})`).join(" ; ")}` : "Paires proches : aucune",
+      r.nearDuplicatePairs.length > 0 ? `Titres proches : ${r.nearDuplicatePairs.map(([a, b, s]) => `« ${a} » / « ${b} » (${String(s)})`).join(" ; ")}` : "Titres proches : aucun",
+      "",
+      r.nearDuplicateQuestions.length > 0 ? `Questions proches : ${r.nearDuplicateQuestions.map(([a, b, s]) => `« ${a} » / « ${b} » (${String(s)})`).join(" ; ")}` : "Questions proches : aucune",
       "",
       ...r.keyNotionList.map((k) => `- ${k.title} — ${k.importance === "essential" ? "essentielle" : "importante"}${k.synthesis ? ", synthèse" : ""} — ${k.section}`),
       "",

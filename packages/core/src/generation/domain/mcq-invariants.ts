@@ -84,3 +84,17 @@ export function shuffleOptions(options: string[], seed: string): string[] {
   }
   return shuffled;
 }
+
+// The first real eval (2026-10-03, decisions D17) found the correct answer
+// was the longest option in 7 MCQs out of 9: longer and more precise than
+// distractors written to be wrong, so a learner could pick it by length
+// alone. Asking in the prompt did not change it; this rejects it. Up to
+// 20 % longer than the longest distractor does not stand out.
+const MAX_ANSWER_TO_LONGEST_DISTRACTOR = 1.2;
+
+export function answerStandsOutByLength(answer: string, options: string[]): boolean {
+  const normalizedAnswer = normalize(answer);
+  const distractors = options.filter((option) => normalize(option) !== normalizedAnswer);
+  const longestDistractor = Math.max(0, ...distractors.map((option) => option.trim().length));
+  return answer.trim().length > longestDistractor * MAX_ANSWER_TO_LONGEST_DISTRACTOR;
+}

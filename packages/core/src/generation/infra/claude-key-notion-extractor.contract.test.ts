@@ -28,7 +28,9 @@ const input = {
     { id: "uuid-1", title: "Pourquoi A2A" },
     { id: "uuid-2", title: "Rôle de l'Agent Card" },
   ],
-  budget: cardBudget(0),
+  // Minimum lowered to the two key notions of `valid` below, so that a
+  // valid answer is not also a below-minimum one (which asks again).
+  budget: { ...cardBudget(0), keyNotions: { min: 2, max: 10 } },
 };
 
 const keyNotion = (overrides: Record<string, unknown> = {}) => ({
@@ -90,9 +92,42 @@ describe("ClaudeKeyNotionExtractor (transport level, via MSW)", () => {
     expect(prompt).toContain("L1 — Pourquoi A2A");
     expect(prompt).toContain("L2 — Rôle de l'Agent Card");
     expect(prompt).toContain("Une carte décrit un agent.");
-    expect(prompt).toContain("entre 5 et 10 notions clés");
+    expect(prompt).toContain("entre 2 et 10 notions clés");
     expect(prompt).toContain("entre 2 et 4 sont essentielles");
     expect(prompt).toContain("Entre 1 et 2 sont des notions de synthèse");
+  });
+
+  it("asks for the sections first, never fewer key notions than the minimum, and a strict notion of synthesis", async () => {
+    const bodies = record([valid]);
+    await extractor().extract(input);
+
+    const prompt = (JSON.parse(bodies[0]!) as { messages: { content: { text: string }[] }[] }).messages[0]!.content.map((c) => c.text).join("");
+    expect(prompt).toContain("deux champs, tous deux obligatoires : sections, puis keyNotions");
+    expect(prompt).toContain("jamais moins de 2");
+    expect(prompt).toContain("Une notion de lecture contient souvent plusieurs notions clés");
+    expect(prompt).toContain("Un tableau ou une liste à restituer n'est pas une synthèse");
+  });
+
+  it("below the budget's minimum, asks once more naming the shortfall, and keeps the fuller answer", async () => {
+    const fiveInput = { ...input, budget: { ...input.budget, keyNotions: { min: 3, max: 6 } } };
+    const third = keyNotion({ title: "Troisième notion", section: 1, readingNotions: ["L2"] });
+    const bodies = record([valid, { ...valid, keyNotions: [...valid.keyNotions, third] }]);
+
+    const result = await extractor().extract(fiveInput);
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toContain("au moins 3 notions clés");
+    expect(result.ok && result.value.keyNotions).toHaveLength(3);
+  });
+
+  it("below the minimum twice: keeps the fuller of the two answers instead of failing", async () => {
+    const fiveInput = { ...input, budget: { ...input.budget, keyNotions: { min: 4, max: 6 } } };
+    const bodies = record([valid, { ...valid, keyNotions: [valid.keyNotions[1]] }]);
+
+    const result = await extractor().extract(fiveInput);
+
+    expect(bodies).toHaveLength(2);
+    expect(result.ok && result.value.keyNotions).toHaveLength(2);
   });
 
   it("schema-violation: retries exactly once with the error fed back, then succeeds", async () => {

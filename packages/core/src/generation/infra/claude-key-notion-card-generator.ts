@@ -2,7 +2,13 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import { err, ok, type Result } from "../../shared/index.js";
 import type { PlannedCard } from "../domain/key-notion-plan.js";
-import { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible, optionsArePositionIndependent } from "../domain/mcq-invariants.js";
+import {
+  answerAmongOptions,
+  answerStandsOutByLength,
+  areOptionsDistinct,
+  optionLengthsArePlausible,
+  optionsArePositionIndependent,
+} from "../domain/mcq-invariants.js";
 import type { CardBatchInput, GenerationError, KeyNotionCardGenerator } from "../domain/ports.js";
 import { questionLeaksAnswer } from "../domain/question-leaks-answer.js";
 import type { CardType } from "../domain/types.js";
@@ -35,14 +41,19 @@ const schemas = {
 
 // A batch is at most 15 key notions (CARD_BUDGET.batchSize); an MCQ, the
 // largest card, is ~150 output tokens. 8 000 is several times that.
+// The single-fact flashcard and the non-standing-out MCQ rules come from the
+// first real eval's card review (decisions D17).
 export const CARD_BATCH_MAX_TOKENS = 8_000;
 
 const INSTRUCTION: Record<CardType, string> = {
   flashcard:
-    "Génère exactement une flashcard par notion clé de la liste : une question claire au recto, une réponse courte et directe au verso.",
+    "Génère exactement une flashcard par notion clé de la liste : une question claire au recto, une réponse courte et directe au verso. " +
+    "Une flashcard interroge un seul fait : jamais deux questions reliées par « et », jamais une énumération à restituer.",
   mcq:
     "Génère exactement une question à choix multiples (QCM) par notion clé de la liste : une question, quatre options dont une seule correcte, " +
-    "et le texte exact de la bonne réponse. Les distracteurs sont plausibles : même catégorie que la bonne réponse, longueur comparable, jamais absurdes. " +
+    "et le texte exact de la bonne réponse. Les distracteurs sont plausibles : même catégorie que la bonne réponse, longueur comparable, jamais absurdes, " +
+    "et chacun pourrait tromper un élève qui a mal retenu le cours. Les quatre options ont la même forme et le même niveau de détail. " +
+    "La bonne réponse ne doit être ni la plus longue ni la plus précise des quatre. " +
     "Chaque option se comprend seule, quelle que soit sa place : jamais « toutes les réponses ci-dessus », « aucune des réponses », « A et B » ni « les deux premières ».",
   open:
     "Génère exactement une question ouverte par notion clé de la liste : une question qui appelle une réponse rédigée courte, et une réponse modèle " +
@@ -80,6 +91,9 @@ function problemWith(type: CardType, card: RawCard): string | null {
   if (options.length !== 4) return `il faut exactement quatre options, pas ${String(options.length)}`;
   if (!answerAmongOptions(card.answer, options)) return "la bonne réponse ne figure pas parmi les options";
   if (!areOptionsDistinct(options)) return "les quatre options doivent être distinctes";
+  if (answerStandsOutByLength(card.answer, options)) {
+    return "la bonne réponse est nettement plus longue que les distracteurs : raccourcis-la ou donne aux distracteurs le même niveau de détail";
+  }
   if (!optionLengthsArePlausible(options)) return "un distracteur est beaucoup plus court ou plus long que les autres options";
   if (!optionsArePositionIndependent(options)) return "une option dépend de la place des autres (« ci-dessus », « A et B »…)";
   return null;

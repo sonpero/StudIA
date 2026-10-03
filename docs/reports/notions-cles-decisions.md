@@ -310,3 +310,65 @@ flashcards sont écrites en premier.
   donnée personnelle (identifiant générique, ou variable d'environnement
   non versionnée). L'eval ne fait elle-même aucune requête à Wikipédia :
   elle lit le fichier versionné.
+
+## D17. Ajustements après la première eval réelle (a2a-5p) [à relire]
+
+Constats sur 11 cartes relues, puis corrections. Au plus 2 itérations par
+problème.
+
+- **Sections absentes de la sortie** : au premier essai, le modèle omet
+  parfois le champ `sections` et ne rend que `keyNotions`. La relance le
+  corrige, mais un passage a échoué sur ses deux essais.
+  - **Correction (prompt)** : « Ta réponse contient deux champs, tous deux
+    obligatoires : sections, puis keyNotions. »
+  - **Résultat** : l'extraction réussit ensuite au premier appel sur les
+    passages suivants.
+- **Volume sous le minimum** : 12 notions clés pour 12 notions de lecture,
+  au lieu de 16 au moins.
+  - **Itération 1 (prompt)** : « jamais moins de N ». « Une notion de
+    lecture contient souvent plusieurs notions clés. » Résultat : 19, dans
+    les bornes, puis 15 au passage suivant. Le modèle varie d'un passage à
+    l'autre.
+  - **Itération 2 (code)** : sous le minimum, l'extracteur redemande une
+    fois en citant l'écart, puis garde la réponse valide la plus fournie.
+    Le job n'échoue jamais pour cette raison. **Amende D4** : avant, « trop
+    peu » était accepté sans relance.
+  - **Tests** : les tests de contrat de l'extracteur, écrits sur cette
+    branche et jamais fusionnés, avaient un budget minimum de 5 avec une
+    réponse de 2 notions. Ce minimum passe à 2, et deux chaînes de prompt
+    attendues sont ajustées en conséquence. Sinon chaque réponse valide
+    aurait déclenché la nouvelle relance.
+- **Flashcards composées** : « Pourquoi… et comment… », « Qui a lancé A2A,
+  et quelle gouvernance et quel soutien… ».
+  - **Correction (prompt)** : « Une flashcard interroge un seul fait :
+    jamais deux questions reliées par « et », jamais une énumération. »
+  - **Résultat** : les 5 flashcards relues après correction portent chacune
+    sur un seul fait.
+- **Synthèses qui n'en sont pas** : « Règles de génération des
+  identifiants » est un tableau à restituer.
+  - **Correction (prompt)** : une synthèse relie plusieurs idées et se
+    raisonne. « Un tableau ou une liste à restituer n'est pas une
+    synthèse. »
+  - **Résultat** : les 3 synthèses suivantes relèvent toutes du
+    raisonnement (règle d'or Message ou Artifact, choix entre Message et
+    Task, logique d'intégration).
+- **QCM dont la bonne réponse se repère à sa longueur** : c'est l'option
+  la plus longue dans 7 QCM sur 9 (25 % attendus par hasard), jusqu'à
+  1,5 fois le distracteur le plus long. Certains distracteurs étaient
+  absurdes.
+  - **Itération 1 (prompt)** : « La bonne réponse ne doit être ni la plus
+    longue ni la plus précise des quatre. » Aucun effet : 7 sur 9.
+  - **Itération 2 (code)** : nouvel invariant `answerStandsOutByLength`.
+    Un QCM est rejeté, puis redemandé une fois avec la raison, si la bonne
+    réponse dépasse de plus de 20 % le distracteur le plus long. Test
+    unitaire, deux mutations tuées.
+  - **Résultat** : plus aucun écart au-delà de 20 %. La bonne réponse reste
+    pourtant la plus longue dans 5 cas sur 9 (56 %), de peu.
+  - **Problème ouvert** (2 itérations atteintes) : seuil plus strict, ou
+    consigne d'écrire les distracteurs avant la bonne réponse.
+- **Eval** :
+  - quasi-doublons de questions (Jaccard ≥ 0,6, même type) ;
+  - taux de QCM dont la bonne réponse est la plus longue ;
+  - copie de toutes les cartes, hors dépôt, pour la relecture ;
+  - copie des réponses brutes (`RAW_DIR`, hors dépôt), pour diagnostiquer
+    un échec de schéma.

@@ -51,15 +51,21 @@ const PROMPT_PREFIX =
   "porte sur une seule idée, et deux notions clés n'interrogent jamais la même chose. Ne retiens " +
   "aucune notion secondaire (anecdote, détail d'illustration, exemple isolé).";
 
+// Rules added after the first real eval (2026-10-03,
+// docs/reports/notions-cles-decisions.md D17): the model left out
+// `sections` on a first attempt, stopped at one key notion per reading
+// notion below the budget's minimum, and flagged a table to recite as a
+// synthesis notion.
 function promptFor(input: KeyNotionExtractionInput): string {
   const { keyNotions, mcq, open } = input.budget;
   const maxSections = Math.min(keyNotions.min, MAX_SECTIONS);
   const notionList = input.readingNotions.map((notion, index) => `L${String(index + 1)} — ${notion.title}`).join("\n");
   return [
     PROMPT_PREFIX,
-    `Produis entre ${String(keyNotions.min)} et ${String(keyNotions.max)} notions clés : vise le bas de la fourchette pour un cours peu dense ou répétitif, le haut pour un cours dense.`,
+    "Ta réponse contient deux champs, tous deux obligatoires : sections, puis keyNotions.",
+    `Produis entre ${String(keyNotions.min)} et ${String(keyNotions.max)} notions clés, et jamais moins de ${String(keyNotions.min)} : vise le bas de la fourchette pour un cours peu dense ou répétitif, le haut pour un cours dense. Une notion de lecture contient souvent plusieurs notions clés (une définition, un mécanisme, une règle, une distinction) : ne te limite pas à une notion clé par notion de lecture.`,
     `Parmi elles, entre ${String(mcq.min)} et ${String(mcq.max)} sont essentielles (importance « essential »), les autres importantes.`,
-    `Entre ${String(open.min)} et ${String(open.max)} sont des notions de synthèse (synthesis à true).`,
+    `Entre ${String(open.min)} et ${String(open.max)} sont des notions de synthèse (synthesis à true) : une synthèse relie plusieurs idées du cours (comparaison, cause et conséquence, choix entre deux options, démarche d'ensemble) et se raisonne. Un tableau ou une liste à restituer n'est pas une synthèse.`,
     `Liste d'abord les grandes parties du cours (entre 1 et ${String(maxSections)}), dans l'ordre. Chaque partie doit avoir au moins une notion clé.`,
     "Pour chaque notion clé, donne les références des notions de lecture qui en contiennent la matière (au moins une).",
     `Notions de lecture :\n${notionList}`,
@@ -128,8 +134,9 @@ export class ClaudeKeyNotionExtractor implements KeyNotionExtractor {
         message: `Model output truncated at the ${String(KEY_NOTION_EXTRACTOR_MAX_TOKENS)}-token limit while extracting key notions from a ${String(input.markdown.length)}-character course`,
       });
 
+    let first: KeyNotionExtraction;
     try {
-      return ok(await attempt());
+      first = await attempt();
     } catch (firstError) {
       if (firstError instanceof TruncatedOutputError) return truncated();
       try {
@@ -138,6 +145,21 @@ export class ClaudeKeyNotionExtractor implements KeyNotionExtractor {
         if (secondError instanceof TruncatedOutputError) return truncated();
         return err({ kind: "model-error", message: describeError(secondError) });
       }
+    }
+
+    // Below the budget's minimum: asked once more, naming the shortfall
+    // (decisions D17: the prompt alone left a 5-page course at 15 for a
+    // minimum of 16). Not a validation failure: if the second answer is
+    // still short, or invalid, the fuller valid answer is kept.
+    const { min } = input.budget.keyNotions;
+    if (first.keyNotions.length >= min || first.keyNotions.length === 0) return ok(first);
+    try {
+      const second = await attempt(
+        `Ta réponse précédente ne contient que ${String(first.keyNotions.length)} notions clés : il en faut au moins ${String(min)} notions clés. Relis le cours et complète, sans doublon.`,
+      );
+      return ok(second.keyNotions.length > first.keyNotions.length ? second : first);
+    } catch {
+      return ok(first);
     }
   }
 }

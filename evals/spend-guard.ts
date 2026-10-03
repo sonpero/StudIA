@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import type { createLanguageModel } from "@studia/core";
 
 type Model = ReturnType<typeof createLanguageModel>;
@@ -36,6 +37,14 @@ export function guardSpend(model: Model, ledgerPath: string, limitUsd: number) {
       throw new SpendLimitReached(`Refused: ${ledger.spentUsd.toFixed(3)} $ spent, this call could cost up to ${worstUsd.toFixed(3)} $, limit ${limitUsd.toFixed(2)} $`);
     }
     const result = await model.doGenerate(options);
+    // RAW_DIR: every raw response, to diagnose a schema failure. Outside the
+    // repo: responses quote courses that may not be versioned.
+    if (process.env.RAW_DIR) {
+      appendFileSync(
+        path.join(process.env.RAW_DIR, "raw-responses.jsonl"),
+        `${JSON.stringify({ phase, finishReason: result.finishReason, usage: result.usage, text: result.text, toolCalls: result.toolCalls })}\n`,
+      );
+    }
     const usd = result.usage.promptTokens * INPUT_USD_PER_TOKEN + result.usage.completionTokens * OUTPUT_USD_PER_TOKEN;
     writeFileSync(ledgerPath, JSON.stringify({ limitUsd, spentUsd: ledger.spentUsd + usd, calls: ledger.calls + 1 }, null, 2));
     const tally = phases.get(phase) ?? { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };

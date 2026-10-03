@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible, optionsArePositionIndependent, shuffleOptions } from "./mcq-invariants.js";
+import { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible, optionsArePositionIndependent, shuffleOptions, answerStandsOutByLength } from "./mcq-invariants.js";
 
 describe("answerAmongOptions", () => {
   it("accepts an answer that matches an option exactly", () => {
@@ -74,5 +74,20 @@ describe("shuffleOptions", () => {
   it("does not leave the correct answer at a fixed position across questions", () => {
     const positions = new Set(Array.from({ length: 40 }, (_, i) => shuffleOptions(options, `question-${String(i)}`).indexOf("Bonne")));
     expect(positions).toEqual(new Set([0, 1, 2, 3]));
+  });
+});
+
+describe("answerStandsOutByLength", () => {
+  it("accepts an answer up to 20 % longer than the longest distractor", () => {
+    expect(answerStandsOutByLength("a".repeat(120), ["a".repeat(120), "b".repeat(100), "c".repeat(60), "d".repeat(90)])).toBe(false);
+    expect(answerStandsOutByLength("court", ["court", "un distracteur bien plus long", "autre", "encore"])).toBe(false);
+  });
+
+  it("rejects an answer more than 20 % longer than every distractor", () => {
+    expect(answerStandsOutByLength("a".repeat(121), ["a".repeat(121), "b".repeat(100), "c".repeat(60), "d".repeat(90)])).toBe(true);
+  });
+
+  it("compares trimmed lengths, and finds the answer case-insensitively", () => {
+    expect(answerStandsOutByLength("  Réponse  ", ["réponse", "Leurre1", "Leurre2", "Leurre3"])).toBe(false);
   });
 });

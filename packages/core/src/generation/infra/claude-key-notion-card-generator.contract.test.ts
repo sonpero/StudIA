@@ -92,6 +92,17 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
     expect(prompt).toContain("toutes les réponses ci-dessus");
   });
 
+  it("asks for single-fact flashcards and MCQ whose correct answer does not stand out", async () => {
+    const flashcardBodies = record([[{ keyNotion: "K4", question: "Q ?", answer: "R" }, { keyNotion: "K8", question: "Q2 ?", answer: "R2" }]]);
+    await generator().generate(batch("flashcard"));
+    expect(flashcardBodies[0]).toContain("Une flashcard interroge un seul fait");
+
+    server.resetHandlers();
+    const mcqBodies = record([[mcq("K4"), mcq("K8", { question: "Quel état suit SUBMITTED ?", options: ["WORKING", "FAILED", "CANCELED", "REJECTED"], answer: "WORKING" })]]);
+    await generator().generate(batch("mcq"));
+    expect(mcqBodies[0]).toContain("La bonne réponse ne doit être ni la plus longue ni la plus précise des quatre");
+  });
+
   it("mcq: stores the answer as the exact text of the matching option", async () => {
     record([[mcq("K4", { answer: "  à une uri connue " }), mcq("K8", { question: "Quel état suit SUBMITTED ?", options: ["WORKING", "FAILED", "CANCELED", "REJECTED"], answer: "WORKING" })]]);
     const result = await generator().generate(batch("mcq"));
@@ -120,6 +131,19 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
     ]);
     const result = await generator().generate(batch("mcq"));
     expect(result).toMatchObject({ ok: false, error: { kind: "model-error" } });
+  });
+
+  it("rejects an MCQ whose correct answer is much longer than every distractor, and says why on the retry", async () => {
+    const longAnswer = "À une URI bien connue, publiée par l'agent et lisible par tous ses clients";
+    const standsOut = mcq("K4", { options: [longAnswer, "Dans un registre", "Dans le message", "Dans la tâche"], answer: longAnswer });
+    const goodSecond = mcq("K8", { question: "Quel état suit SUBMITTED ?", options: ["WORKING", "FAILED", "CANCELED", "REJECTED"], answer: "WORKING" });
+    const bodies = record([[standsOut, goodSecond], [mcq("K4")]]);
+
+    const result = await generator().generate(batch("mcq"));
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toContain("nettement plus longue");
+    expect(result.ok).toBe(true);
   });
 
   it("rejects a question that leaks its answer", async () => {
