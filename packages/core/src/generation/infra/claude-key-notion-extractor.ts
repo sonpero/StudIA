@@ -17,10 +17,10 @@ const keyNotionSchema = z.object({
     .boolean()
     .describe("true si la notion relie plusieurs idées du cours (comparaison, cause et conséquence, démarche d'ensemble) et appelle une réponse rédigée."),
   section: z.number().int().describe("Index, à partir de 0, de la partie du cours (dans la liste sections) où se trouve cette notion."),
-  summary: z.string().describe("Ce qu'il faut retenir, en une ou deux phrases, 200 caractères au plus."),
+  summary: z.string().describe("Ce qu'il faut retenir, en une phrase, 120 caractères au plus."),
   readingNotions: z
     .array(z.string())
-    .describe("Références (L1, L2…) des notions de lecture qui contiennent la matière de cette notion clé. Au moins une."),
+    .describe("Références (L1, L2…) des notions de lecture qui contiennent la matière de cette notion clé : au moins une, trois au plus, les plus pertinentes."),
 });
 
 const extractionSchema = z.object({
@@ -29,8 +29,9 @@ const extractionSchema = z.object({
 });
 
 // Output budget. The largest budget asks for 90 key notions; each one is a
-// title, a summary of at most 200 characters and a few references, ~100
-// output tokens with the JSON keys, so ~9 000 tokens, plus the sections.
+// title, a summary of at most 120 characters and at most three references:
+// the 25-page eval measured ~115 output tokens a key notion with 200-
+// character summaries, so ~90 tokens now, ~8 000 for 90, plus the sections.
 // 16 000 leaves ~1.7x headroom and stays at the comfortable ceiling of a
 // non-streamed call (same reasoning as content's SPLITTER_MAX_TOKENS).
 export const KEY_NOTION_EXTRACTOR_MAX_TOKENS = 16_000;
@@ -63,7 +64,13 @@ function promptFor(input: KeyNotionExtractionInput): string {
   return [
     PROMPT_PREFIX,
     "Ta réponse contient deux champs, tous deux obligatoires : sections, puis keyNotions.",
-    `Produis entre ${String(keyNotions.min)} et ${String(keyNotions.max)} notions clés, et jamais moins de ${String(keyNotions.min)} : vise le bas de la fourchette pour un cours peu dense ou répétitif, le haut pour un cours dense. Une notion de lecture contient souvent plusieurs notions clés (une définition, un mécanisme, une règle, une distinction) : ne te limite pas à une notion clé par notion de lecture.`,
+    `Produis entre ${String(keyNotions.min)} et ${String(keyNotions.max)} notions clés, jamais moins de ${String(keyNotions.min)} et jamais plus de ${String(keyNotions.max)} : vise le bas de la fourchette pour un cours peu dense ou répétitif, le haut pour un cours dense.`,
+    // A course with few reading notions needs splitting to reach the
+    // minimum; one with many (a long course) needs grouping, or the output
+    // overruns the call's token limit (D18: a 67-page course truncated).
+    input.readingNotions.length <= keyNotions.min
+      ? "Une notion de lecture contient souvent plusieurs notions clés (une définition, un mécanisme, une règle, une distinction) : ne te limite pas à une notion clé par notion de lecture."
+      : "Une notion clé peut regrouper plusieurs notions de lecture : garde ce qui compte le plus, ne fais pas une notion clé par notion de lecture.",
     `Parmi elles, entre ${String(mcq.min)} et ${String(mcq.max)} sont essentielles (importance « essential »), les autres importantes.`,
     `Entre ${String(open.min)} et ${String(open.max)} sont des notions de synthèse (synthesis à true) : une synthèse relie plusieurs idées du cours (comparaison, cause et conséquence, choix entre deux options, démarche d'ensemble) et se raisonne. Un tableau ou une liste à restituer n'est pas une synthèse.`,
     `Liste d'abord les grandes parties du cours (entre 1 et ${String(maxSections)}), dans l'ordre. Chaque partie doit avoir au moins une notion clé.`,

@@ -134,8 +134,11 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
   });
 
   it("rejects an MCQ whose correct answer is much longer than every distractor, and says why on the retry", async () => {
-    const longAnswer = "À une URI bien connue, publiée par l'agent et lisible par tous ses clients";
-    const standsOut = mcq("K4", { options: [longAnswer, "Dans un registre", "Dans le message", "Dans la tâche"], answer: longAnswer });
+    const longAnswer = "À une URI bien connue publiée par l'agent";
+    const standsOut = mcq("K4", {
+      options: [longAnswer, "Dans un registre central partagé", "Dans chaque message de la tâche", "Dans la base de données du client"],
+      answer: longAnswer,
+    });
     const goodSecond = mcq("K8", { question: "Quel état suit SUBMITTED ?", options: ["WORKING", "FAILED", "CANCELED", "REJECTED"], answer: "WORKING" });
     const bodies = record([[standsOut, goodSecond], [mcq("K4")]]);
 
@@ -144,6 +147,26 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toContain("nettement plus longue");
     expect(result.ok).toBe(true);
+  });
+
+  it("keeps an MCQ whose only defect after the retry is a long answer, rather than failing the batch", async () => {
+    // 41 characters against at most 33: over the 20 % margin, within the
+    // half-to-double-the-median heuristic, so the length defect is alone.
+    const longAnswer = "À une URI bien connue publiée par l'agent";
+    const standsOut = mcq("K4", {
+      options: [longAnswer, "Dans un registre central partagé", "Dans chaque message de la tâche", "Dans la base de données du client"],
+      answer: longAnswer,
+    });
+    const goodSecond = mcq("K8", { question: "Quel état suit SUBMITTED ?", options: ["WORKING", "FAILED", "CANCELED", "REJECTED"], answer: "WORKING" });
+    const bodies = record([[standsOut, goodSecond], [standsOut]]);
+
+    const result = await generator().generate(batch("mcq"));
+
+    expect(bodies).toHaveLength(2);
+    expect(result.ok && result.value.map((c) => [c.keyNotionIndex, c.answer])).toEqual([
+      [7, "WORKING"],
+      [3, longAnswer],
+    ]);
   });
 
   it("rejects a question that leaks its answer", async () => {

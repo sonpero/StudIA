@@ -130,6 +130,17 @@ describe("ClaudeKeyNotionExtractor (transport level, via MSW)", () => {
     expect(result.ok && result.value.keyNotions).toHaveLength(2);
   });
 
+  it("caps the count and asks to group when the course already has more reading notions than the minimum", async () => {
+    const many = { ...input, readingNotions: Array.from({ length: 12 }, (_, i) => ({ id: `uuid-${String(i)}`, title: `Notion ${String(i)}` })), budget: { ...input.budget, keyNotions: { min: 2, max: 10 } } };
+    const bodies = record([valid]);
+    await extractor().extract(many);
+
+    const prompt = (JSON.parse(bodies[0]!) as { messages: { content: { text: string }[] }[] }).messages[0]!.content.map((c) => c.text).join("");
+    expect(prompt).toContain("jamais plus de 10");
+    expect(prompt).toContain("Une notion clé peut regrouper plusieurs notions de lecture");
+    expect(prompt).not.toContain("Une notion de lecture contient souvent plusieurs notions clés");
+  });
+
   it("schema-violation: retries exactly once with the error fed back, then succeeds", async () => {
     const bodies = record([{ sections: ["Cours"] }, valid]);
     const result = await extractor().extract(input);

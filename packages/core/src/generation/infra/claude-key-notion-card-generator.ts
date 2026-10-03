@@ -82,20 +82,31 @@ function promptFor(input: CardBatchInput): string {
   return `${INSTRUCTION[input.type]} ${COMMON_RULES}\n\nNotions clés :\n${keyNotions}\n\n---\n\nExtraits du cours :\n\n${sources}`;
 }
 
-// null when the card is valid, otherwise the reason, fed back on the retry.
-function problemWith(type: CardType, card: RawCard): string | null {
-  if (card.question.trim() === "" || card.answer.trim() === "") return "question ou réponse vide";
-  if (questionLeaksAnswer(card.question, card.answer)) return "la question contient la réponse";
+// What is wrong with a card, fed back on the retry. `hard`: the card is
+// wrong (answer absent, duplicate options, leaked answer…) and is never
+// kept. `soft`: a quality heuristic only (the answer stands out by its
+// length); asked for again once, then kept rather than failing a whole
+// course over it (decisions D18: two MCQs out of ~45 failed the 67-page
+// course's job).
+type Problem = { reason: string; soft: boolean };
+
+function problemWith(type: CardType, card: RawCard): Problem | null {
+  const hard = (reason: string): Problem => ({ reason, soft: false });
+  if (card.question.trim() === "" || card.answer.trim() === "") return hard("question ou réponse vide");
+  if (questionLeaksAnswer(card.question, card.answer)) return hard("la question contient la réponse");
   if (type !== "mcq") return null;
   const options = card.options ?? [];
-  if (options.length !== 4) return `il faut exactement quatre options, pas ${String(options.length)}`;
-  if (!answerAmongOptions(card.answer, options)) return "la bonne réponse ne figure pas parmi les options";
-  if (!areOptionsDistinct(options)) return "les quatre options doivent être distinctes";
+  if (options.length !== 4) return hard(`il faut exactement quatre options, pas ${String(options.length)}`);
+  if (!answerAmongOptions(card.answer, options)) return hard("la bonne réponse ne figure pas parmi les options");
+  if (!areOptionsDistinct(options)) return hard("les quatre options doivent être distinctes");
+  if (!optionLengthsArePlausible(options)) return hard("un distracteur est beaucoup plus court ou plus long que les autres options");
+  if (!optionsArePositionIndependent(options)) return hard("une option dépend de la place des autres (« ci-dessus », « A et B »…)");
   if (answerStandsOutByLength(card.answer, options)) {
-    return "la bonne réponse est nettement plus longue que les distracteurs : raccourcis-la ou donne aux distracteurs le même niveau de détail";
+    return {
+      reason: "la bonne réponse est nettement plus longue que les distracteurs : raccourcis-la ou donne aux distracteurs le même niveau de détail",
+      soft: true,
+    };
   }
-  if (!optionLengthsArePlausible(options)) return "un distracteur est beaucoup plus court ou plus long que les autres options";
-  if (!optionsArePositionIndependent(options)) return "une option dépend de la place des autres (« ci-dessus », « A et B »…)";
   return null;
 }
 
@@ -119,6 +130,9 @@ export class ClaudeKeyNotionCardGenerator implements KeyNotionCardGenerator {
   async generate(input: CardBatchInput): Promise<Result<PlannedCard[], GenerationError>> {
     const kept = new Map<number, PlannedCard>();
     const problems = new Map<number, string>();
+    // The latest card per key notion whose only defect is soft: kept if the
+    // retry brings nothing better.
+    const softFallback = new Map<number, PlannedCard>();
 
     // Keeps the first valid card per key notion of `batch`; records why the
     // others have none.
@@ -128,11 +142,13 @@ export class ClaudeKeyNotionCardGenerator implements KeyNotionCardGenerator {
         const index = indexByRef.get(card.keyNotion.trim());
         if (index === undefined || kept.has(index)) continue;
         const problem = problemWith(input.type, card);
-        if (problem) problems.set(index, problem);
-        else {
+        if (!problem) {
           kept.set(index, toPlanned(input.type, index, card));
           problems.delete(index);
+          continue;
         }
+        problems.set(index, problem.reason);
+        if (problem.soft) softFallback.set(index, toPlanned(input.type, index, card));
       }
       for (const keyNotion of batch.keyNotions) {
         if (!kept.has(keyNotion.index) && !problems.has(keyNotion.index)) problems.set(keyNotion.index, "aucune carte rendue pour cette notion clé");
@@ -172,6 +188,11 @@ export class ClaudeKeyNotionCardGenerator implements KeyNotionCardGenerator {
       collect(retryBatch, await call(retryBatch, `Ta réponse précédente n'a pas respecté le format attendu : ${feedback}. Corrige et réessaie.`));
     } catch (error) {
       return err({ kind: "model-error", message: describeError(error) });
+    }
+    for (const [index, card] of softFallback) {
+      if (kept.has(index)) continue;
+      kept.set(index, card);
+      problems.delete(index);
     }
     if (problems.size > 0) {
       return err({ kind: "model-error", message: `No valid ${input.type} card after one retry: ${[...problems].map(([index, problem]) => `${refOf(index)} (${problem})`).join("; ")}` });
