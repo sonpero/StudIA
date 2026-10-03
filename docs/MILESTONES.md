@@ -898,10 +898,12 @@ Design: `docs/reports/notions-cles-conception.md`; decisions:
       flashcards / MCQ / open questions; never more than 150 cards in total
 - [ ] Every section of the course has at least one key notion
 - [ ] No duplicate key notion
-- [ ] Existing courses intact: the migration is additive only, and a
-      course with cards is never regenerated
+- [x] Existing courses intact: the migration is additive only, and a
+      course with cards is never regenerated — migration 0013 replay test
+      from a 0012 database, the job's terminal refusal, the route's 409
 - [ ] An eval reports the figures before (the diagnosis formula) and after
-- [ ] Playwright: create the cards of a course from Notions, then review one
+- [x] Playwright: create the cards of a course from Notions, then review one
+      (`e2e/course-cards.spec.ts`)
 
 ---
 

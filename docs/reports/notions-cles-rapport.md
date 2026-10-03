@@ -13,7 +13,7 @@ Journal des décisions : `notions-cles-decisions.md`. Conception :
 | Aucun doublon de notion clé | **Garanti en code pour les titres identiques après normalisation ; quasi-doublons non mesurés** | `dedupeKeyNotions`, tests unitaires et mutations. Limite : D13 |
 | Cours existants intacts | **Fait** | Migration 0013 additive, rejeu depuis 0012 avec carte, planning et révision inchangés (vérifié par mutation). Le job refuse définitivement un cours qui a des cartes, sans aucun appel au modèle. La route répond 409 `has-cards` |
 | Eval avec chiffres avant / après | **Écrite et validée à blanc, pas exécutée** | `evals/run-key-notions.eval.test.ts`, bloquée par le solde de crédits API (D14) |
-| Playwright : créer les fiches d'un cours puis en réviser une | voir § Interface | `e2e/course-cards.spec.ts` |
+| Playwright : créer les fiches d'un cours puis en réviser une | **Fait** | `e2e/course-cards.spec.ts`, observé rouge puis vert. Suite complète : 58/58 |
 
 ## 2. Chiffres de l'eval
 
@@ -49,6 +49,7 @@ Coût estimé du passage complet : environ 2 à 3 $.
 - **D7** : l'ancien flux reste côté API.
 - **D8** : règle « position » ajoutée, elle n'existait pas.
 - **D9** : écart TDD sur le handler.
+- **D15** : tests existants modifiés pour retirer l'ancienne interface.
 - **D14** : sources de l'eval et blocage.
 
 ## 4. Points ouverts

@@ -27,9 +27,12 @@ compaction du contexte.
 - Étape 7 : eval écrite, essai à blanc validé, `078bfc9`. Passage payant
   **bloqué** : crédit API épuisé (D14), 0 $ dépensé.
 
-## En cours
-
 - Étape 8 : rapport final (`notions-cles-rapport.md`).
+
+## Reste
+
+- Relancer l'eval payante une fois le compte API crédité (commande dans
+  D14), puis cocher les trois critères de M11 qui en dépendent.
 
 ## Ensuite
 
