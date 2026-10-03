@@ -865,6 +865,46 @@ file.
 
 ---
 
+## M11 — Key notions and card budget
+
+Opened 2026-10-03, ahead of M10 Phase 2's last open box. A ~25-page course
+produced ~1 500 cards (2026-10-03 diagnosis: reading notions proportional
+to length × checked types × 1 to 5 cards per type and notion), which no one
+can review and which makes the per-course progress figure unreachable.
+Design: `docs/reports/notions-cles-conception.md`; decisions:
+`docs/reports/notions-cles-decisions.md`.
+
+**Scope**
+- Fix first: generating one card type never deletes another type's cards
+  or their review history.
+- A key-notion layer above the reading notions: one model call over the
+  whole course and the list of reading notions returns key notions
+  (title, importance essential/important, synthesis flag, section, short
+  summary, covered reading notions). Splitting and the reading notions are
+  unchanged; Lecteur, Tuteur and progress keep using them.
+- Volume driven by a single setting, the key-notion count, derived from
+  the course's character count (it grows slowly, then plateaus), all
+  parameters in one configuration constant. One flashcard per key notion,
+  one MCQ per essential key notion, one open question per synthesis key
+  notion; hard per-type caps and per-key-notion dedup applied in code.
+- Card generation in batches of key notions, one schema per card type.
+- One course-level "create the cards" action, all types included,
+  replacing the per-type choice on Notions. Existing courses keep their
+  cards: no automatic regeneration, no regenerate button.
+
+**Acceptance**
+- [ ] Volume in bounds for three course sizes (~5, ~25, ~60 pages):
+      15–25 / 6–10 / 2–4, 40–60 / 20–30 / 8–12, 70–90 / 35–45 / 12–15
+      flashcards / MCQ / open questions; never more than 150 cards in total
+- [ ] Every section of the course has at least one key notion
+- [ ] No duplicate key notion
+- [ ] Existing courses intact: the migration is additive only, and a
+      course with cards is never regenerated
+- [ ] An eval reports the figures before (the diagnosis formula) and after
+- [ ] Playwright: create the cards of a course from Notions, then review one
+
+---
+
 ## Parallelisation
 
 M4 to M8 each get their own git worktree and their own agent. Rules:

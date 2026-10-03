@@ -45,6 +45,12 @@ merged, ahead of this milestone's own opening — `docs/MILESTONES.md`'s
 own M10 section has the full scope and acceptance criteria for both
 phases; this line only tracks position.
 
+**M11 — Key notions and card budget is open (2026-10-03), ahead of M10
+Phase 2's last open box.** Cards are generated from a key-notion layer
+above the reading notions, with a length-driven budget; see
+`docs/MILESTONES.md`'s M11 section and
+`docs/reports/notions-cles-conception.md`.
+
 A mockup screenshot for one of the seven M9 screens is still fair game as
 more polish, now under M10 Phase 2 since Phase 1 is closed (the user
 returned to Agenda three times and to no screen more than that during
