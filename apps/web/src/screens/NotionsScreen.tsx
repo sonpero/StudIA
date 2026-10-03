@@ -13,14 +13,14 @@ import { todayDateKey } from "../lib/day-boundary.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { getToday } from "../lib/today-api.js";
 import {
-  generateCardsForDocument,
+  generateCourseCards,
   getGenerationStatus,
   getNotionsProgress,
   getProgress,
   listNotionStatuses,
   listNotions,
   retryNotionSplit,
-  type CardType,
+  type GenerationStatus,
   type NotionProgress,
 } from "../lib/notions-api.js";
 import { NOTION_STEP_FAILED_MESSAGE, NOTION_STEP_RETRY_ERROR } from "./DocumentsScreen.js";
@@ -30,10 +30,18 @@ import { NOTION_STEP_FAILED_MESSAGE, NOTION_STEP_RETRY_ERROR } from "./Documents
 // for DocumentsScreen/NotionsScreen's 30s backoff.
 const GENERATION_POLL_MS = 1500;
 
-// User choice of activity type (docs/modules/generation.md's open question,
-// settled in M4): flashcard checked by default, matching M3's behaviour.
-const CARD_TYPE_LABEL: Record<CardType, string> = { flashcard: "Flashcards", mcq: "QCM", open: "Questions ouvertes" };
-const ALL_CARD_TYPES: CardType[] = ["flashcard", "mcq", "open"];
+// M11: generation-status reports the course-level job alone once one
+// exists (total 1). A job being retried stays pending, so "failed" only
+// ever counts a failure for good. Read defensively: a missing field is
+// "nothing has run", never a running job.
+function isGenerationRunning(status: GenerationStatus | undefined): boolean {
+  const total = status?.total ?? 0;
+  return total > 0 && (status?.done ?? 0) + (status?.failed ?? 0) < total;
+}
+
+function hasGenerationFailed(status: GenerationStatus | undefined): boolean {
+  return !isGenerationRunning(status) && (status?.failed ?? 0) > 0;
+}
 
 // Splitting into notions runs automatically after extraction
 // (docs/modules/content.md), asynchronously — never block the UI on a job
@@ -228,7 +236,7 @@ function NotionCard({
 // One course's own notions, progress and fiche-generation controls — kept
 // as its own component (not inlined into NotionsScreen below) so switching
 // the pill selection can key-remount it, resetting per-course UI state
-// (which notion is expanded, the generation form) instead of leaking it
+// (which notion is expanded, a generation error) instead of leaking it
 // from the previously-selected course.
 function NotionsCourseScreen({
   document,
@@ -253,19 +261,14 @@ function NotionsCourseScreen({
   const queryClient = useQueryClient();
   const pollStartedAt = useRef<number | null>(null);
   const [expandedNotionIds, setExpandedNotionIds] = useState<Set<string>>(new Set());
-  const [generating, setGenerating] = useState(false);
+  // starting: the POST is in flight. watching: a job was seen running (or
+  // was just started from here), so its end must refresh the course's
+  // cards. The running state itself is never local: it comes from
+  // generation-status, so leaving the screen and coming back keeps it.
+  const [starting, setStarting] = useState(false);
+  const [watching, setWatching] = useState(false);
   const [generateError, setGenerateError] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<Set<CardType>>(new Set<CardType>(["flashcard"]));
   const todayKey = todayDateKey();
-
-  function toggleType(type: CardType) {
-    setSelectedTypes((current) => {
-      const next = new Set(current);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
-      return next;
-    });
-  }
 
   function toggleBody(notionId: string) {
     setExpandedNotionIds((current) => {
@@ -333,19 +336,20 @@ function NotionsCourseScreen({
   const generationStatusQuery = useQuery({
     queryKey: ["generation-status", documentId],
     queryFn: () => getGenerationStatus(documentId),
-    enabled: generating,
-    refetchInterval: (q) => {
-      const status = q.state.data;
-      if (!status) return GENERATION_POLL_MS;
-      return status.done + status.failed < status.total ? GENERATION_POLL_MS : false;
-    },
+    refetchInterval: (q) => (isGenerationRunning(q.state.data) ? GENERATION_POLL_MS : false),
   });
   const generationStatus = generationStatusQuery.data;
-  const generationComplete = generating && generationStatus !== undefined && generationStatus.done + generationStatus.failed >= generationStatus.total;
+  const generationRunning = isGenerationRunning(generationStatus);
+
+  useEffect(() => {
+    if (generationRunning) setWatching(true);
+  }, [generationRunning]);
+
+  const generationComplete = watching && generationStatus !== undefined && !generationRunning;
 
   useEffect(() => {
     if (!generationComplete) return;
-    setGenerating(false);
+    setWatching(false);
     void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
     void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
@@ -359,18 +363,34 @@ function NotionsCourseScreen({
   }, [generationComplete, documentId, queryClient]);
 
   useEffect(() => {
-    if (generationStatusQuery.status !== "error") return;
-    setGenerating(false);
+    if (generationStatusQuery.status !== "error" || !watching) return;
+    setWatching(false);
     setGenerateError(true);
-  }, [generationStatusQuery.status]);
+  }, [generationStatusQuery.status, watching]);
 
   async function handleGenerate() {
     setGenerateError(false);
+    setStarting(true);
     try {
-      await generateCardsForDocument(documentId, Array.from(selectedTypes));
-      setGenerating(true);
+      const outcome = await generateCourseCards(documentId);
+      if (outcome === "has-cards") {
+        // The view is stale: the course already has its cards.
+        void queryClient.invalidateQueries({ queryKey: ["notions", documentId] });
+        void queryClient.invalidateQueries({ queryKey: ["progress", documentId] });
+        void queryClient.invalidateQueries({ queryKey: ["notions-progress", documentId] });
+        void queryClient.invalidateQueries({ queryKey: ["today"] });
+      } else {
+        // Started here or already running elsewhere: either way, follow the
+        // job from generation-status. Fetched before watching starts, so a
+        // job that already finished is still caught by the completion
+        // effect instead of being judged on pre-request data.
+        await generationStatusQuery.refetch();
+        setWatching(true);
+      }
     } catch {
       setGenerateError(true);
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -444,32 +464,32 @@ function NotionsCourseScreen({
         (() => {
           const notions = notionsQuery.data;
           const notionsProgress = notionsProgressQuery.data;
-          const allNotionsHaveCards =
-            notionsProgress !== undefined && notions.every((notion) => (notionsProgress.find((p) => p.notionId === notion.id)?.totalCards ?? 0) > 0);
-          const generateLabel = generating ? "Création en cours…" : allNotionsHaveCards ? "Régénérer les fiches" : "Créer les fiches";
+          // M11: an existing course is never regenerated — the trigger only
+          // exists while the course is known to have no card at all.
+          const courseHasNoCard = notionsProgress !== undefined && notionsProgress.reduce((sum, p) => sum + p.totalCards, 0) === 0;
+          const showRunning = courseHasNoCard && generationRunning;
+          const showTrigger = courseHasNoCard && !generationRunning;
+          const showFailure = showTrigger && hasGenerationFailed(generationStatus);
 
           return (
             <>
-              <div className="flex flex-wrap items-center gap-4">
-                <Button variant="secondary" className="rounded-2xl" disabled={generating || selectedTypes.size === 0} onClick={() => void handleGenerate()}>
-                  {generateLabel}
-                </Button>
-                <fieldset className="flex flex-wrap items-center gap-4 text-sm text-text-muted" disabled={generating}>
-                  <legend className="mb-1 text-[length:var(--text-label)] text-text-muted">Types de fiches à créer</legend>
-                  {ALL_CARD_TYPES.map((type) => (
-                    <label key={type} className="flex min-h-11 items-center gap-2 md:min-h-0">
-                      <input type="checkbox" checked={selectedTypes.has(type)} onChange={() => toggleType(type)} />
-                      {CARD_TYPE_LABEL[type]}
-                    </label>
-                  ))}
-                </fieldset>
-                {generating && (
+              {courseHasNoCard && (
+                <div className="flex flex-wrap items-center gap-4">
+                  {showTrigger && (
+                    <Button variant="secondary" className="rounded-2xl" disabled={starting} onClick={() => void handleGenerate()}>
+                      Créer les fiches
+                    </Button>
+                  )}
                   <p aria-live="polite" className="text-sm text-text-muted">
-                    {generationStatus ? `${generationStatus.done + generationStatus.failed} / ${generationStatus.total} fiches créées` : "Création en cours…"}
+                    {showRunning
+                      ? "Création des fiches en cours… Tu peux quitter cet écran, elles apparaîtront ici."
+                      : showFailure
+                        ? "La création des fiches n'a pas abouti. Tu peux la relancer."
+                        : ""}
                   </p>
-                )}
-                {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
-              </div>
+                  {generateError && <p role="alert">Impossible de créer les fiches. Vérifie ta connexion et réessaie.</p>}
+                </div>
+              )}
 
               <div className="flex flex-col gap-3">
                 {notions.map((notion) => (

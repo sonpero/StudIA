@@ -22,10 +22,14 @@ compaction du contexte.
   `generate-course-cards`, `requestCourseCards`, route
   `POST /api/documents/:id/cards/generate`, statut, worker.
 
+- Étape 6 : interface Notions (déclenchement unique, cases retirées), e2e
+  `course-cards.spec.ts`, specs existants adaptés (D15). 58/58 e2e.
+- Étape 7 : eval écrite, essai à blanc validé, `078bfc9`. Passage payant
+  **bloqué** : crédit API épuisé (D14), 0 $ dépensé.
+
 ## En cours
 
-- Étape 6 (sous-agent) : interface Notions et e2e.
-- Étape 7 : evals.
+- Étape 8 : rapport final (`notions-cles-rapport.md`).
 
 ## Ensuite
 

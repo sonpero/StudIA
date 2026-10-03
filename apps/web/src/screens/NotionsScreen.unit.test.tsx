@@ -354,7 +354,11 @@ describe("NotionsScreen", () => {
     expect(await screen.findByText("Photosynthèse")).toBeInTheDocument();
   });
 
-  it("requesting generation calls the whole-document generate endpoint, defaulting to flashcards", async () => {
+  // M11 (docs/reports/notions-cles-conception.md): one course-level job
+  // generates every card type at once — the old whole-document,
+  // per-notion route (POST /api/documents/:id/generate) is no longer
+  // called by the front end (decision D7).
+  it("requesting generation calls the course-level cards/generate endpoint, never the old per-notion one", async () => {
     const user = userEvent.setup();
     const calls: string[] = [];
     stubFetch({
@@ -362,48 +366,58 @@ describe("NotionsScreen", () => {
       notionsByDocument: { "doc-1": [aNotion] },
       extra: (url, init) => {
         calls.push(`${init?.method ?? "GET"} ${url}`);
-        if (url.includes("/generate")) return new Response(JSON.stringify({ jobIds: ["j1"] }), { status: 202 });
+        if (url.includes("/generate")) return new Response(JSON.stringify({ jobId: "j1" }), { status: 202 });
         return undefined;
       },
     });
 
     renderScreen();
     await screen.findByText("Photosynthèse");
-    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+    await user.click(await screen.findByRole("button", { name: /créer les fiches/i }));
 
-    expect(calls).toContainEqual("POST /api/documents/doc-1/generate");
+    expect(calls).toContainEqual("POST /api/documents/doc-1/cards/generate");
+    expect(calls).not.toContainEqual("POST /api/documents/doc-1/generate");
   });
 
-  it("generation: unchecking every type disables the button, and renames to 'Régénérer' once every notion already has cards", async () => {
-    const user = userEvent.setup();
+  // M11: an existing course is never regenerated — once any notion has a
+  // card, there is no trigger of any kind (the old "Régénérer" label and
+  // its type checkboxes are gone with it).
+  it("generation: once the course already has cards there is no trigger at all — no 'Créer', no 'Régénérer', no type checkbox", async () => {
     stubFetch({
       documents: [docA],
       notionsByDocument: { "doc-1": [aNotion] },
-      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 1, totalCards: 3 }] },
+      notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 1, totalCards: 3, reps: 4 }] },
     });
 
     renderScreen();
-    expect(await screen.findByRole("button", { name: /régénérer les fiches/i })).toBeInTheDocument();
+    await screen.findByText("Photosynthèse");
+    await screen.findByText(/4 révisions/);
 
-    await user.click(screen.getByRole("checkbox", { name: "Flashcards" }));
-    expect(screen.getByRole("button", { name: /régénérer les fiches/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /régénérer/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /créer les fiches/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("generation: tracks progress via generation-status and invalidates notions-progress once done", async () => {
     const user = userEvent.setup();
+    let started = false;
     let statusCalls = 0;
     let notionsProgressCalls = 0;
     stubFetch({
       documents: [docA],
       notionsByDocument: { "doc-1": [aNotion] },
-      extra: (url) => {
+      extra: (url, init) => {
         if (url.includes("/notions-progress")) notionsProgressCalls += 1;
         if (url.includes("/generation-status")) {
+          if (!started) return new Response(JSON.stringify({ done: 0, total: 0, failed: 0 }), { status: 200 });
           statusCalls += 1;
-          const body = statusCalls === 1 ? { done: 1, total: 3, failed: 0 } : { done: 3, total: 3, failed: 0 };
+          const body = statusCalls === 1 ? { done: 0, total: 1, failed: 0 } : { done: 1, total: 1, failed: 0 };
           return new Response(JSON.stringify(body), { status: 200 });
         }
-        if (url.includes("/generate")) return new Response(JSON.stringify({ jobIds: ["j1", "j2", "j3"] }), { status: 202 });
+        if (url.includes("/generate") && init?.method === "POST") {
+          started = true;
+          return new Response(JSON.stringify({ jobId: "j1" }), { status: 202 });
+        }
         return undefined;
       },
     });
@@ -411,9 +425,9 @@ describe("NotionsScreen", () => {
     renderScreen();
     await screen.findByText("Photosynthèse");
     const before = notionsProgressCalls;
-    await user.click(screen.getByRole("button", { name: /créer les fiches/i }));
+    await user.click(await screen.findByRole("button", { name: /créer les fiches/i }));
 
-    expect(await screen.findByText(/1 \/ 3/)).toBeInTheDocument();
+    expect(await screen.findByText(/création des fiches en cours/i)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: /créer les fiches/i })).not.toBeDisabled(), { timeout: 4000 });
     await waitFor(() => expect(notionsProgressCalls).toBeGreaterThan(before), { timeout: 4000 });
   });
@@ -453,24 +467,181 @@ describe("NotionsScreen", () => {
     expect(pill.className).toMatch(/md:min-h-0/);
   });
 
-  // Same reasoning and same fix as the course pill above: a real 375px
-  // measurement found each notion-type checkbox's own label at 20px tall
-  // (the fieldset's flex-wrap row wraps to two lines at 375px — "Flashcards"
-  // and "QCM" on one, "Questions ouvertes" on the next, 16px apart). A real
-  // min-height is used here for the same reason: each row's own gap-4 stays
-  // a real, fixed 16px regardless of the label's own height, so growing the
-  // label's real box (not an invisible margin) can never make two wrapped
-  // rows' own enlarged zones overlap.
-  it("each notion-type checkbox's own label carries a 44px minimum height on mobile, reset back from md up", async () => {
+  // Same reasoning as the course pill above: a real 375px measurement once
+  // found each notion-type checkbox's own label at 20px tall. M11 removed
+  // those checkboxes (one course-level trigger, every card type at once),
+  // so the touch target left to hold at 44px on this row is the trigger
+  // itself — Button's own base min-h-11, kept at every width.
+  it("the 'Créer les fiches' trigger carries a 44px minimum height on mobile", async () => {
     stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
 
     renderScreen();
-    await screen.findByText("Photosynthèse");
+    const trigger = await screen.findByRole("button", { name: "Créer les fiches" });
 
-    for (const cardTypeLabel of ["Flashcards", "QCM", "Questions ouvertes"]) {
-      const label = screen.getByText(cardTypeLabel).closest("label");
-      expect(label?.className).toMatch(/min-h-11/);
-      expect(label?.className).toMatch(/md:min-h-0/);
-    }
+    expect(trigger.className).toMatch(/min-h-11/);
+  });
+
+  // ---- M11: one course-level trigger, its running and failed states ----
+
+  it("generation: no card-type checkbox at all, whatever the course's state", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] } });
+
+    renderScreen();
+    await screen.findByRole("button", { name: "Créer les fiches" });
+
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/types de fiches/i)).not.toBeInTheDocument();
+  });
+
+  it("generation: the trigger appears only once the course is known to have zero cards", async () => {
+    stubFetch({ documents: [docA], notionsByDocument: { "doc-1": [aNotion] }, notionsProgressByDocument: { "doc-1": [{ notionId: "n1", masteredCards: 0, totalCards: 0 }] } });
+
+    renderScreen();
+
+    expect(await screen.findByRole("button", { name: "Créer les fiches" })).toBeEnabled();
+  });
+
+  it("generation: the POST carries no body (no type choice any more)", async () => {
+    const user = userEvent.setup();
+    let postInit: RequestInit | undefined;
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url, init) => {
+        if (url === "/api/documents/doc-1/cards/generate" && init?.method === "POST") {
+          postInit = init;
+          return new Response(JSON.stringify({ jobId: "j1" }), { status: 202 });
+        }
+        return undefined;
+      },
+    });
+
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "Créer les fiches" }));
+
+    await waitFor(() => expect(postInit).toBeDefined());
+    expect(postInit?.body ?? undefined).toBeUndefined();
+  });
+
+  it("generation: a course-level job already running (reported by generation-status on arrival) shows the running message, no trigger, no 'N / M' counter", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => (url.includes("/generation-status") ? new Response(JSON.stringify({ done: 0, total: 1, failed: 0 }), { status: 200 }) : undefined),
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText("Création des fiches en cours… Tu peux quitter cet écran, elles apparaîtront ici.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Créer les fiches" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+ \/ \d+/)).not.toBeInTheDocument();
+  });
+
+  it("generation: the running message sits in a polite live region", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => (url.includes("/generation-status") ? new Response(JSON.stringify({ done: 0, total: 1, failed: 0 }), { status: 200 }) : undefined),
+    });
+
+    renderScreen();
+
+    const message = await screen.findByText(/création des fiches en cours/i);
+    expect(message.closest("[aria-live='polite']")).not.toBeNull();
+  });
+
+  it("generation: a failed course-level job with still no card says so plainly, and the trigger is available again", async () => {
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url) => (url.includes("/generation-status") ? new Response(JSON.stringify({ done: 0, total: 1, failed: 1 }), { status: 200 }) : undefined),
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText(/la création des fiches n'a pas abouti/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Créer les fiches" })).toBeEnabled();
+    expect(screen.queryByText(/création des fiches en cours/i)).not.toBeInTheDocument();
+  });
+
+  it("generation: a 409 'in-progress' is not an error — it shows the running state", async () => {
+    const user = userEvent.setup();
+    let posted = false;
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url, init) => {
+        if (url.includes("/generation-status")) return new Response(JSON.stringify(posted ? { done: 0, total: 1, failed: 0 } : { done: 0, total: 0, failed: 0 }), { status: 200 });
+        if (url.includes("/cards/generate") && init?.method === "POST") {
+          posted = true;
+          return new Response(JSON.stringify({ error: "in-progress" }), { status: 409 });
+        }
+        return undefined;
+      },
+    });
+
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "Créer les fiches" }));
+
+    expect(await screen.findByText(/création des fiches en cours/i)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("generation: a 409 'has-cards' is not an error — it refreshes the course's cards, and the trigger goes away", async () => {
+    const user = userEvent.setup();
+    let posted = false;
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url, init) => {
+        if (url.includes("/notions-progress")) {
+          const rows = posted ? [{ notionId: "n1", masteredCards: 0, totalCards: 2, cardsWithEnoughReps: 0, cardsWithEnoughStability: 0, reps: 0, nextDueDate: null, dueNow: true }] : [];
+          return new Response(JSON.stringify(rows), { status: 200 });
+        }
+        if (url.includes("/cards/generate") && init?.method === "POST") {
+          posted = true;
+          return new Response(JSON.stringify({ error: "has-cards" }), { status: 409 });
+        }
+        return undefined;
+      },
+    });
+
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "Créer les fiches" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: /créer les fiches|régénérer|création/i })).not.toBeInTheDocument());
+    expect(screen.queryByText(/création des fiches en cours/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("generation: completion invalidates the today query too (the course's due count moves)", async () => {
+    const user = userEvent.setup();
+    let started = false;
+    let statusCalls = 0;
+    let todayCalls = 0;
+    stubFetch({
+      documents: [docA],
+      notionsByDocument: { "doc-1": [aNotion] },
+      extra: (url, init) => {
+        if (url.startsWith("/api/today")) todayCalls += 1;
+        if (url.includes("/generation-status")) {
+          if (!started) return new Response(JSON.stringify({ done: 0, total: 0, failed: 0 }), { status: 200 });
+          statusCalls += 1;
+          return new Response(JSON.stringify(statusCalls === 1 ? { done: 0, total: 1, failed: 0 } : { done: 1, total: 1, failed: 0 }), { status: 200 });
+        }
+        if (url.includes("/cards/generate") && init?.method === "POST") {
+          started = true;
+          return new Response(JSON.stringify({ jobId: "j1" }), { status: 202 });
+        }
+        return undefined;
+      },
+    });
+
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "Créer les fiches" }));
+    await screen.findByText(/création des fiches en cours/i);
+    const before = todayCalls;
+
+    await waitFor(() => expect(todayCalls).toBeGreaterThan(before), { timeout: 4000 });
   });
 });

@@ -220,3 +220,60 @@ Les entrées marquées **[à relire]** méritent une relecture prioritaire.
 - **Estimation** pour les trois cours : environ 2 à 3 $ au total. Le
   découpage en est la plus grosse part (environ 1,3 $). L'extraction et
   la génération coûtent chacune moins de 0,7 $.
+
+## D15. Interface : tests existants modifiés [à relire]
+
+L'ancienne interface (cases par type, « Régénérer les fiches », compteur
+« N / M fiches créées ») est retirée par ta décision 5. Les tests qui
+portaient sur elle ont été adaptés au plus petit changement qui garde leur
+intention. Aucun test n'a été supprimé, aucune assertion sans lien avec
+l'interface retirée n'a été affaiblie. Le travail a été fait par un
+sous-agent, puis relu et relancé par moi : 1 621 tests unitaires et
+d'intégration, 58/58 e2e.
+
+### `NotionsScreen.unit.test.tsx`, 4 tests modifiés
+
+- **« appel au point d'entrée de génération »** : il attend désormais
+  `POST …/cards/generate` et vérifie que l'ancienne route n'est pas
+  appelée.
+- **« décocher tous les types / Régénérer »** : réécrit en « un cours qui
+  a des cartes n'a aucun déclencheur ».
+- **« suivi par generation-status »** :
+  - le statut factice passe par « inactif », puis « en cours », puis
+    « terminé » ;
+  - l'assertion `1 / 3` devient le message « en cours ».
+- **« cible tactile de 44 px des cases »** : la mesure porte désormais sur
+  le bouton « Créer les fiches ».
+
+### E2E
+
+- **Attente de la fin de génération** : `done + failed === notionCount`
+  devient `=== 1`, puisqu'il n'y a plus qu'un job par cours. Specs
+  concernés :
+  - `progress` ;
+  - `streak-and-countdown` ;
+  - `today-mobile` ;
+  - `today` ;
+  - `generate-and-review` (ses 2 tests).
+- **`generate-and-review`** : la boucle « noter chaque carte due de la
+  notion » sait aussi répondre aux QCM et aux questions libres, puisqu'une
+  notion mélange maintenant les trois types.
+- **`activity-types`**, tests QCM et question libre :
+  - plus de sélection du type ;
+  - les autres cartes sont répondues jusqu'à atteindre le type visé ;
+  - l'index se lit dans « QCM N ? ».
+- **`notions-mobile`** : la mesure de 44 px porte sur le bouton au lieu
+  du libellé des cases.
+
+### Nouveau
+
+- `e2e/course-cards.spec.ts` : le critère Playwright de M11, observé
+  rouge contre l'ancienne interface (cases présentes, puis attente
+  `{done:1,total:1}` jamais atteinte : 5 jobs par notion), puis vert.
+- 9 nouveaux tests unitaires de NotionsScreen.
+
+### Fragilité signalée
+
+L'étape « session de tout le cours » de `generate-and-review` suppose que
+la première carte est une flashcard. C'est vrai aujourd'hui parce que les
+flashcards sont écrites en premier.

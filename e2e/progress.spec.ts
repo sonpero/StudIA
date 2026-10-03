@@ -33,7 +33,6 @@ test.describe("progress", () => {
     // (docs/modules/content.md); NotionsScreen polls while empty.
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
-    const notionCount = await notionCards.count();
 
     // Lecteur opened from a course's own Notions page returns there, not to
     // Mes cours (docs/UI.md's Lecteur note — same fromDocumentId-shaped
@@ -58,9 +57,9 @@ test.describe("progress", () => {
           const status = (await res.json()) as { done: number; total: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     await page.getByRole("button", { name: "Voir tes progrès" }).click();
     await expect(page.getByRole("heading", { name: "Progrès" })).toBeVisible();

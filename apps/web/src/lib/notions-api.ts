@@ -47,17 +47,22 @@ export async function retryNotionSplit(documentId: string): Promise<void> {
   if (!res.ok && res.status !== 409) throw new Error("Impossible de relancer la création des notions.");
 }
 
-export type CardType = "flashcard" | "mcq" | "open";
+// M11 (docs/reports/notions-cles-conception.md): one course-level job
+// creates every card type at once from the course's key notions — no type
+// choice, no body. Both 409s are a stale view, not a failure to send: an
+// "in-progress" job is already doing the work, and "has-cards" means the
+// course already has its cards (an existing course is never regenerated).
+export type CourseCardsRequestOutcome = "started" | "in-progress" | "has-cards";
 
-// types is optional: omitting it keeps the server's flashcard-only default
-// (docs/modules/generation.md's open question — "user choice in M4").
-export async function generateCardsForDocument(documentId: string, types?: CardType[]): Promise<void> {
-  const res = await apiFetch(`/api/documents/${documentId}/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(types ? { types } : {}),
-  });
-  if (!res.ok) throw new Error("Impossible de lancer la création des fiches.");
+export async function generateCourseCards(documentId: string): Promise<CourseCardsRequestOutcome> {
+  const res = await apiFetch(`/api/documents/${documentId}/cards/generate`, { method: "POST" });
+  if (res.ok) return "started";
+  if (res.status === 409) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    if (body?.error === "in-progress") return "in-progress";
+    if (body?.error === "has-cards") return "has-cards";
+  }
+  throw new Error("Impossible de lancer la création des fiches.");
 }
 
 export type GenerationStatus = { done: number; total: number; failed: number };

@@ -724,8 +724,9 @@ destination, the continuous-reading Lecteur), `Repeat` for "Réviser",
 `CalendarClock` for setting or updating a deadline, `RotateCw` for a
 single failed document's own "Réessayer", `Upload` for UploadCard's
 "Créer le cours". Never on a card's dismissive or destructive
-action — "Supprimer", "Supprimer l'échéance", "Annuler", "Régénérer les
-fiches", "Voir le contenu"'s expand toggle: these are already visually
+action — "Supprimer", "Supprimer l'échéance", "Annuler", "Voir le
+contenu"'s expand toggle (Notions' former "Régénérer les fiches" is gone
+since M11): these are already visually
 demoted (a plain underlined `<button>`, never the `Button` component) or
 already named as destructive/secondary in this document or in code
 comments, and adding an icon would raise their visual weight in exactly the
@@ -1706,7 +1707,31 @@ a real measurement before this fix was chosen). `md:min-h-0` resets both
 back to their exact pre-existing desktop box — checked live via a
 before/after screenshot, not assumed. The toolbar below (next note) is
 deliberately untouched — already flagged as needing its own icon-based
-redesign, not a mechanical fix.
+redesign, not a mechanical fix. **The checkbox half of this fix is moot
+since M11** (next paragraph): the checkboxes themselves are gone, and the
+one touch target left on that row is the « Créer les fiches » trigger,
+a plain `Button` already at `min-h-11` at every width.
+
+**M11: one course-level « Créer les fiches », no type choice, no
+regenerate** (`docs/reports/notions-cles-conception.md`). The
+"Types de fiches à créer" checkboxes are gone: one course-level job
+creates flashcards, QCM and open questions together, from the course's
+key notions. The trigger (secondary `Button`, label unchanged — the app
+says "fiches" everywhere) shows only while the course is known to have no
+card at all (every notion's `totalCards` from notions-progress sums to
+zero); once a course has cards there is no trigger of any kind — no
+"Régénérer les fiches", an existing course is never regenerated. While
+the job runs, a polite live line replaces the trigger: « Création des
+fiches en cours… Tu peux quitter cet écran, elles apparaîtront ici. » —
+derived from generation-status for this course (the course-level job
+alone, `total: 1`), not from local state, so it survives leaving and
+coming back. No "N / M fiches créées" counter any more: with one job,
+it would only ever read 0 / 1. A job that failed for good, with still no
+card, says « La création des fiches n'a pas abouti. Tu peux la
+relancer. » next to the trigger, available again — a plain fact, no
+blame. A 409 from the trigger is never shown as an error: `in-progress`
+shows the running line, `has-cards` refreshes the course (the view was
+stale).
 
 **One page: a pill row of every course, then that course's own summary
 and notion list — no separate picker to leave.** Lecteur went through the
@@ -1716,8 +1741,8 @@ below); Tuteur is the one screen left with a separate picker page
 filled `--primary`/white when active, plain otherwise — no left-border or
 tinted-circle treatment here, a plain filled/outline toggle instead.
 Switching pills is a local selection, not a navigation; the selected
-course's own local UI state (an expanded notion body, the generation
-form) resets on switch (a `key`-based remount), never leaks from the
+course's own local UI state (an expanded notion body, a generation
+error) resets on switch (a `key`-based remount), never leaks from the
 course shown before.
 
 **The selected course's own summary card**: icon circle (Aujourd'hui/Mes
@@ -1773,7 +1798,8 @@ dropped.
 
 Spacing throughout the selected course's own column is uniform
 `--space-block` (16px) between every sibling — the back link, the summary
-card, the toolbar links, the generation toolbar, the notion list — a
+card, the toolbar links, the generation row (trigger or its live line),
+the notion list — a
 simplification from this file's former differentiated 24px/16px scheme,
 which described a layout this redesign replaced.
 

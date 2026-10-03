@@ -52,8 +52,8 @@ test.describe("generate cards and review", () => {
 
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
-    // One job per notion (docs/modules/generation.md's single most
-    // consequential design choice): wait for all of them to finish before
+    // One course-level job (M11, docs/reports/notions-cles-conception.md;
+    // generation-status reports it alone, total 1): wait for it to finish before
     // starting a session, the way a real user would come back once ready,
     // rather than a blind sleep (docs/TESTING.md forbids waitForTimeout).
     await expect
@@ -63,9 +63,9 @@ test.describe("generate cards and review", () => {
           const status = (await res.json()) as { done: number; total: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     const dayBoundary = startOfTomorrowISO();
     const dueBefore = (await (await page.request.get(`/api/review/due?documentId=${documentId}&dayBoundary=${dayBoundary}`)).json()) as { cardId: string; notionId: string }[];
@@ -117,16 +117,30 @@ test.describe("generate cards and review", () => {
     // Rate every card still due for this notion alone (1 to 5 per notion,
     // docs/modules/generation.md) until it has none left — this only
     // touches this notion's cards, proving the notionId filter is wired
-    // end to end, not just at the API layer.
+    // end to end, not just at the API layer. Since M11 one course-level job
+    // creates every card type at once, so a notion's cards can mix
+    // flashcards, MCQ and open questions: each is answered its own way
+    // (fixture MCQ's correct option is "Bonne réponse N").
     const nothingDueYet = page.getByText("Tout est à jour.");
     const revealButton = page.getByRole("button", { name: "Révéler la réponse" });
+    const mcqCorrectOption = page.getByRole("button", { name: /^Bonne réponse \d+$/ });
+    const openAnswer = page.getByLabel("Ta réponse");
     const sessionDone = page.getByText("Tu as terminé cette session.");
     for (let i = 0; i < 5; i += 1) {
-      await expect(nothingDueYet.or(revealButton).or(sessionDone)).toBeVisible({ timeout: 10_000 });
+      await expect(nothingDueYet.or(revealButton).or(mcqCorrectOption).or(openAnswer).or(sessionDone)).toBeVisible({ timeout: 10_000 });
       if (await nothingDueYet.isVisible().catch(() => false)) break;
       if (await sessionDone.isVisible().catch(() => false)) break;
-      await revealButton.click();
-      await page.getByRole("button", { name: "Correct" }).click();
+      if (await mcqCorrectOption.isVisible().catch(() => false)) {
+        await mcqCorrectOption.click();
+        await page.getByRole("button", { name: "Continuer" }).click();
+      } else if (await openAnswer.isVisible().catch(() => false)) {
+        await openAnswer.fill("Une réponse rédigée par l'apprenant.");
+        await page.getByRole("button", { name: "Valider ma réponse" }).click();
+        await page.getByRole("button", { name: "Correct" }).click();
+      } else {
+        await revealButton.click();
+        await page.getByRole("button", { name: "Correct" }).click();
+      }
     }
 
     await expect(nothingDueYet.or(sessionDone)).toBeVisible({ timeout: 10_000 });
@@ -164,7 +178,6 @@ test.describe("generate cards and review", () => {
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
-    const notionCount = await notionCards.count();
 
     const docsRes = await page.request.get("/api/documents");
     const documentId = (await docsRes.json() as { id: string; title: string }[]).find((d) => d.title === "Cours horaire")?.id;
@@ -177,9 +190,9 @@ test.describe("generate cards and review", () => {
           const status = (await (await page.request.get(`/api/documents/${documentId}/generation-status`)).json()) as { done: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     const dueBefore = (await (await page.request.get(`/api/review/due?documentId=${documentId}&dayBoundary=${dayBoundary.toISOString()}`)).json()) as {
       cardId: string;

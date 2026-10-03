@@ -32,7 +32,6 @@ test.describe("today", () => {
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
-    const notionCount = await notionCards.count();
 
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
@@ -48,9 +47,9 @@ test.describe("today", () => {
           const status = (await res.json()) as { done: number; total: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     await page.getByRole("button", { name: "Aujourd'hui" }).click();
     // Aujourd'hui's own heading is the greeting now (M9's redesign), not the

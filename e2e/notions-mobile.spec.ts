@@ -15,7 +15,10 @@ import { expect, test, type Page } from "@playwright/test";
 // under 44px, no responsive variant. This is this screen's own dedicated
 // 375x812 viewport override (docs/UI.md's Responsive conventions), covering
 // the root padding fix and both touch targets across all four required
-// states (docs/UI.md's Required states). The toolbar trio ("Lire le
+// states (docs/UI.md's Required states). M11 later removed the
+// notion-type checkboxes altogether (one course-level « Créer les fiches »,
+// every card type at once): the ready state now measures that trigger
+// instead, the one touch target left on that row. The toolbar trio ("Lire le
 // cours"/"Voir tes progrès"/"Discuter du cours") is deliberately left
 // untouched — already flagged in docs/MILESTONES.md as needing its own
 // icon-based redesign, not a mechanical fix, confirmed with the user ahead
@@ -68,7 +71,7 @@ test.describe("Notions mobile (M10 Phase 1)", () => {
     expect(await scrollWidth(page)).toBeLessThanOrEqual(375);
   });
 
-  test("ready state: no horizontal overflow with real notions, the course pill and each checkbox label reach 44px, and clicking a checkbox's own enlarged area still checks it", async ({ page }) => {
+  test("ready state: no horizontal overflow with real notions, the course pill and the 'Créer les fiches' trigger reach 44px, and clicking near the trigger's own top edge still starts it", async ({ page }) => {
     test.setTimeout(30_000);
     await page.goto("/");
 
@@ -106,24 +109,22 @@ test.describe("Notions mobile (M10 Phase 1)", () => {
     if (!pillBox) throw new Error("expected the course pill to report a bounding box");
     expect(pillBox.height).toBeGreaterThanOrEqual(44);
 
-    // Each notion-type checkbox's own label: also a real box now. Clicking
-    // near its own top edge (inside the row's own enlarged real height, not
-    // on the native checkbox square itself) still checks it — the ordinary
-    // behaviour of a <label>, exercised at the actual enlarged size this
-    // time rather than an invisible pseudo-element's own margin.
-    const flashcardsLabel = page.locator("fieldset label").filter({ hasText: "Flashcards" });
-    const flashcardsCheckbox = flashcardsLabel.getByRole("checkbox");
-    const labelBox = await flashcardsLabel.boundingBox();
-    if (!labelBox) throw new Error("expected the Flashcards label to report a bounding box");
-    expect(labelBox.height).toBeGreaterThanOrEqual(44);
+    // The course-level « Créer les fiches » trigger (M11, replacing the
+    // notion-type checkboxes measured here before): a real Button box,
+    // min-h-11 at every width. Clicking near its own top edge (inside the
+    // enlarged real height, not on the text's own line) still starts the
+    // course's card creation — the trigger leaves once the job is running.
+    const trigger = page.getByRole("button", { name: "Créer les fiches" });
+    const triggerBox = await trigger.boundingBox();
+    if (!triggerBox) throw new Error("expected the 'Créer les fiches' trigger to report a bounding box");
+    expect(triggerBox.height).toBeGreaterThanOrEqual(44);
 
-    await expect(flashcardsCheckbox).toBeChecked(); // flashcard is selected by default
     // locator.click({ position }) rather than a raw page.mouse.click() at a
     // coordinate read earlier: the position is resolved against the
-    // label's own current box at the moment of the click, not a snapshot
+    // trigger's own current box at the moment of the click, not a snapshot
     // that could go stale under the shared e2e account's own accumulated
     // polling/refetches (docs/TESTING.md's "one database per run").
-    await flashcardsLabel.click({ position: { x: 5, y: 2 } });
-    await expect(flashcardsCheckbox).not.toBeChecked();
+    await trigger.click({ position: { x: 5, y: 2 } });
+    await expect(trigger).toHaveCount(0, { timeout: 15_000 });
   });
 });

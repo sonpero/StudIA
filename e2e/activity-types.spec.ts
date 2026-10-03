@@ -1,10 +1,36 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // docs/MILESTONES.md M4 acceptance: "Playwright: one scenario per activity
 // type." Flashcard is already covered end to end by
-// generate-and-review.spec.ts; this file covers mcq and open, each with its
-// own document generating exactly one type, so a notion's cards stay
-// homogeneous and the review flow is unambiguous to drive.
+// generate-and-review.spec.ts; this file covers mcq and open. Since M11
+// there is no card-type choice any more: one course-level job creates
+// flashcards, MCQ and open questions together, so each scenario answers
+// whatever other cards the session shows first until it reaches a card of
+// its own type, then exercises that type exactly as before.
+const revealButton = (page: Page) => page.getByRole("button", { name: "Révéler la réponse" });
+const mcqCorrectOption = (page: Page) => page.getByRole("button", { name: /^Bonne réponse \d+$/ });
+const openAnswer = (page: Page) => page.getByLabel("Ta réponse");
+
+async function answerOtherCardsUntil(page: Page, target: "mcq" | "open"): Promise<void> {
+  const targetLocator = target === "mcq" ? mcqCorrectOption(page) : openAnswer(page);
+  // 10 cards at most for this fixture course (5 flashcards, 3 MCQ, 2 open).
+  for (let i = 0; i < 10; i += 1) {
+    await expect(revealButton(page).or(mcqCorrectOption(page)).or(openAnswer(page))).toBeVisible({ timeout: 10_000 });
+    if (await targetLocator.isVisible()) return;
+    if (await revealButton(page).isVisible()) {
+      await revealButton(page).click();
+      await page.getByRole("button", { name: "Correct" }).click();
+    } else if (await mcqCorrectOption(page).isVisible()) {
+      await mcqCorrectOption(page).click();
+      await page.getByRole("button", { name: "Continuer" }).click();
+    } else {
+      await openAnswer(page).fill("Une réponse rédigée par l'apprenant.");
+      await page.getByRole("button", { name: "Valider ma réponse" }).click();
+      await page.getByRole("button", { name: "Correct" }).click();
+    }
+  }
+  throw new Error(`expected to reach a ${target} card within this course's session`);
+}
 test.describe("activity types", () => {
   test("mcq activity: generate QCM cards, select an option, and see a review outcome", async ({ page }) => {
     test.setTimeout(60_000); // extra room for the generation poll
@@ -28,17 +54,11 @@ test.describe("activity types", () => {
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
-    const notionCount = await notionCards.count();
 
     const docsRes = await page.request.get("/api/documents");
     const documentId = (await docsRes.json() as { id: string; title: string }[]).find((d) => d.title === "Cours QCM")?.id;
     if (!documentId) throw new Error("expected the just-created document to be listed");
 
-    // Only QCM (docs/modules/generation.md's open question — user choice in
-    // M4): keeps every notion's cards homogeneously mcq, so the review flow
-    // below is unambiguous.
-    await page.getByRole("checkbox", { name: "Flashcards" }).uncheck();
-    await page.getByRole("checkbox", { name: "QCM" }).check();
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
     await expect
@@ -47,9 +67,9 @@ test.describe("activity types", () => {
           const status = (await (await page.request.get(`/api/documents/${documentId}/generation-status`)).json()) as { done: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     // The whole-course review entry point (its own "Réviser N fiches"
     // button, distinct from each notion card's own plain "Réviser") — this
@@ -57,21 +77,29 @@ test.describe("activity types", () => {
     // exact "Réviser" match would hit more than one of those instead.
     await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
 
-    // The fixture generator (llmAdapter=fixture) produces deterministic mcq
-    // cards: "Question N ?" paired with the correct option "Bonne réponse N"
-    // — read N off the rendered question so this works regardless of which
-    // card the (tied-timestamp) due ordering shows first.
-    const questionText = (await page.locator("main p").first().textContent()) ?? "";
-    const index = /Question (\d+) \?/.exec(questionText)?.[1] ?? "1";
+    await answerOtherCardsUntil(page, "mcq");
+
+    // The fixture key-notion card generator (llmAdapter=fixture) produces
+    // deterministic mcq cards: "QCM N ?" paired with the correct option
+    // "Bonne réponse N" — read N off the rendered question so this works
+    // regardless of which card the (tied-timestamp) due ordering shows first.
+    const questionText = (await page.getByText(/^QCM \d+ \?$/).textContent()) ?? "";
+    const index = /QCM (\d+) \?/.exec(questionText)?.[1] ?? "1";
 
     await page.getByRole("button", { name: `Bonne réponse ${index}` }).click();
     await expect(page.getByText("Correct.")).toBeVisible();
 
     await page.getByRole("button", { name: "Continuer" }).click();
 
-    // A review outcome was produced: either the next card, or a terminal
-    // screen — either way the rating was submitted and FSRS advanced.
-    const nextState = page.getByText("Tu as terminé cette session.").or(page.getByText(/Question \d+ \?/));
+    // A review outcome was produced: either the next card (of any type, the
+    // session is mixed now), or a terminal screen — either way the rating
+    // was submitted and FSRS advanced.
+    await expect(page.getByText(`QCM ${index} ?`, { exact: true })).toHaveCount(0, { timeout: 10_000 });
+    const nextState = page
+      .getByText("Tu as terminé cette session.")
+      .or(revealButton(page))
+      .or(mcqCorrectOption(page))
+      .or(openAnswer(page));
     await expect(nextState).toBeVisible({ timeout: 10_000 });
   });
 
@@ -97,14 +125,11 @@ test.describe("activity types", () => {
 
     const notionCards = page.getByTestId("notion-card");
     await expect(notionCards.first()).toBeVisible({ timeout: 15_000 });
-    const notionCount = await notionCards.count();
 
     const docsRes = await page.request.get("/api/documents");
     const documentId = (await docsRes.json() as { id: string; title: string }[]).find((d) => d.title === "Cours question ouverte")?.id;
     if (!documentId) throw new Error("expected the just-created document to be listed");
 
-    await page.getByRole("checkbox", { name: "Flashcards" }).uncheck();
-    await page.getByRole("checkbox", { name: "Questions ouvertes" }).check();
     await page.getByRole("button", { name: "Créer les fiches" }).click();
 
     await expect
@@ -113,9 +138,9 @@ test.describe("activity types", () => {
           const status = (await (await page.request.get(`/api/documents/${documentId}/generation-status`)).json()) as { done: number; failed: number };
           return status.done + status.failed;
         },
-        { timeout: 45_000, message: "waiting for every notion's generate-cards job to finish" },
+        { timeout: 45_000, message: "waiting for the course's generate-course-cards job to finish" },
       )
-      .toBe(notionCount);
+      .toBe(1);
 
     // The whole-course review entry point (its own "Réviser N fiches"
     // button, distinct from each notion card's own plain "Réviser") — this
@@ -123,6 +148,7 @@ test.describe("activity types", () => {
     // exact "Réviser" match would hit more than one of those instead.
     await page.getByTestId("notions-course-summary").getByRole("button", { name: /^réviser/i }).click();
 
+    await answerOtherCardsUntil(page, "open");
     await page.getByLabel("Ta réponse").fill("Une réponse rédigée par l'apprenant.");
     await page.getByRole("button", { name: "Valider ma réponse" }).click();
 
@@ -134,7 +160,8 @@ test.describe("activity types", () => {
 
     await page.getByRole("button", { name: "Correct" }).click();
 
-    const nextState = page.getByText("Tu as terminé cette session.").or(page.getByLabel("Ta réponse"));
+    // The session is mixed now: the next card can be of any type.
+    const nextState = page.getByText("Tu as terminé cette session.").or(page.getByLabel("Ta réponse")).or(revealButton(page)).or(mcqCorrectOption(page));
     await expect(nextState).toBeVisible({ timeout: 10_000 });
   });
 });
