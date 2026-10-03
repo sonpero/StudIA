@@ -122,15 +122,18 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
     expect(result.ok && result.value.map((c) => c.keyNotionIndex)).toEqual([7, 3]);
   });
 
-  it("rejects a position-dependent option and a distractor of very different length", async () => {
-    record([
+  it("rejects a position-dependent option and a distractor of very different length: never kept, even after the retry", async () => {
+    const bodies = record([
       [
         mcq("K4", { options: ["À une URI connue", "Dans un registre", "Dans le message", "Toutes les réponses ci-dessus"] }),
         mcq("K8", { options: ["À une URI connue", "Non", "Dans le message", "Dans la tâche"] }),
       ],
     ]);
     const result = await generator().generate(batch("mcq"));
-    expect(result).toMatchObject({ ok: false, error: { kind: "model-error" } });
+    expect(bodies).toHaveLength(2);
+    // An MCQ still wrong after the retry is dropped; its key notion keeps
+    // its flashcard (decisions D18).
+    expect(result).toEqual({ ok: true, value: [] });
   });
 
   it("rejects an MCQ whose correct answer is much longer than every distractor, and says why on the retry", async () => {
@@ -174,11 +177,18 @@ describe("ClaudeKeyNotionCardGenerator (transport level, via MSW)", () => {
     expect((await generator().generate(batch("flashcard"))).ok).toBe(false);
   });
 
-  it("a key notion left without a card after the retry fails the call", async () => {
+  it("a key notion left without a flashcard after the retry fails the call: one flashcard per key notion is the guarantee", async () => {
+    const bodies = record([[{ keyNotion: "K4", question: "Q ?", answer: "R" }]]);
+    const result = await generator().generate(batch("flashcard"));
+    expect(bodies).toHaveLength(2);
+    expect(result).toMatchObject({ ok: false, error: { kind: "model-error" } });
+  });
+
+  it("a key notion left without an open question after the retry is dropped, the others kept", async () => {
     const bodies = record([[{ keyNotion: "K4", question: "Q ?", answer: "R" }]]);
     const result = await generator().generate(batch("open"));
     expect(bodies).toHaveLength(2);
-    expect(result).toMatchObject({ ok: false, error: { kind: "model-error" } });
+    expect(result.ok && result.value.map((c) => c.keyNotionIndex)).toEqual([3]);
   });
 
   it("ignores a card pointing to a key notion outside the batch, and a second card for the same one", async () => {

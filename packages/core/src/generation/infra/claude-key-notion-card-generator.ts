@@ -199,7 +199,11 @@ export class ClaudeKeyNotionCardGenerator implements KeyNotionCardGenerator {
       kept.set(index, card);
       problems.delete(index);
     }
-    if (problems.size > 0) {
+    // Only a missing flashcard fails the call: one flashcard per key notion
+    // is the guarantee. An MCQ or open question still wrong after the retry
+    // is dropped, never kept, so one stubborn card no longer costs a whole
+    // course its cards (decisions D18: one MCQ out of ~45 did, twice).
+    if (problems.size > 0 && input.type === "flashcard") {
       return err({ kind: "model-error", message: `No valid ${input.type} card after one retry: ${[...problems].map(([index, problem]) => `${refOf(index)} (${problem})`).join("; ")}` });
     }
     // First-call cards first, then the retried ones.

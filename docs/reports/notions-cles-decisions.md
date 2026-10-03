@@ -406,3 +406,70 @@ problème.
 - **Eval historique** `evals/run.eval.test.ts` : elle utilise désormais le
   générateur par lots, avec un lot d'une notion clé sur la première notion
   de lecture.
+
+## D18. Cours long : sortie tronquée, puis fiabilité des lots [à relire]
+
+Trois échecs successifs sur le cours d'environ 67 pages, corrigés à la
+source.
+
+1. **Extraction tronquée à 16 000 tokens.** L'appel est coupé en plein
+   outil, donc aucun argument n'est lisible. Cause probable : la consigne
+   ajoutée en D17 (« une notion de lecture contient souvent plusieurs
+   notions clés »), appliquée à un cours qui a environ 170 notions de
+   lecture pour 70 à 90 notions clés.
+   - **Correction** : cette consigne n'apparaît plus que si le cours a au
+     plus autant de notions de lecture que le minimum. Sinon, le prompt
+     demande de regrouper. Il dit aussi « jamais plus de N ».
+   - **Sorties plus courtes** : résumé de 120 caractères au plus (200
+     avant), trois références au plus par notion clé.
+   - **Résultat** : 12 561 tokens de sortie, sous la limite d'un appel non
+     streamé, comme tu l'exiges.
+2. **Le nouvel invariant de longueur (D17) faisait échouer le job** : 2
+   QCM sur environ 45 restaient « nettement plus longs » après la relance.
+   - **Correction** : la longueur est une heuristique de qualité. Après la
+     relance, un QCM dont c'est le seul défaut est gardé.
+3. **Un QCM sur environ 45 restait hors de l'heuristique historique** de
+   longueur des options, deux fois de suite. Le job entier échouait encore
+   pour une seule carte.
+   - **Correction, qui amende D10** : après la relance, seule une
+     flashcard manquante fait échouer l'appel, puisque la flashcard est la
+     garantie « une question par notion clé ».
+   - Un QCM ou une question libre encore faux est **écarté**, jamais gardé
+     faux. Sa notion clé garde sa flashcard.
+   - Un échec d'appel entier (schéma invalide aux deux essais) fait
+     toujours échouer le job, comme le veut la règle 4 de CLAUDE.md.
+   - Lecture de la règle 4 : une sortie d'appel valide dans laquelle
+     quelques cartes sont écartées est un résultat dégradé, traité comme
+     un résultat (docs/TESTING.md, cas `degraded`), pas un échec de
+     validation de l'appel.
+- **Tests modifiés** (écrits sur cette branche, jamais fusionnés), dans
+  `claude-key-notion-card-generator.contract.test.ts` :
+  - « une notion clé sans carte après relance fait échouer l'appel »
+    porte désormais sur une flashcard ;
+  - le test des QCM « position » et « longueur » attend que les cartes
+    soient écartées, et non plus un échec ;
+  - un test ajouté vérifie l'abandon d'une question libre ;
+  - les données du test « bonne réponse nettement plus longue » sont
+    isolées, pour ne plus casser aussi l'heuristique historique, qui est
+    maintenant vérifiée en premier.
+
+## D19. Sorties malformées du découpeur sur claude-sonnet-5
+
+Sur le cours de 67 pages, le découpeur existant (module `content`) a
+échoué deux fois :
+- le tableau `elements` revient sous forme de chaîne JSON ;
+- à la relance, le champ `difficulty` manque sur toutes les notions. Le
+  retour envoyé au modèle ne disait que « response did not match schema ».
+
+Corrections :
+- **Réparation du texte avant validation**, avec
+  `experimental_repairText` de `generateObject` et une fonction pure
+  `unwrapStringifiedJson` (`content/domain`, exportée par son
+  `index.ts`). Elle est appliquée au découpeur et aux deux adaptateurs
+  des notions clés.
+- **La relance cite la cause de l'erreur**, c'est-à-dire les problèmes
+  Zod qui nomment le champ fautif.
+- **Tests** : nouveaux tests seulement, aucun test existant modifié. Un
+  premier test du retour était vide de sens : le corps de la requête
+  contient toujours « difficulty » via le schéma de l'outil. Il ne lit
+  plus que la phrase de retour.
