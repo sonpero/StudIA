@@ -246,6 +246,7 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
               <Button
                 key={option}
                 variant="secondary"
+                multiline
                 disabled={chosen}
                 className={outcomeClass}
                 onClick={() => void selectMcqOption(current, option)}

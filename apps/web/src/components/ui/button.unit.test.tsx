@@ -80,4 +80,23 @@ describe("Button — link variant", () => {
       expect(screen.getByRole("button", { name }).className).toMatch(/(?:^|\s)min-h-11(?:\s|$)/);
     }
   });
+
+  it("multiline lets a long text wrap inside the button: normal white-space, auto height, left-aligned, long words broken, no ellipsis", () => {
+    render(<Button multiline>Une option de QCM très longue</Button>);
+    const className = screen.getByRole("button").className;
+    expect(className).toMatch(/(?:^|\s)whitespace-normal(?:\s|$)/);
+    expect(className).not.toMatch(/(?:^|\s)whitespace-nowrap(?:\s|$)/);
+    expect(className).toMatch(/(?:^|\s)h-auto(?:\s|$)/);
+    expect(className).toMatch(/(?:^|\s)text-left(?:\s|$)/);
+    expect(className).toMatch(/(?:^|\s)justify-start(?:\s|$)/);
+    expect(className).toMatch(/\[overflow-wrap:anywhere\]/);
+    expect(className).not.toMatch(/truncate|text-ellipsis/);
+    expect(className).toMatch(/(?:^|\s)min-h-11(?:\s|$)/);
+  });
+
+  it("without multiline, a button keeps today's single-line label", () => {
+    render(<Button>Créer les fiches</Button>);
+    expect(screen.getByRole("button").className).toMatch(/(?:^|\s)whitespace-nowrap(?:\s|$)/);
+  });
 });
+

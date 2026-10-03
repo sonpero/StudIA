@@ -1077,6 +1077,17 @@ instead, never the default where a Playwright scenario can check the
 real thing directly — no horizontal scroll, a button actually reachable
 and clickable, all four states actually visible.
 
+**A button whose label is free text of any length uses `multiline`
+(M11 follow-up).** `Button`'s base class is single-line
+(`whitespace-nowrap`), right for a short action label but wrong for an
+MCQ option, whose text comes from the model: a long answer or one long
+unbroken word ran out of its bubble, off the screen at 375px.
+`<Button multiline>` wraps instead: auto height above the 44px floor,
+left-aligned, words broken only when nothing else fits, never an
+ellipsis, since every option must be read in full. Short action labels
+keep the default. `e2e/mcq-option-wrap.spec.ts` checks it at 1280px and
+375px, with a long answer and a 121-character word.
+
 ---
 
 ## Asynchronous work

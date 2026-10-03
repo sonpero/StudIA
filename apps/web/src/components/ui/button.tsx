@@ -36,6 +36,16 @@ const buttonVariants = cva(
         // that size would.
         link: "relative min-h-0 p-0 font-normal whitespace-normal text-text-muted underline before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']",
       },
+      // A button whose label is free text of any length (an MCQ option):
+      // the base class is single-line (whitespace-nowrap), so a long answer
+      // or one long unbroken word ran out of its bubble, and off the screen
+      // at 375px. Wraps instead: auto height (min-h-11 keeps the 44px
+      // floor), left-aligned like the paragraph it is, words broken only
+      // when nothing else fits, never an ellipsis — the learner must read
+      // every option in full. The icon keeps its size beside wrapped text.
+      multiline: {
+        true: "h-auto justify-start whitespace-normal text-left [overflow-wrap:anywhere] [&_svg]:shrink-0",
+      },
     },
     defaultVariants: {
       variant: "primary",
@@ -47,8 +57,8 @@ export interface ButtonProps
   extends React.ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {}
 
-function Button({ className, variant, ...props }: ButtonProps) {
-  return <button data-slot="button" className={cn(buttonVariants({ variant, className }))} {...props} />;
+function Button({ className, variant, multiline, ...props }: ButtonProps) {
+  return <button data-slot="button" className={cn(buttonVariants({ variant, multiline, className }))} {...props} />;
 }
 
 export { Button, buttonVariants };
