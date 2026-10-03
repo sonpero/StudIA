@@ -14,8 +14,13 @@ D21). Conception : `notions-cles-conception.md`. Résultats bruts :
 - **Une autre adresse personnelle a été trouvée** : l'adresse
   professionnelle, en auteur et en committer de tous les
   commits.
-  - Les 9 commits de la branche, jamais poussés, ont été réécrits avec
+  - Les 8 commits de la branche, jamais poussés, ont été réécrits avec
     l'adresse noreply GitHub du compte. Le contenu est identique.
+  - Mon erreur : j'avais ensuite écrit cette adresse en clair dans le
+    journal (D16). Avant la poussée, un second passage
+    (`git filter-branch --tree-filter`) l'a remplacée dans chaque commit de
+    la branche. L'historique poussé n'en contient plus aucune occurrence
+    (contrôle : `git log main..HEAD -p`).
   - Tous les commits suivants utilisent la même adresse noreply, sans
     toucher à ta configuration git.
 - **Reste à décider par toi** : les 196 commits de `main` portent toujours

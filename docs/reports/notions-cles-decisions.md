@@ -495,3 +495,9 @@ Les trois cours ont été passés sur le code final (`2026-10-03-key-notions-<ca
   - **Défaut restant** : dans certains QCM, la bonne réponse se repère encore parce qu'elle est un peu plus longue et plus précise que les distracteurs, tout en restant sous le seuil de 20 %. Exemples : Jeu de paume (76 caractères contre 65 au plus pour les distracteurs) ; « Monsieur Veto », où la bonne réponse ajoute un détail. Taux final de QCM dont la bonne réponse est l'option la plus longue : 3/8, 9/29 et 25/45, contre 25 % au hasard. Problème laissé ouvert après 2 itérations (D17).
   - **Défaut mineur** : quelques questions de pure mémorisation (« Selon quelle norme… ? RFC 8615 »). Elles sont fidèles, mais apportent peu.
 - **Surproduction sur le cours long** : le modèle déclare 69 notions essentielles pour 35 à 45 demandées, et 31 synthèses pour 12 à 15. Les plafonds en code ramènent le volume à 45 QCM et 15 questions libres. Il n'y a pas de tri par importance au-delà de l'ordre du cours : ce sont les 45 premières essentielles qui gardent un QCM.
+
+- **Ajout à D16, en fin de mission** : j'avais écrit l'adresse
+  professionnelle en clair dans cette entrée (commit de l'étape 1). Avant
+  la poussée, elle a été remplacée dans chaque commit de la branche par une
+  réécriture (`git filter-branch --tree-filter`, contenu final identique).
+  Les sauvegardes locales qui la contenaient ont été supprimées.
