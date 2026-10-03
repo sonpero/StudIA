@@ -23,3 +23,7 @@ e2e/.auth/
 # IDE
 .DS_Store
 .idea/
+
+# Recorded real model responses (evals/recorded/): they quote course
+# material that is not versioned, and the repo is public.
+evals/recorded/

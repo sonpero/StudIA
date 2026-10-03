@@ -67,3 +67,19 @@ describe("FixtureKeyNotionCardGenerator", () => {
     expect((await new FixtureKeyNotionCardGenerator("refine-violation").generate(batchInput("open"))).ok).toBe(false);
   });
 });
+
+describe("FixtureKeyNotionExtractor — overshoot (dry runs of long courses, CLAUDE.md rule 6)", () => {
+  it("returns twice the budget's maximum of key notions, all essential and synthesis, spread over three sections", async () => {
+    const budget = cardBudget(25 * 1_500);
+    const result = await new FixtureKeyNotionExtractor("overshoot").extract({ ...extractionInput, budget });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.sections).toHaveLength(3);
+    expect(result.value.keyNotions).toHaveLength(2 * budget.keyNotions.max);
+    expect(result.value.keyNotions.every((k) => k.importance === "essential" && k.isSynthesis)).toBe(true);
+    expect(new Set(result.value.keyNotions.map((k) => k.title)).size).toBe(2 * budget.keyNotions.max);
+    expect(new Set(result.value.keyNotions.map((k) => k.sectionIndex))).toEqual(new Set([0, 1, 2]));
+    expect(result.value.keyNotions.every((k) => k.readingNotionIds.length === 1 && ["n1", "n2", "n3"].includes(k.readingNotionIds[0]!))).toBe(true);
+  });
+});

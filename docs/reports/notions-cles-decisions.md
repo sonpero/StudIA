@@ -501,3 +501,51 @@ Les trois cours ont été passés sur le code final (`2026-10-03-key-notions-<ca
   la poussée, elle a été remplacée dans chaque commit de la branche par une
   réécriture (`git filter-branch --tree-filter`, contenu final identique).
   Les sauvegardes locales qui la contenaient ont été supprimées.
+
+## D22. Règle 6 : aucune eval réelle au-delà de 5 pages sans accord
+
+Consigne reçue le 2026-10-03, après la fin de la mission de finalisation.
+
+- **Au moment de la consigne** : aucune eval ne tournait. Les passages
+  réels sur a2a-25p et sur le cours de 67 pages avaient déjà eu lieu
+  pendant la mission (D21). Aucun autre passage réel n'a été lancé depuis.
+- **Coût depuis la recharge** : 7,36 $ en 176 appels, échecs et itérations
+  compris, mesurés par le registre de `evals/spend-guard.ts`.
+  - Le passage réel le plus récent sur a2a-5p a coûté 0,15 $.
+  - Les rejeux et essais à blanc de cette étape : 0 $.
+- **Règle ajoutée à CLAUDE.md** (règle 6, mot pour mot), et appliquée en
+  code : l'eval refuse un passage réel sur tout autre cas qu'a2a-5p, sauf si
+  `ALLOW_LONG_REAL_RUN=1` matérialise ton accord. Vérifié : `CASE=a2a-25p`
+  sans `DRY` ni `REPLAY` échoue avant tout appel.
+- **Réponses enregistrées** : les 7 réponses réelles du dernier passage
+  a2a-5p sont dans `evals/recorded/a2a-5p.jsonl`.
+  - `REPLAY=1` les rejoue dans l'ordre, sans réseau ni coût, en vérifiant la
+    phase de chaque appel. Un appel sans réponse enregistrée échoue avec un
+    message clair : il faut alors réenregistrer (un passage réel autorisé,
+    `RECORD=1`).
+  - Vérifié : le rejeu reproduit exactement le passage réel (20/8/4,
+    mêmes parties, mêmes positions de bonne réponse), avec une clé d'API
+    invalide.
+  - **Non versionnées [à relire]** : `evals/recorded/` est dans
+    `.gitignore`. Ces réponses reprennent presque mot pour mot ton cours
+    A2A, dont le PDF n'est volontairement pas versionné, et le dépôt est
+    public. Le rejeu d'a2a-5p demande de toute façon ce PDF, qui n'existe
+    qu'en local.
+- **Validation sans le modèle des cours de 25 et 60 pages** :
+  - tests unitaires de `cardBudget` aux points 25 et 60 pages (déjà
+    présents) ;
+  - nouveau test du handler à 25, 60 et 200 pages, où l'extraction demande
+    le double du maximum, toutes notions essentielles et de synthèse. Les
+    plafonds ramènent les cartes à 60/30/12, 90/45/15 et 90/45/15, et
+    chaque partie garde une notion clé. Vérifié par mutation : sans
+    plafond des QCM ni plafond total, 5 tests échouent.
+  - essai à blanc du pipeline complet (`DRY=1 DRY_EXTRACTOR=overshoot`)
+    sur les trois cours : 26/10/4, 59/29/12, 90/45/15, jamais plus de 150
+    (`evals/results/2026-10-03-key-notions-dry-overshoot.md`) ;
+  - nouveau cas fixture `overshoot` de `FixtureKeyNotionExtractor`.
+- **Libellé des critères** : tu as demandé « garantis en code, non mesurés
+  avec le modèle » pour le volume et la couverture à 25 et 60 pages. J'ai
+  écrit « garantis en code », mais pas « non mesurés » : une mesure réelle
+  existe, faite avant la consigne (D21), et l'écrire aurait été faux. Elle
+  est signalée comme unique, antérieure à la règle, et non renouvelable
+  sans ton accord.

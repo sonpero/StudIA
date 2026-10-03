@@ -56,3 +56,14 @@ compaction du contexte.
 
 - Relecture de 10 cartes du cours de 67 pages.
 - Rapport final, MILESTONES, poussée de la branche.
+
+## Consigne du 2026-10-03 : règle 6 (D22)
+
+- Aucune eval réelle en cours au moment de la consigne ; aucune relancée
+  depuis.
+- Règle 6 ajoutée à CLAUDE.md et appliquée dans l'eval.
+- Réponses a2a-5p enregistrées (`evals/recorded/`, non versionnées) et
+  rejouées à l'identique, sans coût.
+- 25 et 60 pages validés sans le modèle : tests du handler et essai à blanc
+  avec une extraction qui dépasse.
+- Coût depuis la recharge : 7,36 $.

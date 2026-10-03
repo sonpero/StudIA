@@ -896,10 +896,14 @@ Design: `docs/reports/notions-cles-conception.md`; decisions:
 - [x] Volume in bounds for three course sizes (~5, ~25, ~60 pages):
       15–25 / 6–10 / 2–4, 40–60 / 20–30 / 8–12, 70–90 / 35–45 / 12–15
       flashcards / MCQ / open questions; never more than 150 cards in total
-      — real eval 2026-10-03: 20/8/4, 56/29/12, 90/45/15
-      (`evals/results/2026-10-03-key-notions-*.md`)
-- [x] Every section of the course has at least one key notion — every
-      hand-written reference section found on all three courses
+      — ~5 pages measured on the model (20/8/4, replayable without cost);
+      ~25 and ~60 pages guaranteed in code (tests and an overshooting dry
+      run: 59/29/12, 90/45/15), their one real measurement (56/29/12,
+      90/45/15) predating CLAUDE.md rule 6 and not to be repeated without
+      the user's approval (`docs/reports/notions-cles-decisions.md` D22)
+- [x] Every section of the course has at least one key notion — measured
+      on ~5 pages; guaranteed in code for longer courses (tested at 25, 60
+      and 200 pages), with one real measurement predating rule 6
 - [x] No duplicate key notion — 0 identical titles; the 4 near pairs
       (Jaccard ≥ 0.5) read as distinct notions (decisions D21)
 - [x] Existing courses intact: the migration is additive only, and a

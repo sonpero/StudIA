@@ -35,6 +35,17 @@ D21). Conception : `notions-cles-conception.md`. Résultats bruts :
 
 ## 2. Résultats par cours (code final)
 
+**Règle 6 (CLAUDE.md, 2026-10-03)** : aucune eval réelle sur un document de
+plus de 5 pages sans ton accord explicite.
+- Les colonnes 25 et 67 pages ci-dessous viennent du seul passage réel fait
+  avant la règle. Elles ne seront pas renouvelées sans ton accord.
+- La validation courante de ces longueurs passe par :
+  - les tests ;
+  - l'essai à blanc `DRY=1 DRY_EXTRACTOR=overshoot` ;
+  - le rejeu (`REPLAY=1`) des réponses enregistrées d'a2a-5p.
+- Coût dépensé depuis la recharge : **7,36 $** (176 appels). Rejeux et
+  essais à blanc : 0 $.
+
 | | A2A ch. 1–2 | A2A ch. 1–6 | Révolution française |
 |---|---|---|---|
 | Caractères ; pages | 8 173 ; 5,4 | 36 248 ; 24,2 | 100 174 ; 66,8 |
@@ -122,8 +133,10 @@ Pannes techniques pendant l'eval, toutes corrigées :
 
 | Critère | État |
 |---|---|
-| Volume dans les bornes pour les trois tailles | ✅ 20/8/4, 56/29/12, 90/45/15 |
-| Toutes les parties couvertes | ✅ toutes les parties de référence retrouvées, sur les trois cours |
+| Volume dans les bornes, ~5 pages | ✅ mesuré avec le modèle : 20/8/4. Rejouable sans coût (`REPLAY=1`) |
+| Volume dans les bornes, ~25 et ~60 pages | ✅ **garanti en code** : tests du handler et essai à blanc avec une extraction qui demande le double du maximum (26/10/4, 59/29/12, 90/45/15, jamais plus de 150). Une seule mesure réelle existe (56/29/12 et 90/45/15), faite avant la règle 6 ; elle ne sera pas renouvelée sans ton accord |
+| Toutes les parties couvertes, ~5 pages | ✅ mesuré avec le modèle : 2 parties sur 2 |
+| Toutes les parties couvertes, ~25 et ~60 pages | ✅ **garanti en code** pour les parties déclarées par le modèle (relance, puis échec si une partie manque ; le plafond garde une notion clé par partie, testé à 25, 60 et 200 pages). Une seule mesure réelle contre la référence écrite à la main (6 sur 6 et 6 sur 6), faite avant la règle 6 |
 | Aucun doublon de notion clé | ✅ 0 titre identique. Les 3 paires de titres proches sont des notions distinctes |
 | Cours existants intacts | ✅ migration additive testée ; le job et la route refusent un cours qui a déjà des cartes ; les tests e2e de révision passent après la suppression de l'ancien flux |
 | Eval avec chiffres avant et après | ✅ ce rapport |

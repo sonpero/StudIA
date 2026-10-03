@@ -170,6 +170,17 @@ There is no shared content and no parent/teacher role. Every repository method
 takes a `userId` and filters on it. A repository method without `userId` in its
 signature is a bug.
 
+### 6. No paid eval on a long document without explicit approval
+
+« Aucune eval réelle (appels payants à l'API) sur un document de plus de 5
+pages sans mon accord explicite. Les cas plus longs se valident par tests,
+essais à blanc et réponses enregistrées. »
+
+In practice: `CASE=a2a-5p` is the only real run allowed by default. The other
+cases run with `DRY=1` (simulated responses) or `REPLAY=1` (recorded real
+responses, `evals/recorded/`, not versioned); see
+`evals/run-key-notions.eval.test.ts`.
+
 ---
 
 ## TDD workflow

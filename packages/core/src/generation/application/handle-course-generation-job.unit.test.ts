@@ -12,6 +12,7 @@ import {
   fakeNotionRepositoryForCourse,
 } from "./fakes.js";
 import { handleCourseGenerationJob } from "./handle-course-generation-job.js";
+import { FixtureKeyNotionExtractor } from "../infra/fixture-key-notion-extractor.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
 const ctx = { jobId: "j1", userId: "u1", attempt: 1, now };
@@ -293,4 +294,27 @@ describe("handleCourseGenerationJob", () => {
     const other = setup();
     expect((await handleCourseGenerationJob(other.deps, { documentId: "doc-unknown" }, ctx)).ok).toBe(false);
   });
+
+  // CLAUDE.md rule 6: courses over 5 pages are validated without the real
+  // model. The overshoot fixture asks for twice the maximum, all essential
+  // and synthesis: the hard caps alone must bring each type back in bounds.
+  describe("long courses, without the model: the caps hold against an overshooting extraction", () => {
+    it.each([
+      [25, { flashcard: 60, mcq: 30, open: 12 }],
+      [60, { flashcard: 90, mcq: 45, open: 15 }],
+      [200, { flashcard: 90, mcq: 45, open: 15 }],
+    ])("%i pages: cards capped at %o, never over 150", async (pages, expected) => {
+      const { deps, keyNotionRepo } = setup({ markdown: "x".repeat(pages * CARD_BUDGET.charsPerPage) });
+      deps.extractor = fakeKeyNotionExtractor((input) => new FixtureKeyNotionExtractor("overshoot").extract(input));
+
+      expect(await handleCourseGenerationJob(deps, { documentId: "doc-1" }, ctx)).toEqual({ ok: true, value: undefined });
+
+      const count = (type: string) => keyNotionRepo.cards.filter((c) => c.type === type).length;
+      expect({ flashcard: count("flashcard"), mcq: count("mcq"), open: count("open") }).toEqual(expected);
+      expect(keyNotionRepo.cards.length).toBeLessThanOrEqual(CARD_BUDGET.totalCardCap);
+      // Every one of the overshoot's three sections keeps a key notion.
+      expect(new Set(keyNotionRepo.keyNotions.map((k) => k.section))).toEqual(new Set(["Partie 1", "Partie 2", "Partie 3"]));
+    });
+  });
 });
+

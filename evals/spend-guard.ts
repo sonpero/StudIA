@@ -23,7 +23,9 @@ type Ledger = { limitUsd: number; spentUsd: number; calls: number };
 // max_tokens as output) could take the persistent ledger past its limit.
 // The ledger file survives between runs, so the limit covers the whole
 // mission, not one run. Each call's real cost is added from its usage.
-export function guardSpend(model: Model, ledgerPath: string, limitUsd: number) {
+// recordPath: every response of this run is also appended there, the format
+// replay-model.ts replays (RECORD=1 in run-key-notions.eval.test.ts).
+export function guardSpend(model: Model, ledgerPath: string, limitUsd: number, recordPath?: string) {
   const load = (): Ledger => (existsSync(ledgerPath) ? (JSON.parse(readFileSync(ledgerPath, "utf8")) as Ledger) : { limitUsd, spentUsd: 0, calls: 0 });
   const phases = new Map<string, PhaseTally>();
   let phase = "unlabelled";
@@ -39,12 +41,9 @@ export function guardSpend(model: Model, ledgerPath: string, limitUsd: number) {
     const result = await model.doGenerate(options);
     // RAW_DIR: every raw response, to diagnose a schema failure. Outside the
     // repo: responses quote courses that may not be versioned.
-    if (process.env.RAW_DIR) {
-      appendFileSync(
-        path.join(process.env.RAW_DIR, "raw-responses.jsonl"),
-        `${JSON.stringify({ phase, finishReason: result.finishReason, usage: result.usage, text: result.text, toolCalls: result.toolCalls })}\n`,
-      );
-    }
+    const line = `${JSON.stringify({ phase, finishReason: result.finishReason, usage: result.usage, text: result.text, toolCalls: result.toolCalls })}\n`;
+    if (process.env.RAW_DIR) appendFileSync(path.join(process.env.RAW_DIR, "raw-responses.jsonl"), line);
+    if (recordPath) appendFileSync(recordPath, line);
     const usd = result.usage.promptTokens * INPUT_USD_PER_TOKEN + result.usage.completionTokens * OUTPUT_USD_PER_TOKEN;
     writeFileSync(ledgerPath, JSON.stringify({ limitUsd, spentUsd: ledger.spentUsd + usd, calls: ledger.calls + 1 }, null, 2));
     const tally = phases.get(phase) ?? { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };

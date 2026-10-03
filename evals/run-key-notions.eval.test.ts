@@ -1,10 +1,22 @@
 // M11 eval (docs/MILESTONES.md, docs/reports/notions-cles-conception.md):
 // three courses of ~5, ~25 and ~60 pages through the real pipeline
 // (splitting, key-notion extraction, batched card generation) on a temp
-// SQLite database. Costs money; manual only (pnpm eval).
+// SQLite database. A real run costs money; manual only (pnpm eval).
 //
 //   CASE=a2a-5p|a2a-25p|revolution-60p  run one course (default: all)
 //   DRY=1                               fixture adapters, no network, no cost
+//   DRY_EXTRACTOR=overshoot             with DRY=1: an extraction that asks
+//                                       for twice the maximum, to check the
+//                                       hard caps on long courses
+//   REPLAY=1                            recorded real responses
+//                                       (evals/recorded/<case>.jsonl), no
+//                                       network, no cost
+//   RECORD=1                            a real run also records its
+//                                       responses there, for REPLAY
+//
+// CLAUDE.md rule 6: no real (paid) run on a document over 5 pages without
+// the user's explicit approval. Only a2a-5p runs for real; any other case
+// must be DRY or REPLAY, unless ALLOW_LONG_REAL_RUN=1 records that approval.
 //   SPEND_LEDGER=path                   persistent spend ledger (mission limit)
 //   A2A_PDF=path                        the A2A course PDF (not versioned)
 //   DUMP_DIR=path                       where every card is written for the
@@ -42,10 +54,14 @@ import {
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { freshDb, type Db } from "../tests/support/db.js";
+import { replayModel, type RecordedCall } from "./replay-model.js";
 import { guardSpend, SpendLimitReached, type PhaseTally } from "./spend-guard.js";
 
 const MISSION_LIMIT_USD = 10;
 const dry = process.env.DRY === "1";
+const replay = process.env.REPLAY === "1";
+const record = process.env.RECORD === "1";
+const REAL_RUN_CASES = new Set(["a2a-5p"]);
 const ledgerPath = process.env.SPEND_LEDGER ?? path.join(tmpdir(), "studia-key-notions-spend.json");
 const pdfPath = process.env.A2A_PDF ?? path.resolve("Cours complet le protocole Agent2Agent (A2A).pdf");
 
@@ -152,15 +168,37 @@ async function runCase(evalCase: EvalCase): Promise<CaseResult> {
   const { db, cleanup } = freshDb();
   try {
     seed(db, markdown, now);
-    const guard = guardSpend(createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "", model: process.env.LLM_MODEL }), ledgerPath, MISSION_LIMIT_USD);
+    const realModel = createLanguageModel({ apiKey: process.env.ANTHROPIC_API_KEY ?? "", model: process.env.LLM_MODEL });
+    const recordedPath = path.join("evals/recorded", `${evalCase.name}.jsonl`);
+    if (record && !dry && !replay) {
+      mkdirSync("evals/recorded", { recursive: true });
+      writeFileSync(recordedPath, "");
+    }
+    const guard = guardSpend(realModel, ledgerPath, MISSION_LIMIT_USD, record && !dry && !replay ? recordedPath : undefined);
+    let replayPhase = "";
+    const replayed = replay
+      ? replayModel(
+          realModel,
+          readFileSync(recordedPath, "utf8")
+            .split("\n")
+            .filter((line) => line.trim() !== "")
+            .map((line) => JSON.parse(line) as RecordedCall),
+          () => replayPhase,
+        )
+      : null;
+    const model = replayed ?? guard.model;
+    const setPhase = (name: string) => {
+      guard.setPhase(name);
+      replayPhase = name;
+    };
     const notionRepo = new SqliteNotionRepository(db);
     const documentRepo = new SqliteDocumentRepository(db);
     const keyNotionRepo = new SqliteKeyNotionRepository(db);
     const ctx = { jobId: "eval", userId: "u1", attempt: 1, now };
 
-    guard.setPhase("découpage");
+    setPhase("découpage");
     const split = await handleSplitJob(
-      { notionRepo, documentRepo, splitter: dry ? new FixtureNotionSplitter("valid") : new ClaudeNotionSplitter(guard.model), idGenerator: uuidV7Generator },
+      { notionRepo, documentRepo, splitter: dry ? new FixtureNotionSplitter("valid") : new ClaudeNotionSplitter(model), idGenerator: uuidV7Generator },
       { documentId: "doc-1" },
       ctx,
     );
@@ -168,21 +206,21 @@ async function runCase(evalCase: EvalCase): Promise<CaseResult> {
 
     // Two phases, two passes: the job reuses stored key notions, so a first
     // run whose generator always fails stops right after the extraction.
-    guard.setPhase("notions clés");
+    setPhase("notions clés");
     const failing = { generate: () => Promise.resolve({ ok: false as const, error: { kind: "model-error" as const, message: "phase boundary" } }) };
     const deps = {
       keyNotionRepo,
       notionRepo,
       documentRepo,
-      extractor: dry ? new FixtureKeyNotionExtractor("valid") : new ClaudeKeyNotionExtractor(guard.model),
+      extractor: dry ? new FixtureKeyNotionExtractor(process.env.DRY_EXTRACTOR === "overshoot" ? "overshoot" : "valid") : new ClaudeKeyNotionExtractor(model),
       idGenerator: uuidV7Generator,
     };
     const extraction = await handleCourseGenerationJob({ ...deps, generator: failing }, { documentId: "doc-1" }, ctx);
     if (!extraction.ok && extraction.error !== "phase boundary") throw new Error(`key-notion extraction failed: ${extraction.error}`);
 
-    guard.setPhase("génération des cartes");
+    setPhase("génération des cartes");
     const generation = await handleCourseGenerationJob(
-      { ...deps, generator: dry ? new FixtureKeyNotionCardGenerator("valid") : new ClaudeKeyNotionCardGenerator(guard.model) },
+      { ...deps, generator: dry ? new FixtureKeyNotionCardGenerator("valid") : new ClaudeKeyNotionCardGenerator(model) },
       { documentId: "doc-1" },
       { ...ctx, attempt: 2 },
     );
@@ -269,7 +307,7 @@ const range = (r: { min: number; max: number }) => `${String(r.min)}–${String(
 
 function report(results: CaseResult[], spentUsd: number): string {
   const lines = [
-    `# Eval des notions clés (M11) — ${new Date().toISOString().slice(0, 10)}${dry ? " — DRY RUN (fixtures)" : ""}`,
+    `# Eval des notions clés (M11) — ${new Date().toISOString().slice(0, 10)}${dry ? ` — DRY RUN (fixtures${process.env.DRY_EXTRACTOR === "overshoot" ? ", extraction qui dépasse" : ""})` : replay ? " — REPLAY (réponses enregistrées)" : ""}`,
     "",
     `Modèle : ${process.env.LLM_MODEL ?? "claude-sonnet-5 (défaut)"}. Dépense cumulée de la mission après ce passage : ${usd(spentUsd)} sur ${String(MISSION_LIMIT_USD)} $.`,
     "",
@@ -335,6 +373,9 @@ describe("M11 key-notion eval", () => {
       const selected = CASES.filter((c) => !process.env.CASE || process.env.CASE.split(",").includes(c.name));
       const results: CaseResult[] = [];
       for (const evalCase of selected) {
+        if (!dry && !replay && !REAL_RUN_CASES.has(evalCase.name) && process.env.ALLOW_LONG_REAL_RUN !== "1") {
+          throw new Error(`${evalCase.name}: no real run on a document over 5 pages without explicit approval (CLAUDE.md rule 6); use DRY=1 or REPLAY=1`);
+        }
         if (evalCase.name.startsWith("a2a") && !existsSync(pdfPath)) throw new Error(`A2A PDF not found at ${pdfPath}`);
         try {
           results.push(await runCase(evalCase));
@@ -350,13 +391,17 @@ describe("M11 key-notion eval", () => {
       const resultsDir = "evals/results";
       mkdirSync(resultsDir, { recursive: true });
       const stamp = new Date().toISOString().slice(0, 10);
-      const suffix = `${dry ? "-dry" : ""}${process.env.CASE ? `-${process.env.CASE.replace(/,/g, "+")}` : ""}`;
+      const suffix = `${dry ? `-dry${process.env.DRY_EXTRACTOR === "overshoot" ? "-overshoot" : ""}` : replay ? "-replay" : ""}${process.env.CASE ? `-${process.env.CASE.replace(/,/g, "+")}` : ""}`;
       const ledger = existsSync(ledgerPath) ? (JSON.parse(readFileSync(ledgerPath, "utf8")) as { spentUsd: number }) : { spentUsd: 0 };
-      const spent = dry ? 0 : ledger.spentUsd;
+      const spent = dry || replay ? 0 : ledger.spentUsd;
       writeFileSync(path.join(resultsDir, `${stamp}-key-notions${suffix}.md`), report(results, spent));
       writeFileSync(path.join(resultsDir, `${stamp}-key-notions${suffix}.json`), JSON.stringify(results, null, 2));
 
       for (const r of results) {
+        // Upper bounds hold whatever the model returns: the hard caps.
+        expect.soft(r.cards.flashcard, `${r.name}: flashcards under the cap`).toBeLessThanOrEqual(r.budget.keyNotions.max);
+        expect.soft(r.cards.mcq, `${r.name}: MCQ under the cap`).toBeLessThanOrEqual(r.budget.mcq.max);
+        expect.soft(r.cards.open, `${r.name}: open questions under the cap`).toBeLessThanOrEqual(r.budget.open.max);
         expect.soft(r.inBounds.total, `${r.name}: total under the cap`).toBe(true);
         expect.soft(r.duplicateTitles, `${r.name}: no duplicate key notion`).toBe(0);
         expect.soft(r.modelSectionsUncovered, `${r.name}: every declared section covered`).toEqual([]);

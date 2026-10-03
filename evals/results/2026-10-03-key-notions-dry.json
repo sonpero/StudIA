@@ -1,0 +1,4973 @@
+[
+  {
+    "name": "a2a-5p",
+    "label": "A2A, chapitres 1–2 (~5 pages)",
+    "chars": 8173,
+    "pages": 5.4,
+    "readingNotions": 5,
+    "before": {
+      "min": 15,
+      "typical": 53,
+      "max": 75
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 16,
+        "max": 26
+      },
+      "mcq": {
+        "min": 6,
+        "max": 10
+      },
+      "open": {
+        "min": 2,
+        "max": 4
+      }
+    },
+    "keyNotions": 5,
+    "essentials": 3,
+    "synthesis": 2,
+    "cards": {
+      "flashcard": 5,
+      "mcq": 3,
+      "open": 2,
+      "total": 10
+    },
+    "inBounds": {
+      "flashcard": false,
+      "mcq": false,
+      "open": true,
+      "total": true
+    },
+    "modelSections": [
+      "Cours"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [
+      "Introduction : pourquoi A2A",
+      "Concepts fondamentaux"
+    ],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [
+      [
+        "Notion 1",
+        "Notion 2",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 5",
+        1
+      ]
+    ],
+    "readingNotionsCovered": 5,
+    "nearDuplicateQuestions": [
+      [
+        "Question 1 ?",
+        "Question 2 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 2 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "Question ouverte 1 ?",
+        "Question ouverte 5 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 5 ?",
+        1
+      ]
+    ],
+    "mcqAnswerPositions": [
+      0,
+      1,
+      1,
+      1
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 3,
+    "phases": {},
+    "keyNotionList": [
+      {
+        "title": "Notion 1",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 2",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 3",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 4",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 5",
+        "importance": "important",
+        "synthesis": true,
+        "section": "Cours"
+      }
+    ]
+  },
+  {
+    "name": "a2a-25p",
+    "label": "A2A, chapitres 1–6 (~25 pages)",
+    "chars": 36248,
+    "pages": 24.2,
+    "readingNotions": 25,
+    "before": {
+      "min": 75,
+      "typical": 263,
+      "max": 375
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 39,
+        "max": 59
+      },
+      "mcq": {
+        "min": 19,
+        "max": 29
+      },
+      "open": {
+        "min": 8,
+        "max": 12
+      }
+    },
+    "keyNotions": 25,
+    "essentials": 13,
+    "synthesis": 2,
+    "cards": {
+      "flashcard": 25,
+      "mcq": 13,
+      "open": 2,
+      "total": 40
+    },
+    "inBounds": {
+      "flashcard": false,
+      "mcq": false,
+      "open": false,
+      "total": true
+    },
+    "modelSections": [
+      "Cours"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [
+      "Introduction : pourquoi A2A",
+      "Concepts fondamentaux",
+      "Architecture en couches et bindings",
+      "Cycle de vie des tâches, streaming et notifications push",
+      "Découverte des agents et Agent Card",
+      "Sécurité : authentification, autorisation, confiance"
+    ],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [
+      [
+        "Notion 1",
+        "Notion 2",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 7",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 7",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 8",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 25",
+        0.5
+      ]
+    ],
+    "readingNotionsCovered": 25,
+    "nearDuplicateQuestions": [
+      [
+        "Question 1 ?",
+        "Question 2 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 2 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question ouverte 1 ?",
+        "Question ouverte 25 ?",
+        0.67
+      ],
+      [
+        "Question 2 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 7 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 7 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 7 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 7 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 8 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 8 ?",
+        "QCM 9 ?",
+        1
+      ]
+    ],
+    "mcqAnswerPositions": [
+      4,
+      3,
+      3,
+      3
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 13,
+    "phases": {},
+    "keyNotionList": [
+      {
+        "title": "Notion 1",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 2",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 3",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 4",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 5",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 6",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 7",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 8",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 9",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 10",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 11",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 12",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 13",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 14",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 15",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 16",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 17",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 18",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 19",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 20",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 21",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 22",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 23",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 24",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 25",
+        "importance": "important",
+        "synthesis": true,
+        "section": "Cours"
+      }
+    ]
+  },
+  {
+    "name": "revolution-60p",
+    "label": "Révolution française, Wikipédia (~67 pages)",
+    "chars": 100174,
+    "pages": 66.8,
+    "readingNotions": 60,
+    "before": {
+      "min": 180,
+      "typical": 630,
+      "max": 900
+    },
+    "budget": {
+      "keyNotions": {
+        "min": 70,
+        "max": 90
+      },
+      "mcq": {
+        "min": 35,
+        "max": 45
+      },
+      "open": {
+        "min": 12,
+        "max": 15
+      }
+    },
+    "keyNotions": 60,
+    "essentials": 30,
+    "synthesis": 2,
+    "cards": {
+      "flashcard": 60,
+      "mcq": 30,
+      "open": 2,
+      "total": 92
+    },
+    "inBounds": {
+      "flashcard": false,
+      "mcq": false,
+      "open": false,
+      "total": true
+    },
+    "modelSections": [
+      "Cours"
+    ],
+    "modelSectionsUncovered": [],
+    "groundTruthUnmatched": [
+      "Chronologie et périodisation",
+      "La France dans les années 1780",
+      "1789 : fin de la monarchie absolue et de l'Ancien Régime",
+      "Échec de la monarchie constitutionnelle",
+      "Chute de la monarchie, le 10 août 1792",
+      "Première République"
+    ],
+    "duplicateTitles": 0,
+    "nearDuplicatePairs": [
+      [
+        "Notion 1",
+        "Notion 2",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 1",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 1",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 3",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 2",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 2",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 4",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 3",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 3",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 5",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 4",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 4",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 6",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 5",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 5",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 7",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 6",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 6",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 8",
+        1
+      ],
+      [
+        "Notion 7",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 7",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 7",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 9",
+        1
+      ],
+      [
+        "Notion 8",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 8",
+        "Notion 60",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 10",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 11",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 12",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 13",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 14",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 15",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 16",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 17",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 18",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 19",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 20",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 21",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 22",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 23",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 24",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 25",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 26",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 27",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 28",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 29",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 30",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 31",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 32",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 33",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 34",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 35",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 36",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 37",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 38",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 39",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 40",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 41",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 42",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 43",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 44",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 45",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 46",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 47",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 48",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 49",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 50",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 51",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 52",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 53",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 54",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 55",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 56",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 57",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 58",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 59",
+        0.5
+      ],
+      [
+        "Notion 9",
+        "Notion 60",
+        0.5
+      ]
+    ],
+    "readingNotionsCovered": 60,
+    "nearDuplicateQuestions": [
+      [
+        "Question 1 ?",
+        "Question 2 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 1 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 2 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 1 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question ouverte 1 ?",
+        "Question ouverte 60 ?",
+        0.67
+      ],
+      [
+        "Question 2 ?",
+        "Question 3 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 2 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 3 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 2 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 4 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 3 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 4 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 3 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 5 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 4 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 5 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 4 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 6 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 5 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 6 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 5 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 7 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 6 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 7 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 6 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 7 ?",
+        "Question 8 ?",
+        1
+      ],
+      [
+        "Question 7 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 7 ?",
+        "QCM 8 ?",
+        1
+      ],
+      [
+        "QCM 7 ?",
+        "QCM 9 ?",
+        1
+      ],
+      [
+        "Question 8 ?",
+        "Question 9 ?",
+        1
+      ],
+      [
+        "QCM 8 ?",
+        "QCM 9 ?",
+        1
+      ]
+    ],
+    "mcqAnswerPositions": [
+      8,
+      5,
+      7,
+      10
+    ],
+    "mcqImplausibleLength": 0,
+    "mcqAnswerLongest": 30,
+    "phases": {},
+    "keyNotionList": [
+      {
+        "title": "Notion 1",
+        "importance": "essential",
+        "synthesis": true,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 2",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 3",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 4",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 5",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 6",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 7",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 8",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 9",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 10",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 11",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 12",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 13",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 14",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 15",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 16",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 17",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 18",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 19",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 20",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 21",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 22",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 23",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 24",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 25",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 26",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 27",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 28",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 29",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 30",
+        "importance": "essential",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 31",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 32",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 33",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 34",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 35",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 36",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 37",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 38",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 39",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 40",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 41",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 42",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 43",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 44",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 45",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 46",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 47",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 48",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 49",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 50",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 51",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 52",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 53",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 54",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 55",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 56",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 57",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 58",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 59",
+        "importance": "important",
+        "synthesis": false,
+        "section": "Cours"
+      },
+      {
+        "title": "Notion 60",
+        "importance": "important",
+        "synthesis": true,
+        "section": "Cours"
+      }
+    ]
+  }
+]
