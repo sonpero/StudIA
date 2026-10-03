@@ -146,6 +146,10 @@ type CaseResult = {
   nearDuplicatePairs: [string, string, number][];
   readingNotionsCovered: number;
   nearDuplicateQuestions: [string, string, number][];
+  // Position of the correct option in the STORED order, i.e. the model's
+  // own output. Not what the learner sees: the review screen shuffles the
+  // options at each presentation (e2e/mcq-shuffle-display.spec.ts checks
+  // the displayed order). Kept as a measure of the model's habit only.
   mcqAnswerPositions: number[];
   mcqImplausibleLength: number;
   // Share of MCQs whose correct answer is strictly the longest option: 25 %
@@ -331,7 +335,9 @@ function report(results: CaseResult[], spentUsd: number): string {
     "",
     "## QCM",
     "",
-    "| Cours | Position de la bonne réponse (1 / 2 / 3 / 4) | Longueurs d'options hors heuristique | Bonne réponse = option la plus longue (hasard : 25 %) |",
+    "Positions dans l'ordre stocké, c'est-à-dire tel que le modèle l'a rendu. Ce n'est pas l'ordre affiché : l'écran de révision mélange les options à chaque présentation, ce que vérifie e2e/mcq-shuffle-display.spec.ts.",
+    "",
+    "| Cours | Position de la bonne réponse dans l'ordre stocké (1 / 2 / 3 / 4) | Longueurs d'options hors heuristique | Bonne réponse = option la plus longue (hasard : 25 %) |",
     "|---|---|---|---|",
     ...results.map(
       (r) =>

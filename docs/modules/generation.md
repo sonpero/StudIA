@@ -133,7 +133,12 @@ cards it created stay readable and reviewable.
   code after generation (`domain/key-notion-plan.ts`).
 - **MCQ**: every invariant above still applies. Two rules are added in M11:
   - no option that depends on its position (`optionsArePositionIndependent`);
-  - a seeded shuffle of the options before storage (`shuffleOptions`).
+  - options are stored in the order generated and shuffled by the review
+    screen at each presentation (`apps/web/src/lib/shuffle.ts`), the one
+    place they are ordered; grading compares the chosen option's text,
+    never its position (fix of 2026-10-03: the former storage-time
+    `shuffleOptions` fixed one position per card for good, and never
+    touched cards made before M11).
 - **Job** `generate-course-cards` `{ documentId }`
   (`handleCourseGenerationJob`):
   - It never touches a course that already has cards.

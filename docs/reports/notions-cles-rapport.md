@@ -70,6 +70,12 @@ plus de 5 pages sans ton accord explicite.
 - **Position de la bonne réponse**, les trois cours réunis : 21 / 25 / 16 /
   19. Le khi-deux vaut environ 2,1 (p ≈ 0,55) : la répartition est
   uniforme.
+  - **Correctif du 2026-10-03** : cette mesure portait sur l'ordre
+    **stocké** des QCM générés par le nouveau flux, pas sur l'écran.
+  - À l'écran, chaque carte montrait toujours sa bonne réponse à la même
+    place, et en premier pour tous les QCM d'avant M11.
+  - Le mélange se fait désormais à l'affichage, à chaque présentation. Voir
+    `docs/reports/qcm-melange.md`.
 - **Coût hors découpage**, qui existait déjà :
   - 0,10 $ pour 5 pages, 0,34 $ pour 25 pages, 0,61 $ pour 67 pages ;
   - environ 12 appels pour un cours de 25 pages, contre environ 190 dans

@@ -274,6 +274,13 @@ the mutation testing regime above.
 
 `docs/UI.md` is binding. Read it before touching anything in `apps/web/`.
 
+« Un comportement visible par l'utilisateur se vérifie par un test au niveau
+de l'affichage (Playwright), pas seulement au niveau du domaine. » (Added
+2026-10-03: MCQ options were shuffled in the domain at storage and measured
+uniform by the eval, while the screen still showed the correct answer at a
+fixed place, first for every card made before M11; see
+`docs/reports/qcm-melange.md`.)
+
 The four rules broken most often:
 
 - **Tokens only.** No colour, spacing or font outside `tokens.css`.
