@@ -1,5 +1,7 @@
 export type { Difficulty, Notion, SplitNotion } from "./domain/types.js";
 export type { NotionRepository, NotionSplitter, SplitError, SplitInput } from "./domain/ports.js";
+// Shared with generation's LLM adapters, which hit the same output defect.
+export { unwrapStringifiedJson } from "./domain/unwrap-stringified-json.js";
 
 export { handleSplitJob, type HandleSplitJobDeps, type SplitDocumentPayload, type SplitJobResult } from "./application/handle-split-job.js";
 export { listNotions, type ListNotionsDeps } from "./application/list-notions.js";

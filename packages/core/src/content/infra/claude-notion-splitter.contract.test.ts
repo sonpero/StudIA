@@ -273,5 +273,55 @@ describe("ClaudeNotionSplitter (transport level, via MSW)", () => {
       if (!result.ok) expect(result.error.kind).toBe("model-error");
     });
   });
+
+  describe("malformed outputs seen on claude-sonnet-5 (2026-10-03, docs/reports/notions-cles-decisions.md D19)", () => {
+    it("a list returned as a JSON-encoded string is unwrapped, without a retry", async () => {
+      let callCount = 0;
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, () => {
+          callCount += 1;
+          return HttpResponse.json({
+            id: "msg_test",
+            type: "message",
+            role: "assistant",
+            model: "claude-sonnet-5",
+            content: [{ type: "tool_use", id: "toolu_1", name: "json", input: { elements: JSON.stringify([{ title: "Photosynthèse", body: "Corps.", difficulty: "easy" }]) } }],
+            stop_reason: "tool_use",
+            usage: { input_tokens: 10, output_tokens: 5 },
+          });
+        }),
+      );
+
+      const result = await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(callCount).toBe(1);
+      expect(result).toEqual({ ok: true, value: [{ title: "Photosynthèse", body: "Corps.", difficulty: "easy" }] });
+    });
+
+    it("the retry's feedback names the field that failed validation, not only 'did not match schema'", async () => {
+      const bodies: string[] = [];
+      server.use(
+        http.post(ANTHROPIC_MESSAGES_URL, async ({ request }) => {
+          bodies.push(await request.clone().text());
+          return HttpResponse.json({
+            id: "msg_test",
+            type: "message",
+            role: "assistant",
+            model: "claude-sonnet-5",
+            content: [{ type: "tool_use", id: "toolu_1", name: "json", input: { elements: [{ title: "Photosynthèse", body: "Corps." }] } }],
+            stop_reason: "tool_use",
+            usage: { input_tokens: 10, output_tokens: 5 },
+          });
+        }),
+      );
+
+      await new ClaudeNotionSplitter(createLanguageModel({ apiKey: "test-key" })).split({ markdown: "# Cours" });
+
+      expect(bodies).toHaveLength(2);
+      // The request always carries the schema, so look at the feedback only.
+      const feedback = bodies[1]!.slice(bodies[1]!.indexOf("format attendu"), bodies[1]!.indexOf("Corrige et réessaie"));
+      expect(feedback).toContain("difficulty");
+    });
+  });
 });
 

@@ -2,6 +2,7 @@ import { generateObject, NoObjectGeneratedError, type LanguageModel } from "ai";
 import { z } from "zod";
 import { err, ok, type Result } from "../../shared/index.js";
 import { hasDuplicateTitles } from "../domain/has-duplicate-titles.js";
+import { unwrapStringifiedJson } from "../domain/unwrap-stringified-json.js";
 import type { NotionSplitter, SplitError, SplitInput } from "../domain/ports.js";
 import type { SplitNotion } from "../domain/types.js";
 
@@ -43,8 +44,11 @@ export const SPLITTER_MAX_TOKENS = 16_000;
 
 class TruncatedOutputError extends Error {}
 
+// The SDK's own message is only "response did not match schema"; its cause
+// carries the validation issues, which is what the retry needs to name.
 function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) return String(error);
+  return error.cause instanceof Error ? `${error.message} ${error.cause.message}` : error.message;
 }
 
 // hasDuplicateTitles' refine is enforced by hand here, not as a Zod
@@ -99,6 +103,7 @@ export class ClaudeNotionSplitter implements NotionSplitter {
       try {
         generated = await generateObject({
           model: this.model,
+          experimental_repairText: ({ text }) => Promise.resolve(unwrapStringifiedJson(text)),
           output: "array",
           schema: splitNotionSchema,
           prompt: extraContext ? `${prompt}\n\n${extraContext}` : prompt,

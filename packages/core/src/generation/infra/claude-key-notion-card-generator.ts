@@ -1,5 +1,6 @@
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
+import { unwrapStringifiedJson } from "../../content/index.js";
 import { err, ok, type Result } from "../../shared/index.js";
 import type { PlannedCard } from "../domain/key-notion-plan.js";
 import {
@@ -118,8 +119,11 @@ function toPlanned(type: CardType, index: number, card: RawCard): PlannedCard {
   return { keyNotionIndex: index, type, question: card.question.trim(), answer, options };
 }
 
+// The SDK's own message is only "response did not match schema"; its cause
+// carries the validation issues, which is what the retry needs to name.
 function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) return String(error);
+  return error.cause instanceof Error ? `${error.message} ${error.cause.message}` : error.message;
 }
 
 // Never called by pnpm test: this is the real adapter, exercised only by
@@ -158,6 +162,7 @@ export class ClaudeKeyNotionCardGenerator implements KeyNotionCardGenerator {
       const prompt = promptFor(batch);
       const { object } = await generateObject({
         model: this.model,
+        experimental_repairText: ({ text }) => Promise.resolve(unwrapStringifiedJson(text)),
         output: "array",
         schema: schemas[input.type],
         prompt: extraContext ? `${prompt}\n\n${extraContext}` : prompt,
