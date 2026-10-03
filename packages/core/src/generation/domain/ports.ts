@@ -1,6 +1,6 @@
 import type { Difficulty } from "../../content/index.js";
 import type { Result } from "../../shared/index.js";
-import type { Card, CardType, GeneratedCard } from "./types.js";
+import type { Card, CardType, GeneratedCard, KeyNotion, KeyNotionCardLink } from "./types.js";
 
 export type GenerationError = { kind: "model-error"; message: string };
 
@@ -26,4 +26,17 @@ export interface CardRepository {
   // Called when a notion's body changes (docs/modules/generation.md):
   // flips every active card of that notion to 'stale'.
   markStale(userId: string, notionId: string): Promise<void>;
+}
+
+// M11's own persistence (docs/reports/notions-cles-conception.md), kept off
+// CardRepository on purpose: review and progress each fake that interface.
+export interface KeyNotionRepository {
+  // Ordered by position; each one's readingNotionIds in course order.
+  listKeyNotions(userId: string, documentId: string): Promise<KeyNotion[]>;
+  // Key notions and their reading-notion sources, in one write.
+  saveKeyNotions(userId: string, keyNotions: KeyNotion[]): Promise<void>;
+  // Every card of the course, whichever flow created it.
+  countCardsForDocument(userId: string, documentId: string): Promise<number>;
+  // Cards and their key-notion links, in one write.
+  saveCourseCards(userId: string, cards: Card[], links: KeyNotionCardLink[]): Promise<void>;
 }

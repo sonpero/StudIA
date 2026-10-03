@@ -92,6 +92,13 @@
       "when": 1789310704252,
       "tag": "0012_wise_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791031910053,
+      "tag": "0013_even_chronomancer",
+      "breakpoints": true
     }
   ]
 }

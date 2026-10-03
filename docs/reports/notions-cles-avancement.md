@@ -6,16 +6,18 @@ compaction du contexte.
 ## Fait
 
 - Étape 0 : branche créée.
-- Étape 1 : correctif diffCards (D1 du journal).
+- Étape 1 : correctif diffCards (D1 du journal), `6b5d847`.
+- Étape 2 : milestone M11 et conception, `0bc504a`.
+- Étape 3 : tables `key_notions`, `key_notion_sources`, `key_notion_cards`
+  (migration 0013, additive), `SqliteKeyNotionRepository`. Test de rejeu
+  depuis 0012, vérifié par mutation (`DELETE FROM reviews` injecté → rouge).
 
 ## En cours
 
-- Étape 2 : milestone et plan de conception.
+- Étape 4 : fonction de budget.
 
 ## Ensuite
 
-3. Schéma et migration additifs.
-4. Fonction de budget (pure, TDD).
 5. Extraction des notions clés, génération par lots.
 6. Interface et retrait de l'ancien déclenchement, Playwright.
 7. Evals (5, 25, 60 pages), garde-fou 10 $.

@@ -1,5 +1,5 @@
-export type { Card, CardType, CardState, GeneratedCard } from "./domain/types.js";
-export type { CardGenerator, CardRepository, GenerationError } from "./domain/ports.js";
+export type { Card, CardType, CardState, GeneratedCard, KeyNotion, KeyNotionCardLink, KeyNotionImportance } from "./domain/types.js";
+export type { CardGenerator, CardRepository, GenerationError, KeyNotionRepository } from "./domain/ports.js";
 // For the eval script's distractor-quality measurement (docs/MILESTONES.md M4).
 export { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible } from "./domain/mcq-invariants.js";
 
@@ -11,6 +11,7 @@ export { deleteCard, type DeleteCardDeps } from "./application/delete-card.js";
 export { getGenerationStatus, type GetGenerationStatusDeps } from "./application/get-generation-status.js";
 
 export { SqliteCardRepository, type GenerationDb } from "./infra/sqlite-card-repository.js";
+export { SqliteKeyNotionRepository } from "./infra/sqlite-key-notion-repository.js";
 export { FixtureCardGenerator, type FixtureCase as CardGeneratorFixtureCase } from "./infra/fixture-card-generator.js";
 export { ClaudeCardGenerator } from "./infra/claude-card-generator.js";
 // For apps/api/drizzle.config.ts's glob (same reason as content/ingestion/identity/jobs).
