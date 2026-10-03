@@ -11,3 +11,9 @@
   fichier appartient à l'utilisateur et n'est pas versionné : son texte
   n'est donc pas copié ici. Chemin par défaut : la racine du dépôt, ou la
   variable `A2A_PDF`.
+
+Pour récupérer à nouveau l'article : l'API de Wikipédia demande un
+User-Agent identifiable. Utilise un identifiant générique (par exemple
+`StudIA-eval/1.0`), ou une adresse de contact lue dans une variable
+d'environnement non versionnée (`WIKIPEDIA_CONTACT`). N'écris jamais une
+adresse personnelle dans le dépôt, qui est public.

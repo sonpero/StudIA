@@ -277,3 +277,36 @@ d'intégration, 58/58 e2e.
 L'étape « session de tout le cours » de `generate-and-review` suppose que
 la première carte est une flashcard. C'est vrai aujourd'hui parce que les
 flashcards sont écrites en premier.
+
+## D16. Données personnelles : vérification et réécriture de la branche
+
+- **Adresse gmail** : absente partout.
+  - Fichiers suivis et non suivis.
+  - Contenu des 8 commits de la branche et de tout l'historique du dépôt.
+  - Métadonnées des commits.
+  - Elle n'avait été envoyée qu'une fois, dans l'en-tête User-Agent d'une
+    requête `curl` lancée à la main vers l'API de Wikipédia, qui n'a jamais
+    été versionnée.
+- **Autre adresse trouvée** : ton adresse professionnelle, en auteur
+  et en committer de tous les commits :
+  - les 196 commits de `main`, déjà publics ;
+  - les 8 commits de la branche.
+- **Choix** :
+  - Les 8 commits de la branche, jamais poussés, ont été réécrits avec
+    `git filter-branch --env-filter` : auteur et committer passent à
+    l'adresse noreply GitHub du compte
+    (`44258422+sonpero@users.noreply.github.com`), déjà présente sur deux
+    commits de `main`. Le contenu est identique : le diff avec la
+    sauvegarde locale est vide. Dates et messages sont inchangés.
+  - Les commits suivants de la mission utilisent la même adresse, par
+    variables d'environnement (`GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL`),
+    sans modifier ta configuration git.
+- **Non fait, à décider par toi** : réécrire l'historique de `main`. Il
+  faudrait forcer le push de `main`, ce qui sort du cadre (« ne fusionne
+  pas dans main »), et casserait tout clone existant. Pour la suite :
+  - définir `git config user.email` sur l'adresse noreply dans ce dépôt ;
+  - cocher « Keep my email addresses private » sur GitHub.
+- **Wikipédia** : `SOURCES.md` indique comment refaire la requête sans
+  donnée personnelle (identifiant générique, ou variable d'environnement
+  non versionnée). L'eval ne fait elle-même aucune requête à Wikipédia :
+  elle lit le fichier versionné.
