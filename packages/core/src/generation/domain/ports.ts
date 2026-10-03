@@ -1,5 +1,7 @@
 import type { Difficulty } from "../../content/index.js";
 import type { Result } from "../../shared/index.js";
+import type { CardBudget } from "./card-budget.js";
+import type { KeyNotionCandidate, PlannedCard } from "./key-notion-plan.js";
 import type { Card, CardType, GeneratedCard, KeyNotion, KeyNotionCardLink } from "./types.js";
 
 export type GenerationError = { kind: "model-error"; message: string };
@@ -39,4 +41,36 @@ export interface KeyNotionRepository {
   countCardsForDocument(userId: string, documentId: string): Promise<number>;
   // Cards and their key-notion links, in one write.
   saveCourseCards(userId: string, cards: Card[], links: KeyNotionCardLink[]): Promise<void>;
+}
+
+// M11: one call over the whole course (docs/reports/notions-cles-conception.md).
+// The adapter resolves its own short references back to readingNotions ids,
+// validates (every section covered, every key notion tied to at least one
+// reading notion) and retries once with the error fed back (CLAUDE.md rule 4).
+export type KeyNotionExtractionInput = {
+  markdown: string;
+  readingNotions: { id: string; title: string }[];
+  budget: CardBudget;
+};
+export type KeyNotionExtraction = { sections: string[]; keyNotions: KeyNotionCandidate[] };
+// "truncated": the output hit the call's token limit; the same input would
+// truncate again, so the job fails for good instead of paying again.
+export type KeyNotionExtractionError = { kind: "model-error" | "truncated"; message: string };
+
+export interface KeyNotionExtractor {
+  extract(input: KeyNotionExtractionInput): Promise<Result<KeyNotionExtraction, KeyNotionExtractionError>>;
+}
+
+// M11: one call per card type and batch of key notions. `index` is the key
+// notion's position in the course's list and comes back on each card. Every
+// returned card has passed its type's invariants; a key notion left without
+// a valid card is asked for again once, then the call fails.
+export type CardBatchInput = {
+  type: CardType;
+  keyNotions: { index: number; title: string; summary: string; readingNotionIds: string[] }[];
+  readingNotions: { id: string; title: string; body: string }[];
+};
+
+export interface KeyNotionCardGenerator {
+  generate(input: CardBatchInput): Promise<Result<PlannedCard[], GenerationError>>;
 }

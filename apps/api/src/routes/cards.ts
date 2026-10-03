@@ -1,11 +1,12 @@
-import { deleteCard, generateForNotion, getGenerationStatus, listCards, type CardRepository, type CardType } from "@studia/core";
-import type { JobQueue, NotionRepository } from "@studia/core";
+import { deleteCard, generateForNotion, getGenerationStatus, listCards, requestCourseCards, type CardRepository, type CardType } from "@studia/core";
+import type { JobQueue, KeyNotionRepository, NotionRepository } from "@studia/core";
 import type { FastifyPluginCallback } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 
 export interface CardsRoutesOptions {
   cardRepo: CardRepository;
+  keyNotionRepo: KeyNotionRepository;
   notionRepo: NotionRepository;
   jobQueue: JobQueue;
   clock: { now: () => Date };
@@ -56,6 +57,22 @@ export const cardsRoutes: FastifyPluginCallback<CardsRoutesOptions> = (app, opts
       notions.map((notion) => generateForNotion({ jobQueue: opts.jobQueue }, request.user!.id, notion.id, requestedTypes, now, id)),
     );
     return reply.code(202).send({ jobIds: jobIds.map((j) => j.jobId) });
+  });
+
+  // M11's single trigger (docs/reports/notions-cles-conception.md): one job
+  // for the whole course, every card type. The two generate routes above
+  // are no longer called by the front end (decision D7).
+  app.post("/api/documents/:id/cards/generate", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await requestCourseCards(
+      { jobQueue: opts.jobQueue, keyNotionRepo: opts.keyNotionRepo, notionRepo: opts.notionRepo },
+      request.user!.id,
+      id,
+      opts.clock.now(),
+    );
+    if (result.ok) return reply.code(202).send(result.value);
+    if (result.error === "not-found") return reply.code(403).send({ error: "not-found" });
+    return reply.code(409).send({ error: result.error });
   });
 
   app.get("/api/documents/:id/generation-status", async (request) => {

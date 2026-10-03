@@ -2,9 +2,13 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import {
   ClaudeCardGenerator,
+  ClaudeKeyNotionCardGenerator,
+  ClaudeKeyNotionExtractor,
   ClaudeNotionSplitter,
   ClaudeTodoExtractor,
   FixtureCardGenerator,
+  FixtureKeyNotionCardGenerator,
+  FixtureKeyNotionExtractor,
   FixtureDocumentExtractor,
   FixtureNotionSplitter,
   FixtureTodoExtractor,
@@ -13,11 +17,14 @@ import {
   SqliteCardRepository,
   SqliteDocumentRepository,
   SqliteJobQueue,
+  SqliteKeyNotionRepository,
   SqliteNotionRepository,
   SqliteTodoRepository,
   VisionExtractor,
   cleanupAbandonedDocuments,
   createLanguageModel,
+  COURSE_GENERATION_JOB_TYPE,
+  handleCourseGenerationJob,
   handleExtractionJob,
   handleGenerationJob,
   handleSplitJob,
@@ -32,6 +39,9 @@ import {
   type ExtractDocumentPayload,
   type ExtractTodoPhotoPayload,
   type GenerateCardsPayload,
+  type GenerateCourseCardsPayload,
+  type KeyNotionCardGenerator,
+  type KeyNotionExtractor,
   type JobHandler,
   type NotionSplitter,
   type SplitDocumentPayload,
@@ -58,6 +68,7 @@ const repo = new SqliteDocumentRepository(db);
 const fileStore = new LocalFileStore(dataDir);
 const notionRepo = new SqliteNotionRepository(db);
 const cardRepo = new SqliteCardRepository(db);
+const keyNotionRepo = new SqliteKeyNotionRepository(db);
 const todoRepo = new SqliteTodoRepository(db);
 
 const llmAdapter = process.env.LLM_ADAPTER === "fixture" ? "fixture" : "real";
@@ -76,6 +87,12 @@ const cardGenerator: CardGenerator =
   llmAdapter === "fixture"
     ? new FixtureCardGenerator("valid")
     : new ClaudeCardGenerator(createLanguageModel(modelConfig));
+
+const keyNotionExtractor: KeyNotionExtractor =
+  llmAdapter === "fixture" ? new FixtureKeyNotionExtractor("valid") : new ClaudeKeyNotionExtractor(createLanguageModel(modelConfig));
+
+const keyNotionCardGenerator: KeyNotionCardGenerator =
+  llmAdapter === "fixture" ? new FixtureKeyNotionCardGenerator("valid") : new ClaudeKeyNotionCardGenerator(createLanguageModel(modelConfig));
 
 const todoExtractor: TodoExtractor =
   llmAdapter === "fixture" ? new FixtureTodoExtractor("valid") : new ClaudeTodoExtractor(createLanguageModel(modelConfig));
@@ -100,6 +117,28 @@ const generateCardsHandler: JobHandler<GenerateCardsPayload> = {
   handle: (payload, ctx) => handleGenerationJob({ cardRepo, notionRepo, generator: cardGenerator, idGenerator: uuidV7Generator }, payload, ctx),
 };
 
+// M11 (docs/reports/notions-cles-conception.md). Terminal failures (an
+// existing course with cards, a course too long for one call, a truncated
+// extraction) go through the same registry as the split job's.
+const generateCourseCardsHandler: JobHandler<GenerateCourseCardsPayload> = {
+  type: COURSE_GENERATION_JOB_TYPE,
+  payloadSchema: z.object({ documentId: z.string() }),
+  handle: recordTerminalFailures(terminalFailures, (payload: GenerateCourseCardsPayload, ctx) =>
+    handleCourseGenerationJob(
+      {
+        keyNotionRepo,
+        notionRepo,
+        documentRepo: repo,
+        extractor: keyNotionExtractor,
+        generator: keyNotionCardGenerator,
+        idGenerator: uuidV7Generator,
+      },
+      payload,
+      ctx,
+    ),
+  ),
+};
+
 const cleanupAbandonedDocumentsHandler: JobHandler<CleanupAbandonedDocumentsPayload> = {
   type: "cleanup-abandoned-documents",
   payloadSchema: z.object({}),
@@ -116,6 +155,7 @@ const handlers = new Map<string, JobHandler>([
   [extractDocumentHandler.type, extractDocumentHandler],
   [splitNotionsHandler.type, splitNotionsHandler],
   [generateCardsHandler.type, generateCardsHandler],
+  [generateCourseCardsHandler.type, generateCourseCardsHandler],
   [cleanupAbandonedDocumentsHandler.type, cleanupAbandonedDocumentsHandler],
   [extractTodosHandler.type, extractTodosHandler],
 ]);

@@ -120,3 +120,68 @@ Les entrées marquées **[à relire]** méritent une relecture prioritaire.
     bonne réponse ne soit pas toujours à la même place. Rien ne mélange
     les options aujourd'hui, ni à la génération ni à l'affichage.
 - L'ancien générateur n'est pas modifié (D7).
+
+## D9. Écart TDD sur le handler du job de cours [à relire]
+
+- **Constat** : j'ai écrit `handle-course-generation-job.unit.test.ts` puis
+  l'implémentation à la suite, sans lancer les tests entre les deux. Je n'ai
+  donc pas vu le rouge pour la bonne raison, seulement l'absence du module.
+- **Rattrapage** : cinq mutations ciblées sur les garanties du handler,
+  toutes tuées :
+  - garde « cours existant jamais touché » ;
+  - enregistrement des notions clés avant la génération ;
+  - ordre du cours des sources ;
+  - plafond ;
+  - limite de longueur.
+- **Même constat** pour les deux tests d'intégration du job avec une vraie
+  base : ils sont écrits après le code. Ce sont des tests de câblage et de
+  la règle 2 (aucun appel au modèle dans une transaction), pas des tests
+  qui pilotent la conception.
+- Tous les autres tests de la mission ont été observés rouges avant le
+  code.
+
+## D10. Relance des lots : seulement les notions clés sans carte valide
+
+- **Choix** : dans un lot, chaque carte est validée une à une (invariants
+  QCM, fuite de la réponse, référence connue). La relance unique ne
+  redemande que les notions clés restées sans carte valide, avec la raison
+  pour chacune. Si une notion clé reste sans carte après la relance, l'appel
+  échoue, et le job aussi (CLAUDE.md règle 4).
+- **Écarté** : les `.refine()` dans le schéma, comme l'ancien générateur.
+  Une seule carte invalide ferait alors échouer le lot entier et
+  relancerait les 15 cartes.
+- **Écarté** : accepter une notion clé sans carte après la relance. La
+  règle 4 dit d'échouer, et « une flashcard par notion clé » ne serait plus
+  garanti.
+- **Coût d'un échec** : les notions clés sont déjà enregistrées. La reprise
+  du job ne refait que les lots, pas l'extraction.
+
+## D11. Une carte est rattachée à la première notion de lecture couverte
+
+- `cards.notion_id` reçoit la première notion de lecture de la notion clé,
+  dans l'ordre du cours. La révision « par notion » et la progression par
+  notion voient donc ces cartes sous cette notion de lecture.
+- Les autres notions de lecture couvertes ne se lisent que via
+  `key_notion_sources`. Rien dans l'interface ne les affiche encore :
+  la citation multi-sources dans le Lecteur reste à faire.
+
+## D12. Statut de génération : `total = 1` pour un job de cours
+
+- `GET /api/documents/:id/generation-status` garde sa forme
+  `{ done, total, failed }`. Quand un job de cours existe, il le rapporte
+  seul. Sinon, la route garde son ancien comportement (jobs par notion).
+- **Écarté** : une nouvelle forme `{ status }`. Elle aurait cassé le
+  contrat et ses tests sans rien apporter de plus.
+
+## D13. Les notions clés sont dédoublonnées par titre normalisé
+
+- **Choix** : deux titres sont identiques s'ils le sont sans casse, sans
+  accents, sans ponctuation et sans article initial. La seconde notion est
+  fusionnée dans la première, qui garde sa partie.
+- **Limite connue** : deux formulations différentes de la même idée
+  (« Rôle de l'Agent Card » et « À quoi sert l'Agent Card ») ne sont pas
+  détectées en code. Le prompt demande au modèle de les éviter, et l'eval
+  mesure en plus une similarité lexicale entre titres.
+- **Limite connue** : si une fusion retire la seule notion clé d'une
+  partie, cette partie devient non couverte. Le code ne le rattrape pas,
+  et l'eval le mesurerait.

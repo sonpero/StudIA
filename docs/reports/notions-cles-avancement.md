@@ -17,14 +17,18 @@ compaction du contexte.
   règles QCM `optionsArePositionIndependent` et `shuffleOptions`. Mutations :
   9 mutations ciblées, toutes tuées (une ne l'était pas, cas de test ajouté).
 
+- Étape 5 : ports `KeyNotionExtractor` et `KeyNotionCardGenerator`,
+  adaptateurs fixture et Claude (tests de contrat MSW), job
+  `generate-course-cards`, `requestCourseCards`, route
+  `POST /api/documents/:id/cards/generate`, statut, worker.
+
 ## En cours
 
-- Étape 5 : extraction des notions clés, génération par lots.
+- Étape 6 (sous-agent) : interface Notions et e2e.
+- Étape 7 : evals.
 
 ## Ensuite
 
-6. Interface et retrait de l'ancien déclenchement, Playwright.
-7. Evals (5, 25, 60 pages), garde-fou 10 $.
 8. Rapport final.
 
 ## Dépense

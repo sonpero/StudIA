@@ -112,6 +112,51 @@ and only insert or delete where it actually differs. Diff before writing.
 | `GET /api/documents/:id/generation-status` | `{ done, total, failed }`, derived from `jobs.listJobs('generate-cards')` filtered by `payload.documentId` |
 | `DELETE /api/cards/:id` | Delete |
 
+## Key notions and card budget (M11)
+
+Since M11 (`docs/reports/notions-cles-conception.md`, decisions in
+`docs/reports/notions-cles-decisions.md`), the front end creates a course's
+cards with one course-level job instead of one job per notion. The per-notion
+flow above and its routes still exist, but nothing in the front end calls
+them anymore.
+
+- **Key notions** (`key_notions`, `key_notion_sources`, `key_notion_cards`,
+  migration 0013, additive) sit above the reading notions. A key notion has a
+  title, a summary, an importance (`essential` | `important`), a synthesis
+  flag, a section, and the reading notions it covers. A card links to its key
+  notion through `key_notion_cards`, and its `notion_id` is the first reading
+  notion it covers, so review, progress and stale-marking work unchanged.
+- **Ports**:
+  - `KeyNotionExtractor`: one call over the whole course and its reading
+    notions. It returns the sections and the key notions. Every section must
+    be covered and every key notion tied to a reading notion, with one retry
+    otherwise.
+  - `KeyNotionCardGenerator`: one call per card type and per batch of key
+    notions. Cards are validated one by one, and only the missing ones are
+    asked for again.
+- **Budget** (`domain/card-budget.ts`, `CARD_BUDGET`): the key-notion count
+  is the only setting. It is derived from the course's character count:
+  1/5/25/60-page reference points at 1 500 characters a page, linear in
+  between, flat beyond 60 pages, 150 cards at most. One flashcard per key
+  notion, one MCQ per essential, one open question per synthesis key notion.
+  Hard per-type caps and one card per key notion and type are applied in
+  code after generation (`domain/key-notion-plan.ts`).
+- **MCQ**: every invariant above still applies. Two rules are added in M11:
+  - no option that depends on its position (`optionsArePositionIndependent`);
+  - a seeded shuffle of the options before storage (`shuffleOptions`).
+- **Job** `generate-course-cards` `{ documentId }`
+  (`handleCourseGenerationJob`):
+  - It never touches a course that already has cards.
+  - Key notions are stored before the cards are generated, so a retry
+    reuses them.
+  - Terminal failures: the course has cards from the old flow, the course
+    is over 400 000 characters, or the extraction was truncated.
+- **API**:
+  - `POST /api/documents/:id/cards/generate` answers 202, 403, 409
+    `has-cards` or 409 `in-progress`.
+  - `GET /api/documents/:id/generation-status` reports the course job as
+    `total: 1`.
+
 ## Out of scope
 
 Scheduling and FSRS. Grading a user's answer, which belongs to `review`. Anything

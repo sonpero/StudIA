@@ -105,6 +105,7 @@ export function buildApp(opts: BuildAppOptions) {
   });
   void app.register(cardsRoutes, {
     cardRepo: generationDeps.repo,
+    keyNotionRepo: generationDeps.keyNotionRepo,
     notionRepo: contentDeps.repo,
     jobQueue,
     clock: systemClock,
