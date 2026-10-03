@@ -64,68 +64,6 @@ describe("cards routes", () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it("enqueues a generate-cards job for one notion", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/notions/n1/generate",
-      headers: { cookie: aliceCookie },
-      payload: { types: ["flashcard"] },
-    });
-    expect(res.statusCode).toBe(202);
-    expect(res.json<{ jobId: string }>().jobId).toBeTruthy();
-  });
-
-  it("generate rejects an invalid body (400)", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/notions/n1/generate",
-      headers: { cookie: aliceCookie },
-      payload: { types: ["not-a-type"] },
-    });
-    expect(res.statusCode).toBe(400);
-  });
-
-  it("another user gets 403 requesting generation for someone else's notion", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/notions/n1/generate",
-      headers: { cookie: bobCookie },
-      payload: { types: ["flashcard"] },
-    });
-    expect(res.statusCode).toBe(403);
-  });
-
-  it("enqueues one generate-cards job per notion for the whole document, and generation-status reflects it", async () => {
-    const res = await app.inject({ method: "POST", url: "/api/documents/doc-1/generate", headers: { cookie: aliceCookie } });
-    expect(res.statusCode).toBe(202);
-    expect(res.json<{ jobIds: string[] }>().jobIds).toHaveLength(1);
-
-    const status = await app.inject({ method: "GET", url: "/api/documents/doc-1/generation-status", headers: { cookie: aliceCookie } });
-    expect(status.json()).toEqual({ done: 0, total: 1, failed: 0 });
-  });
-
-  it("an empty or missing body defaults to flashcard-only (M3's original behaviour)", async () => {
-    await app.inject({ method: "POST", url: "/api/documents/doc-1/generate", headers: { cookie: aliceCookie } });
-
-    const seedDb = openDatabase(dbPath);
-    const [job] = seedDb.all<{ payload: string }>(sql`SELECT payload_json AS payload FROM jobs WHERE type = 'generate-cards'`);
-    expect(JSON.parse(job!.payload)).toMatchObject({ types: ["flashcard"] });
-  });
-
-  it("accepts an explicit types selection, letting the user choose which activities to create (docs/modules/generation.md: 'user choice in M4')", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/documents/doc-1/generate",
-      headers: { cookie: aliceCookie },
-      payload: { types: ["flashcard", "mcq", "open"] },
-    });
-    expect(res.statusCode).toBe(202);
-
-    const seedDb = openDatabase(dbPath);
-    const [job] = seedDb.all<{ payload: string }>(sql`SELECT payload_json AS payload FROM jobs WHERE type = 'generate-cards'`);
-    expect(JSON.parse(job!.payload)).toMatchObject({ types: ["flashcard", "mcq", "open"] });
-  });
-
   it("deletes a card", async () => {
     const res = await app.inject({ method: "DELETE", url: "/api/cards/c1", headers: { cookie: aliceCookie } });
     expect(res.statusCode).toBe(204);

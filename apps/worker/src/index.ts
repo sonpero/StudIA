@@ -1,12 +1,10 @@
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import {
-  ClaudeCardGenerator,
   ClaudeKeyNotionCardGenerator,
   ClaudeKeyNotionExtractor,
   ClaudeNotionSplitter,
   ClaudeTodoExtractor,
-  FixtureCardGenerator,
   FixtureKeyNotionCardGenerator,
   FixtureKeyNotionExtractor,
   FixtureDocumentExtractor,
@@ -14,7 +12,6 @@ import {
   FixtureTodoExtractor,
   LocalFileStore,
   OfficeParserExtractor,
-  SqliteCardRepository,
   SqliteDocumentRepository,
   SqliteJobQueue,
   SqliteKeyNotionRepository,
@@ -26,19 +23,16 @@ import {
   COURSE_GENERATION_JOB_TYPE,
   handleCourseGenerationJob,
   handleExtractionJob,
-  handleGenerationJob,
   handleSplitJob,
   handleTodoPhotoJob,
   runWorkerLoop,
   scheduleAbandonedDocumentCleanup,
   systemClock,
   uuidV7Generator,
-  type CardGenerator,
   type CleanupAbandonedDocumentsPayload,
   type DocumentExtractor,
   type ExtractDocumentPayload,
   type ExtractTodoPhotoPayload,
-  type GenerateCardsPayload,
   type GenerateCourseCardsPayload,
   type KeyNotionCardGenerator,
   type KeyNotionExtractor,
@@ -67,7 +61,6 @@ const workerJobQueue = new TerminalAwareJobQueue(jobQueue, terminalFailures);
 const repo = new SqliteDocumentRepository(db);
 const fileStore = new LocalFileStore(dataDir);
 const notionRepo = new SqliteNotionRepository(db);
-const cardRepo = new SqliteCardRepository(db);
 const keyNotionRepo = new SqliteKeyNotionRepository(db);
 const todoRepo = new SqliteTodoRepository(db);
 
@@ -82,11 +75,6 @@ const splitter: NotionSplitter =
   llmAdapter === "fixture"
     ? new FixtureNotionSplitter("valid")
     : new ClaudeNotionSplitter(createLanguageModel(modelConfig));
-
-const cardGenerator: CardGenerator =
-  llmAdapter === "fixture"
-    ? new FixtureCardGenerator("valid")
-    : new ClaudeCardGenerator(createLanguageModel(modelConfig));
 
 const keyNotionExtractor: KeyNotionExtractor =
   llmAdapter === "fixture" ? new FixtureKeyNotionExtractor("valid") : new ClaudeKeyNotionExtractor(createLanguageModel(modelConfig));
@@ -109,12 +97,6 @@ const splitNotionsHandler: JobHandler<SplitDocumentPayload> = {
   handle: recordTerminalFailures(terminalFailures, (payload: SplitDocumentPayload, ctx) =>
     handleSplitJob({ notionRepo, documentRepo: repo, splitter, idGenerator: uuidV7Generator }, payload, ctx),
   ),
-};
-
-const generateCardsHandler: JobHandler<GenerateCardsPayload> = {
-  type: "generate-cards",
-  payloadSchema: z.object({ notionId: z.string(), types: z.array(z.enum(["flashcard", "mcq", "open"])) }),
-  handle: (payload, ctx) => handleGenerationJob({ cardRepo, notionRepo, generator: cardGenerator, idGenerator: uuidV7Generator }, payload, ctx),
 };
 
 // M11 (docs/reports/notions-cles-conception.md). Terminal failures (an
@@ -154,7 +136,6 @@ const extractTodosHandler: JobHandler<ExtractTodoPhotoPayload> = {
 const handlers = new Map<string, JobHandler>([
   [extractDocumentHandler.type, extractDocumentHandler],
   [splitNotionsHandler.type, splitNotionsHandler],
-  [generateCardsHandler.type, generateCardsHandler],
   [generateCourseCardsHandler.type, generateCourseCardsHandler],
   [cleanupAbandonedDocumentsHandler.type, cleanupAbandonedDocumentsHandler],
   [extractTodosHandler.type, extractTodosHandler],

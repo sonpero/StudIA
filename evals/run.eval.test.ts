@@ -3,7 +3,7 @@
 // `pnpm eval` and ANTHROPIC_API_KEY set.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { answerAmongOptions, areOptionsDistinct, ClaudeCardGenerator, ClaudeNotionSplitter, createLanguageModel, optionLengthsArePlausible } from "@studia/core";
+import { answerAmongOptions, areOptionsDistinct, ClaudeKeyNotionCardGenerator, ClaudeNotionSplitter, createLanguageModel, optionLengthsArePlausible } from "@studia/core";
 import { describe, expect, it } from "vitest";
 import { usageLine, withUsageTally } from "./usage.js";
 
@@ -29,7 +29,8 @@ interface CaseResult {
   // M4 (docs/MILESTONES.md: "Eval measures distractor quality on the
   // golden set"): mcqCardSchemaValid reflects .refine() enforcement
   // (answer-among-options, distinct options, plausible lengths — all
-  // already blocking at generation time, see claude-card-generator.ts).
+  // already blocking at generation time, see
+  // claude-key-notion-card-generator.ts since M11).
   // distractorLengthRatio is the extra, non-blocking signal this eval adds:
   // the worst (option length / correct-answer length) ratio per card,
   // averaged — how close a "plausible" pass runs to the 2x/0.5x cutoff.
@@ -68,7 +69,7 @@ describe("M3 golden-set eval", () => {
 
       const { model, tally } = withUsageTally(createLanguageModel({ apiKey, model: process.env.LLM_MODEL }));
       const splitter = new ClaudeNotionSplitter(model);
-      const generator = new ClaudeCardGenerator(model);
+      const generator = new ClaudeKeyNotionCardGenerator(model);
 
       const cases = readdirSync(GOLDEN_DIR, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
@@ -97,13 +98,19 @@ describe("M3 golden-set eval", () => {
         let distractorLengthRatio: number | null = null;
         if (splitResult.ok && splitResult.value[0]) {
           const [firstNotion] = splitResult.value;
-          const notionInput = { title: firstNotion.title, body: firstNotion.body, difficulty: firstNotion.difficulty };
+          // Since M11 cards come from key notions, in batches: the first
+          // notion stands in as a one-key-notion batch over itself.
+          const batch = (type: "flashcard" | "mcq") => ({
+            type,
+            keyNotions: [{ index: 0, title: firstNotion.title, summary: firstNotion.body.slice(0, 120), readingNotionIds: ["n0"] }],
+            readingNotions: [{ id: "n0", title: firstNotion.title, body: firstNotion.body }],
+          });
 
-          const genResult = await generator.generate({ notion: notionInput, types: ["flashcard"] });
+          const genResult = await generator.generate(batch("flashcard"));
           cardSchemaValid = genResult.ok;
           cardCount = genResult.ok ? genResult.value.length : 0;
 
-          const mcqResult = await generator.generate({ notion: notionInput, types: ["mcq"] });
+          const mcqResult = await generator.generate(batch("mcq"));
           mcqCardSchemaValid = mcqResult.ok;
           if (mcqResult.ok) {
             mcqCardCount = mcqResult.value.length;

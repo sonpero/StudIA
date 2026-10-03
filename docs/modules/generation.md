@@ -35,48 +35,37 @@ type Card = {
 - `flashcard` and `open` have `options === null`
 - Questions do not leak the answer: reject a question containing the answer
   string verbatim
-- 1 to 5 cards per notion. `easy` notions get fewer, `hard` more.
+- Since M11: one card per key notion and type, within `CARD_BUDGET`'s
+  per-type caps (the former "1 to 5 cards per notion and type" is gone with
+  the per-notion flow)
 
 The "answer is among the options" check is the single most valuable `.refine()`
 in the project. Models get it wrong often enough to matter, and it is free.
 
 ## Ports
 
-```ts
-interface CardGenerator {
-  generate(input: {
-    notion: { title: string; body: string; difficulty: Difficulty };
-    types: CardType[];
-  }): Promise<Result<GeneratedCard[], GenerationError>>;
-}
-```
+`KeyNotionExtractor`, `KeyNotionCardGenerator` and `KeyNotionRepository`
+(M11, section below), plus `CardRepository` for listing, deleting and
+stale-marking cards.
 
 Zod, per `CLAUDE.md`:
 
-- **One schema per card type, one call per type.** A discriminated union across
-  three shapes degrades reliability badly. Three flat calls beat one clever one.
+- **One schema per card type.** A discriminated union across three shapes
+  degrades reliability badly.
 - Constraints go in `.describe()`, not in `.min()`: a question is one sentence,
   distractors are wrong but believable, the answer is short.
-- `.refine()` carries every invariant above. On failure, retry once with the
-  validation error fed back, then fail the job.
+- Invariants are checked per card in code, and an invalid card is asked for
+  again once, with the reason fed back.
 
 ## Use cases
 
-- `handleGenerationJob(payload, ctx)` — one job per notion, enqueued when the
-  user requests generation via the routes below. Generation is NEVER triggered
-  automatically after splitting: it costs tokens and the user may want to review
-  the notions first.
-  Generates the configured types per notion. **Idempotent**: replaces existing
-  cards for that notion.
-- `generateForNotion(userId, notionId, types, now)` — manual regeneration
-- `markStale(userId, notionId)` — called when a notion's body changes
+- `requestCourseCards(userId, documentId, now)` and
+  `handleCourseGenerationJob(payload, ctx)`: see the M11 section below.
+  Generation is NEVER triggered automatically after splitting: it costs
+  tokens and the user may want to review the notions first.
+- `markStale(userId, notionId)`: called when a notion's body changes
 - `listCards(userId, notionId)`
 - `deleteCard(userId, cardId)`
-
-**Generation is per notion, one job per notion, not one job per document.** A
-30-notion course is 30 jobs. Failure is then isolated to one notion instead of
-losing the whole course, progress is reportable as `18 / 30`, and each job stays
-short. This is the single most consequential design choice in the module.
 
 **No LLM call inside a transaction.**
 
@@ -99,26 +88,27 @@ CREATE INDEX idx_cards_user_active ON cards(user_id, state);
 ```
 
 **Deleting a card cascades to its reviews, which destroys scheduling history.**
-Regeneration must therefore replace cards by id where the question is unchanged,
-and only insert or delete where it actually differs. Diff before writing.
+A course with cards is therefore never regenerated (M11). A future
+"regenerate" would have to diff before writing (see
+`docs/reports/notions-cles-rapport.md`, the "Régénérer" section).
 
 ## API
 
 | Route | Purpose |
 |---|---|
 | `GET /api/notions/:id/cards` | List |
-| `POST /api/notions/:id/generate` | Enqueue generation, body `{ types }` |
-| `POST /api/documents/:id/generate` | Enqueue one job per notion |
-| `GET /api/documents/:id/generation-status` | `{ done, total, failed }`, derived from `jobs.listJobs('generate-cards')` filtered by `payload.documentId` |
+| `POST /api/documents/:id/cards/generate` | Enqueue the course's `generate-course-cards` job (M11) |
+| `GET /api/documents/:id/generation-status` | `{ done, total, failed }` of the course's latest course-level job |
 | `DELETE /api/cards/:id` | Delete |
 
 ## Key notions and card budget (M11)
 
 Since M11 (`docs/reports/notions-cles-conception.md`, decisions in
-`docs/reports/notions-cles-decisions.md`), the front end creates a course's
-cards with one course-level job instead of one job per notion. The per-notion
-flow above and its routes still exist, but nothing in the front end calls
-them anymore.
+`docs/reports/notions-cles-decisions.md`), a course's cards are created by
+one course-level job. The former per-notion, per-type flow
+(`generate-cards` jobs, `POST /api/notions/:id/generate`,
+`POST /api/documents/:id/generate`, `CardGenerator`) was removed (D7);
+cards it created stay readable and reviewable.
 
 - **Key notions** (`key_notions`, `key_notion_sources`, `key_notion_cards`,
   migration 0013, additive) sit above the reading notions. A key notion has a
@@ -164,21 +154,17 @@ about when a card is shown.
 
 ## Key tests
 
-- Unit: every invariant, each with a passing and a failing case
-- Unit: the answer-among-options check catches a generated card where it is absent
+- Unit: every MCQ invariant, each with a passing and a failing case
 - Unit: question-leaks-answer detection
-- Contract: fixtures per card type; a fixture whose answer is missing from the
-  options triggers exactly one retry then fails; a fixture with duplicate options
-  is rejected
-- Integration: regenerating a notion whose questions are unchanged preserves the
-  card ids, and therefore the review history. **This is the test that protects
-  user progress; write it early.**
-- Integration: one failed notion job leaves the other 29 successful
-- Eval: distractor quality and question clarity on the golden set
+- Unit: the card budget and the planning functions (mutation-tested)
+- Contract: per adapter, the five required cases (docs/TESTING.md), at the
+  transport level through MSW
+- Integration: the migration leaves existing cards, schedules and reviews
+  untouched; a course with cards is never regenerated
+- Eval: `evals/run-key-notions.eval.test.ts` (volume, coverage, duplicates,
+  MCQ answer position, cost)
 
 ## Open questions
 
-- Which types are generated by default? Currently flashcards only in M3, user
-  choice in M4. An automatic mix based on difficulty is tempting but unproven.
 - Should a stale card still be reviewable? Currently yes, with a visible marker;
   hiding it would silently shrink a user's due list.

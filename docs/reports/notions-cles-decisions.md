@@ -372,3 +372,37 @@ problème.
   - copie de toutes les cartes, hors dépôt, pour la relecture ;
   - copie des réponses brutes (`RAW_DIR`, hors dépôt), pour diagnostiquer
     un échec de schéma.
+
+## D20. Suppression de l'ancien flux (D7 validée)
+
+- **Supprimé** :
+  - les routes `POST /api/notions/:id/generate` et
+    `POST /api/documents/:id/generate` ;
+  - le handler et le type de job `generate-cards` du worker ;
+  - `handleGenerationJob` et `generateForNotion` ;
+  - le port `CardGenerator` et ses deux adaptateurs (Claude, fixture) ;
+  - `diffCards` et `isValidCardCount` ;
+  - la branche « jobs par notion » de `getGenerationStatus`.
+- **Tests supprimés avec eux** :
+  - les fichiers de test des modules ci-dessus, y compris les tests de
+    régression du correctif diffCards (D1), dont le flux disparaît ;
+  - dans `cards.int.test.ts`, les 6 tests des deux routes ;
+  - dans `get-generation-status.unit.test.ts`, le test des jobs par
+    notion.
+- **Gardé** : `CardRepository.applyCardChanges`, la méthode d'écriture
+  générique du dépôt. Ses tests d'intégration s'en servent pour préparer
+  les autres tests (`findCard`, `deleteCard`, `markStale`), qui gardent
+  tout leur sens.
+- **Vérifié** :
+  - plus aucun appel à l'ancien flux dans le code (`git grep`) ;
+  - les cours existants restent lisibles et révisables : la table `cards`,
+    le module `review`, `GET /api/notions/:id/cards` et
+    `DELETE /api/cards/:id` sont inchangés, et les tests e2e de révision
+    passent (§ clôture).
+- **Jobs `generate-cards` encore en file au déploiement** : le worker les
+  passe en échec définitif avec « No handler registered for job type ».
+  Aucune donnée n'est touchée, et ce comportement existe déjà, testé dans
+  le noyau `jobs`.
+- **Eval historique** `evals/run.eval.test.ts` : elle utilise désormais le
+  générateur par lots, avec un lot d'une notion clé sur la première notion
+  de lecture.

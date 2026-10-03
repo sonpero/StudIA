@@ -3,10 +3,9 @@ import { ok, type Result } from "../../shared/index.js";
 import type { Notion, NotionRepository } from "../../content/index.js";
 import type { DocumentRepository, Extraction } from "../../ingestion/index.js";
 import type { Job, JobQueue } from "../../jobs/index.js";
-import type { Card, CardType, GeneratedCard, KeyNotion, KeyNotionCardLink } from "../domain/types.js";
+import type { Card, KeyNotion, KeyNotionCardLink } from "../domain/types.js";
 import type {
   CardBatchInput,
-  CardGenerator,
   CardRepository,
   GenerationError,
   KeyNotionCardGenerator,
@@ -94,12 +93,6 @@ export function fakeCardRepository(seed: Card[] = []): CardRepository & { cards:
   };
 }
 
-export function fakeCardGenerator(
-  impl: (types: CardType[]) => Promise<Result<GeneratedCard[], GenerationError>> = (types) =>
-    Promise.resolve(ok(types.map((type) => ({ type, question: `Question sur ${type} ?`, answer: "Réponse", options: null })))),
-): CardGenerator {
-  return { generate: (input) => impl(input.types) };
-}
 
 // Minimal local stand-in for content's NotionRepository — not a deep import
 // of content's own internal fakes.ts, same reasoning as content's

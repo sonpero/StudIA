@@ -1,10 +1,8 @@
 export type { Card, CardType, CardState, GeneratedCard, KeyNotion, KeyNotionCardLink, KeyNotionImportance } from "./domain/types.js";
-export type { CardGenerator, CardRepository, GenerationError, KeyNotionRepository } from "./domain/ports.js";
+export type { CardRepository, GenerationError, KeyNotionRepository } from "./domain/ports.js";
 // For the eval script's distractor-quality measurement (docs/MILESTONES.md M4).
 export { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible } from "./domain/mcq-invariants.js";
 
-export { handleGenerationJob, type HandleGenerationJobDeps, type GenerateCardsPayload } from "./application/handle-generation-job.js";
-export { generateForNotion, type GenerateForNotionDeps } from "./application/generate-for-notion.js";
 export { markStale, type MarkStaleDeps } from "./application/mark-stale.js";
 export { listCards, type ListCardsDeps } from "./application/list-cards.js";
 export { deleteCard, type DeleteCardDeps } from "./application/delete-card.js";
@@ -28,8 +26,6 @@ export { normalizeKeyNotionTitle, type KeyNotionCandidate, type PlannedCard } fr
 
 export { SqliteCardRepository, type GenerationDb } from "./infra/sqlite-card-repository.js";
 export { SqliteKeyNotionRepository } from "./infra/sqlite-key-notion-repository.js";
-export { FixtureCardGenerator, type FixtureCase as CardGeneratorFixtureCase } from "./infra/fixture-card-generator.js";
-export { ClaudeCardGenerator } from "./infra/claude-card-generator.js";
 export { ClaudeKeyNotionExtractor, KEY_NOTION_EXTRACTOR_MAX_TOKENS } from "./infra/claude-key-notion-extractor.js";
 export { ClaudeKeyNotionCardGenerator, CARD_BATCH_MAX_TOKENS } from "./infra/claude-key-notion-card-generator.js";
 export { FixtureKeyNotionExtractor, type FixtureCase as KeyNotionExtractorFixtureCase } from "./infra/fixture-key-notion-extractor.js";

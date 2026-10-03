@@ -1,25 +1,16 @@
-import type { Difficulty } from "../../content/index.js";
 import type { Result } from "../../shared/index.js";
 import type { CardBudget } from "./card-budget.js";
 import type { KeyNotionCandidate, PlannedCard } from "./key-notion-plan.js";
-import type { Card, CardType, GeneratedCard, KeyNotion, KeyNotionCardLink } from "./types.js";
+import type { Card, CardType, KeyNotion, KeyNotionCardLink } from "./types.js";
 
 export type GenerationError = { kind: "model-error"; message: string };
 
-export interface CardGenerator {
-  generate(input: {
-    notion: { title: string; body: string; difficulty: Difficulty };
-    types: CardType[];
-  }): Promise<Result<GeneratedCard[], GenerationError>>;
-}
-
-// Not in docs/modules/generation.md's Ports section (only CardGenerator is
-// listed there), but required by its own Use cases list, same reasoning as
-// content's NotionRepository. Every method takes userId and filters on it.
+// Required by generation's use cases, same reasoning as content's
+// NotionRepository. Every method takes userId and filters on it.
 export interface CardRepository {
   listCards(userId: string, notionId: string): Promise<Card[]>;
   findCard(userId: string, cardId: string): Promise<Card | null>;
-  // Applies a diff-cards.ts plan in one write: `upsert` is written by id
+  // One write: `upsert` is written by id
   // (an unchanged id is an update in place, preserving its reviews; a new
   // id is an insert), then `deleteIds` are removed (cascading to their
   // reviews, docs/modules/generation.md).
