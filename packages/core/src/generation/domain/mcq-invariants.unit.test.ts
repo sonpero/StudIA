@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible, optionsArePositionIndependent, shuffleOptions, answerStandsOutByLength } from "./mcq-invariants.js";
+import { answerAmongOptions, areOptionsDistinct, optionLengthsArePlausible, optionsArePositionIndependent, answerStandsOutByLength } from "./mcq-invariants.js";
 
 describe("answerAmongOptions", () => {
   it("accepts an answer that matches an option exactly", () => {
@@ -62,20 +62,6 @@ describe("optionsArePositionIndependent", () => {
   });
 });
 
-describe("shuffleOptions", () => {
-  const options = ["Bonne", "Faux 1", "Faux 2", "Faux 3"];
-
-  it("returns the same four options, in the same order for the same seed", () => {
-    const shuffled = shuffleOptions(options, "question-1");
-    expect([...shuffled].sort()).toEqual([...options].sort());
-    expect(shuffleOptions(options, "question-1")).toEqual(shuffled);
-  });
-
-  it("does not leave the correct answer at a fixed position across questions", () => {
-    const positions = new Set(Array.from({ length: 40 }, (_, i) => shuffleOptions(options, `question-${String(i)}`).indexOf("Bonne")));
-    expect(positions).toEqual(new Set([0, 1, 2, 3]));
-  });
-});
 
 describe("answerStandsOutByLength", () => {
   it("accepts an answer up to 20 % longer than the longest distractor", () => {

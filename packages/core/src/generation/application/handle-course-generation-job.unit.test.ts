@@ -108,14 +108,13 @@ describe("handleCourseGenerationJob", () => {
     expect(keyNotionRepo.cards.filter((c) => essentialCardIds.includes(c.id)).map((c) => c.notionId)).toEqual(["n2", "n2"]);
   });
 
-  it("shuffles MCQ options deterministically, keeping the answer among them", async () => {
+  it("stores MCQ options in the order generated: ordering them is the review screen's job, at each presentation", async () => {
     const { deps, keyNotionRepo } = setup();
     await handleCourseGenerationJob(deps, { documentId: "doc-1" }, ctx);
 
     const mcq = keyNotionRepo.cards.find((c) => c.type === "mcq")!;
-    expect(mcq.options).toHaveLength(4);
-    expect(mcq.options).toContain(mcq.answer);
-    expect([...mcq.options!].sort()).toEqual(["Leurre deux", "Leurre trois", "Leurre un", "Réponse 0"].sort());
+    expect(mcq.options).toEqual(["Réponse 0", "Leurre un", "Leurre deux", "Leurre trois"]);
+    expect(mcq.answer).toBe("Réponse 0");
   });
 
   it("merges duplicate key notions before generating", async () => {

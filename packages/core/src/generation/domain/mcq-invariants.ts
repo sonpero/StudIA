@@ -53,38 +53,6 @@ export function optionsArePositionIndependent(options: string[]): boolean {
   return options.every((option) => !POSITION_DEPENDENT.some((pattern) => pattern.test(fold(option))));
 }
 
-// FNV-1a, then mulberry32: a few lines of deterministic randomness, so the
-// same question always gets the same order (a regenerated or re-read card
-// does not reshuffle) while the correct answer's position varies across
-// questions.
-function seededRandom(seed: string): () => number {
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  let state = hash >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Models tend to put the correct answer first; nothing reorders the options
-// later (neither the review route nor ReviewScreen).
-export function shuffleOptions(options: string[], seed: string): string[] {
-  const random = seededRandom(seed);
-  const shuffled = [...options];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
-  }
-  return shuffled;
-}
-
 // The first real eval (2026-10-03, decisions D17) found the correct answer
 // was the longest option in 7 MCQs out of 9: longer and more precise than
 // distractors written to be wrong, so a learner could pick it by length

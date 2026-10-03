@@ -4,7 +4,6 @@ import type { JobContext, JobError } from "../../jobs/index.js";
 import { ok, type IdGenerator } from "../../shared/index.js";
 import { CARD_BUDGET, cardBudget } from "../domain/card-budget.js";
 import { capGeneratedCards, capKeyNotions, cardTargets, dedupeKeyNotions, type PlannedCard } from "../domain/key-notion-plan.js";
-import { shuffleOptions } from "../domain/mcq-invariants.js";
 import type { KeyNotionCardGenerator, KeyNotionExtractor, KeyNotionRepository } from "../domain/ports.js";
 import type { Card, CardType, KeyNotionCardLink } from "../domain/types.js";
 
@@ -140,7 +139,9 @@ export async function handleCourseGenerationJob(
       state: "active",
       question: planned.question,
       answer: planned.answer,
-      options: planned.options ? shuffleOptions(planned.options, planned.question) : null,
+      // Stored in the order generated: the review screen shuffles them at
+      // each presentation, the one place options are ordered.
+      options: planned.options,
       createdAt: nowIso,
     });
     links.push({ cardId: id, keyNotionId: keyNotion.id });

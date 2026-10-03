@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Confused } from "../components/mascot/Confused.js";
 import { Sleeping } from "../components/mascot/Sleeping.js";
 import { Button } from "../components/ui/button.js";
@@ -8,6 +8,7 @@ import { Card } from "../components/ui/card.js";
 import { ICON_SIZE_INLINE, ICON_STROKE_WIDTH } from "../lib/icons.js";
 import { getProgress } from "../lib/notions-api.js";
 import { abandonSession, gradeAnswer, startSession, submitReview, type CardSchedule, type DueCard, type GradeResult, type Rating } from "../lib/review-api.js";
+import { shuffle } from "../lib/shuffle.js";
 
 const RATING_LABEL: Record<Rating, string> = { 1: "À revoir", 2: "Difficile", 3: "Correct", 4: "Facile" };
 
@@ -139,6 +140,15 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
     }
   }
 
+  // The one place MCQ options are ordered: a new random order each time a
+  // card is presented (a new session, or the next card), never on a
+  // re-render while the learner answers. Storage keeps whatever order the
+  // card was written in — the model's, answer first, for every card made
+  // before M11 — and nothing else reorders them on the way here. Grading
+  // compares the chosen option's text, so the order never affects it.
+  const presented = sessionQuery.data?.cards[index];
+  const displayedOptions = useMemo(() => (presented?.options ? shuffle(presented.options) : null), [presented]);
+
   if (sessionQuery.status === "pending") {
     return (
       <main className="flex flex-col items-center gap-4 p-8">
@@ -232,9 +242,9 @@ export function ReviewScreen({ documentId, notionId, onLeave }: { documentId?: s
           </div>
         ))}
 
-      {current.type === "mcq" && current.options && (
+      {current.type === "mcq" && displayedOptions && (
         <div className="flex w-full max-w-md flex-col gap-2">
-          {current.options.map((option) => {
+          {displayedOptions.map((option) => {
             const chosen = mcqSelection !== null;
             // Reveal only once the server has actually graded the answer —
             // never before, so the highlight can never race ahead of it.

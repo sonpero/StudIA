@@ -1,0 +1,10 @@
+// Fisher-Yates over a copy. `random` is injectable so tests can pin it;
+// the review screen uses Math.random, a new order at each presentation.
+export function shuffle<T>(items: readonly T[], random: () => number = Math.random): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+  }
+  return shuffled;
+}
